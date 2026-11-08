@@ -324,9 +324,8 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         String staffHome = mockMvc.perform(get("/sharing-shop").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(staffHome).contains(
-                "href=\"/supports/cafeteria\"><span>식당지원표",
-                "href=\"/supports/cafeteria\">식당지원표 보기</a>");
+        assertThat(staffHome).containsOnlyOnce("href=\"/supports/cafeteria\"")
+                .contains("href=\"/supports/cafeteria\"><span>식당지원표");
 
         String november = mockMvc.perform(get("/supports/cafeteria").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
@@ -343,9 +342,8 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         String adminHome = mockMvc.perform(get("/sharing-shop").with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(adminHome).contains(
-                "href=\"/supports/cafeteria\"><span>식당지원표",
-                "href=\"/supports/cafeteria\">식당지원표 보기</a>");
+        assertThat(adminHome).containsOnlyOnce("href=\"/supports/cafeteria\"")
+                .contains("href=\"/supports/cafeteria\"><span>식당지원표");
 
         String adminNovember = mockMvc.perform(get("/supports/cafeteria").with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())
