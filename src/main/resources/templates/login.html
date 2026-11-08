@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#35422e">
+  <title>로그인 · 장복인간</title>
+  <link rel="preload" th:href="@{/fonts/jangbokhuman-wordmark.woff2}" as="font" type="font/woff2" crossorigin="anonymous">
+  <link rel="stylesheet" th:href="@{/style.css}">
+  <script defer th:src="@{/forms.js}"></script>
+</head>
+<body class="login-body signin-page">
+<main class="signin-layout">
+  <header class="signin-brand-header">
+    <h1 class="signin-wordmark" aria-label="장복인간"><span>장복</span><span>인간</span></h1>
+    <p class="signin-purpose">복지관 업무 배정</p>
+  </header>
+  <section class="signin-shell" aria-labelledby="signin-title">
+  <div class="signin-form-panel">
+    <div class="signin-form-heading">
+      <h2 id="signin-title">근무자 로그인</h2>
+      <p>휴가를 등록하고 배정된 업무를 확인하세요.</p>
+    </div>
+    <p class="notice danger" role="alert" th:if="${param.error}">이름 또는 비밀번호를 확인해주세요.</p>
+    <p class="notice" role="status" th:if="${param.logout}">로그아웃했습니다.</p>
+    <form th:action="@{/login}" method="post" class="stack signin-form">
+      <label for="name">이름</label>
+      <input id="name" name="name" autocomplete="username" placeholder="이름을 입력해주세요" required maxlength="30" spellcheck="false" autocapitalize="none">
+      <label for="password">비밀번호</label>
+      <div class="password-field"><input id="password" name="password" type="password" autocomplete="current-password" placeholder="비밀번호 입력" required><button type="button" class="password-toggle" data-password-toggle aria-controls="password" aria-label="비밀번호 보기" aria-pressed="false" title="비밀번호 보기"><svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 3l18 18M9.8 5.2A12 12 0 0 1 12 5c6.5 0 10 7 10 7a18 18 0 0 1-3.1 3.8M6.2 6.2C3.4 8.1 2 12 2 12s3.5 7 10 7a12 12 0 0 0 5-1.1M10 10a3 3 0 0 0 4 4" stroke-linecap="round"/></svg></button></div>
+      <button class="primary signin-submit" type="submit"><span>로그인</span><span aria-hidden="true">→</span></button>
+    </form>
+    <div class="signin-account-note"><span aria-hidden="true">ⓘ</span><p>등록된 한글 이름으로 로그인하세요.<br>접속에 문제가 있으면 관리자에게 문의하세요.</p></div>
+  </div>
+  </section>
+</main>
+</body>
+</html>

@@ -1,0 +1,17 @@
+<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#495d3f"><title>활동 · 장복인간</title><link rel="stylesheet" th:href="@{/style.css}"><script defer th:src="@{/admin.js}"></script></head><body class="app-page admin-page"><header th:replace="~{admin :: adminHeader}"></header><dialog th:replace="~{admin :: adminMenu}"></dialog><main class="admin-shell"><a class="profile-back" th:href="@{/admin(section='activities')}">← 활동 목록</a><div th:if="${success}" class="notice" role="status" th:text="${success}"></div><div th:if="${error}" class="notice danger" role="alert" th:text="${error}"></div><div class="pane-heading"><div><p class="eyebrow">함께 맡는 활동</p><h1 th:text="${activity.code == 'SHARING_SHOP' ? '나눔가게 활동' : activity.name}"></h1><p>+로 직원을 가입시키고 −로 탈퇴시킬 수 있습니다.</p></div></div><a class="button activity-day-link" th:if="${activity.code == 'SHARING_SHOP'}" th:href="@{/admin/sharing-shop}">오늘의 나눔가게 보기 →</a>
+<section class="card stack">
+  <p class="small muted" th:text="${activity.description}"></p>
+  <h2>담당 직원</h2>
+  <form th:each="person : ${activity.candidates}"
+        th:action="${person.registered} ? @{/admin/activities/{code}/members/{id}/delete(code=${activity.code},id=${person.id})} : @{/admin/activities/{code}/members/{id}/add(code=${activity.code},id=${person.id})}"
+        method="post" class="activity-member">
+    <span><strong th:text="${person.name}"></strong> <small class="muted" th:text="${person.groupName}"></small></span>
+    <button class="button" type="submit"
+            th:attr="aria-label=${person.name + (person.registered ? ' 탈퇴' : ' 가입')}"
+            th:title="${person.registered ? '탈퇴' : '가입'}"
+            th:text="${person.registered ? '−' : '+'}"></button>
+  </form>
+  <p th:if="${activity.candidates.isEmpty()}" class="small muted">관리할 직원이 없습니다.</p>
+  <p class="small muted">가입·탈퇴는 즉시 반영되며 이미 확정된 배정은 유지합니다.</p>
+</section>
+<footer class="admin-footer"><span>장복인간</span><span>함께할 사람과, 함께할 일.</span></footer></main></body></html>

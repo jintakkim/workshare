@@ -1,0 +1,10 @@
+<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><body>
+<div class="employee-card-grid" th:fragment="cards(employees, management)">
+  <a class="employee-profile-card" th:each="e : ${employees}" th:href="${management} ? @{/admin/employees/{id}(id=${e.id})} : @{/employees/{id}(id=${e.id})}" th:attr="aria-label=${e.name + (management ? ' 직원 관리' : ' 프로필 보기')}">
+    <div class="employee-card-top"><span class="profile-avatar"><img th:if="${e.hasPhoto}" th:src="@{/employees/{id}/photo(id=${e.id})}" alt="" loading="lazy"><span th:if="${!e.hasPhoto}" th:text="${#strings.substring(e.name,0,1)}"></span></span><span class="card-open" aria-hidden="true">↗</span></div>
+    <h3 th:text="${e.name}"></h3><p class="employee-group" th:text="${e.workGroupName}"></p>
+    <div class="responsibility-chips"><span th:each="duty : ${e.responsibilities}" th:text="${duty}"></span><small th:if="${e.responsibilities.isEmpty()}">아직 등록된 담당 업무가 없어요.</small></div>
+    <span class="profile-card-footer"><span th:text="${management ? '직원 관리' : '프로필 보기'}">프로필 보기</span> <span aria-hidden="true">→</span></span>
+  </a>
+  <p class="empty-profile-list" th:if="${employees.isEmpty()}">등록된 직원이 없습니다.</p>
+</div></body></html>

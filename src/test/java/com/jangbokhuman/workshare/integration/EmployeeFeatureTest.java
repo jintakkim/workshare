@@ -1,0 +1,648 @@
+package com.jangbokhuman.workshare.integration;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import com.jangbokhuman.workshare.activity.Activity;
+import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
+import com.jangbokhuman.workshare.activity.Worker;
+import com.jangbokhuman.workshare.employee.Employee;
+import com.jangbokhuman.workshare.employee.RosterService;
+import com.jangbokhuman.workshare.employee.WorkGroupType;
+
+import org.junit.jupiter.api.*;
+import org.springframework.boot.test.context.*;
+import org.springframework.context.annotation.*;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.time.*;
+import java.util.*;
+import java.util.concurrent.*;
+
+@DisplayName("직원 계정·직군·프로필")
+class EmployeeFeatureTest extends BusinessFeatureTestSupport {
+    @Test
+    @DisplayName("직원 수를 제한하지 않고 입사·제외 후에도 확정 배정을 보존한다")
+    void employeesCanExceedTenAndRosterChangesPreserveCompletedAssignments() {
+        List<String> names =
+                List.of(
+                        "홍길동", "김민수", "이서연", "박지훈", "최유진", "정하늘", "윤서준", "한지민", "서지우", "남지현", "강민준",
+                        "유하린");
+        names.forEach(this::register);
+        registerRestaurant("강수진");
+        assertThat(employeeRepository.count()).isEqualTo(13);
+        assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).workers()).hasSize(12);
+        now("08:50");
+        workTaskService.allocateTodayIfDue();
+        List<WorkQueryService.TaskView> before =
+                workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks();
+        assertThat(
+                        before.stream()
+                                .filter(t -> t.code().equals("MORNING"))
+                                .findFirst()
+                                .orElseThrow()
+                                .assignees())
+                .hasSize(6);
+        assertThat(
+                        before.stream()
+                                .filter(t -> t.code().equals("EVENING"))
+                                .findFirst()
+                                .orElseThrow()
+                                .assignees())
+                .hasSize(6);
+        rosterService.retireEmployee(employeeRepository.findByName("김민수").orElseThrow().getId());
+        register("이도윤");
+        rosterService.changeWorkGroup(
+                employeeRepository.findByName("강수진").orElseThrow().getId(), "GENERAL");
+        registerForActivity(Activity.SHARING_SHOP, "강수진");
+        assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).workers()).hasSize(13);
+        assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks())
+                .isEqualTo(before);
+        assertThat(workQueryService.getDashboard(TODAY.plusDays(1), employeeId("홍길동")).workers())
+                .hasSize(13)
+                .extracting(Worker::name)
+                .contains("이도윤", "강수진")
+                .doesNotContain("김민수");
+        testClock.set(TODAY.plusDays(1).atTime(8, 50));
+        workTaskService.allocateTodayIfDue();
+        List<WorkQueryService.TaskView> tomorrow =
+                workQueryService.getDashboard(TODAY.plusDays(1), employeeId("홍길동")).tasks();
+        assertThat(
+                        tomorrow.stream()
+                                .filter(t -> t.code().equals("MORNING"))
+                                .findFirst()
+                                .orElseThrow()
+                                .assignees())
+                .hasSize(7);
+        assertThat(
+                        tomorrow.stream()
+                                .filter(t -> t.code().equals("EVENING"))
+                                .findFirst()
+                                .orElseThrow()
+                                .assignees())
+                .hasSize(6);
+    }
+
+    @Test
+    @DisplayName("한글 이름으로 로그인하며 앞뒤 공백과 한글 표기를 정규화한다")
+    void koreanNameIsBothDisplayNameAndLoginAndNormalizesWhitespaceAndHangul() throws Exception {
+        String decomposed = java.text.Normalizer.normalize("홍길동", java.text.Normalizer.Form.NFD);
+        rosterService.registerEmployee("  " + decomposed + "  ", "staff-password", "GENERAL");
+        assertThat(employeeRepository.findByName("홍길동")).isPresent();
+        assertThat(rosterService.getEmployeeViews())
+                .extracting(RosterService.EmployeeView::name)
+                .containsExactly("홍길동");
+        mockMvc.perform(
+                        post("/login")
+                                .with(csrf())
+                                .param("name", " " + decomposed + " ")
+                                .param("password", "staff-password"))
+                .andExpect(redirectedUrl("/sharing-shop"));
+        mockMvc.perform(
+                        post("/login")
+                                .with(csrf())
+                                .param("username", "홍길동")
+                                .param("password", "staff-password"))
+                .andExpect(redirectedUrl("/login?error"));
+        mockMvc.perform(get("/login"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"name\"")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.not(
+                                                org.hamcrest.Matchers.containsString(
+                                                        "name=\"username\""))));
+    }
+
+    @Test
+    @DisplayName("직원 이름 중복과 잘못된 한글 이름 등록을 거절한다")
+    void duplicateNamesAreRejectedAndNonKoreanNewNamesAreNotAccepted() throws Exception {
+        register("홍길동");
+        assertThatThrownBy(
+                        () -> rosterService.registerEmployee(" 홍길동 ", "staff-password", "GENERAL"))
+                .hasMessageContaining("이미 등록된 이름");
+        for (String invalid :
+                java.util.Arrays.asList(
+                        null, "", " ", "hong01", "홍 길동", "홍길동1", "홍길동!", "홍".repeat(31))) {
+            assertThatThrownBy(
+                            () ->
+                                    rosterService.registerEmployee(
+                                            invalid, "staff-password", "GENERAL"))
+                    .hasMessageContaining("한글");
+        }
+        mockMvc.perform(
+                        post("/admin/employees")
+                                .with(testUser("admin", "ADMIN"))
+                                .with(csrf())
+                                .param("name", "홍길동")
+                                .param("password", "staff-password")
+                                .param("workGroupCode", "GENERAL"))
+                .andExpect(redirectedUrl("/admin?section=employees"))
+                .andExpect(flash().attribute("error", "이미 등록된 이름입니다."));
+        assertThat(employeeRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("직원 비밀번호는 허용 문자와 8~20자 제한을 검사한다")
+    void employeePasswordUsesAsciiCharactersAndLengthLimits() throws Exception {
+        for (String password : java.util.Arrays.asList(null, "", "1234567", "a".repeat(21))) {
+            assertThatThrownBy(() -> rosterService.registerEmployee("홍길동", password, "GENERAL"))
+                    .hasMessage("비밀번호는 8~20자로 입력해주세요.");
+        }
+        for (String password :
+                List.of(
+                        "한글비밀번호입니다",
+                        "Abcd123😀",
+                        "Abcd 123!",
+                        "Abcd123?",
+                        "Abcd123\n",
+                        "Abcd123\t")) {
+            assertThatThrownBy(() -> rosterService.registerEmployee("홍길동", password, "GENERAL"))
+                    .hasMessage("비밀번호는 영문, 숫자, 특수문자 !@#$%_-만 사용할 수 있습니다.");
+        }
+        rosterService.registerEmployee("홍길동", "Abcd123!", "GENERAL");
+        rosterService.registerEmployee("김민수", "Aa0!@#$%_-Aa0!@#$%_-", "GENERAL");
+        mockMvc.perform(
+                        post("/login")
+                                .with(csrf())
+                                .param("name", "홍길동")
+                                .param("password", "Abcd123!"))
+                .andExpect(redirectedUrl("/sharing-shop"));
+        mockMvc.perform(
+                        post("/login")
+                                .with(csrf())
+                                .param("name", "김민수")
+                                .param("password", "Aa0!@#$%_-Aa0!@#$%_-"))
+                .andExpect(redirectedUrl("/sharing-shop"));
+        mockMvc.perform(
+                        get("/admin")
+                                .param("section", "employees")
+                                .with(testUser("admin", "ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(
+                        content().string(org.hamcrest.Matchers.containsString("maxlength=\"20\"")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.not(
+                                                org.hamcrest.Matchers.containsString("72바이트"))));
+    }
+
+    @Test
+    @DisplayName("발달지원 직원을 등록하고 본인만 비밀번호를 변경한다")
+    void onlyEmployeesCanChangeTheirOwnPassword() throws Exception {
+        rosterService.registerEmployee("홍길동", "Initial1", "DEVELOPMENT_SUPPORT");
+        register("김민수");
+        String profile = "/employees/" + employeeId("홍길동");
+        String passwordForm = profile + "/password";
+
+        mockMvc.perform(get(profile).with(testUser("홍길동", "STAFF")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("발달지원")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(passwordForm)));
+        mockMvc.perform(get(profile).with(testUser("김민수", "STAFF")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(passwordForm))));
+        mockMvc.perform(post(passwordForm).with(csrf()).with(testUser("김민수", "STAFF"))
+                        .param("currentPassword", "Initial1")
+                        .param("newPassword", "Changed2!")
+                        .param("confirmation", "Changed2!"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post(passwordForm).with(csrf()).with(testUser("홍길동", "STAFF"))
+                        .param("currentPassword", "Wrong123")
+                        .param("newPassword", "Changed2!")
+                        .param("confirmation", "Changed2!"))
+                .andExpect(redirectedUrl(profile + "#change-password"))
+                .andExpect(flash().attributeExists("error"));
+        mockMvc.perform(post(passwordForm).with(csrf()).with(testUser("홍길동", "STAFF"))
+                        .param("currentPassword", "Initial1")
+                        .param("newPassword", "Changed2!")
+                        .param("confirmation", "Mismatch2!"))
+                .andExpect(redirectedUrl(profile + "#change-password"))
+                .andExpect(flash().attributeExists("error"));
+        mockMvc.perform(post(passwordForm).with(csrf()).with(testUser("홍길동", "STAFF"))
+                        .param("currentPassword", "Initial1")
+                        .param("newPassword", "Changed2!")
+                        .param("confirmation", "Changed2!"))
+                .andExpect(redirectedUrl(profile + "#change-password"))
+                .andExpect(flash().attributeExists("success"));
+
+        mockMvc.perform(post("/login").with(csrf()).param("name", "홍길동").param("password", "Initial1"))
+                .andExpect(redirectedUrl("/login?error"));
+        mockMvc.perform(post("/login").with(csrf()).param("name", "홍길동").param("password", "Changed2!"))
+                .andExpect(redirectedUrl("/sharing-shop"));
+    }
+
+    @Test
+    @DisplayName("기존 비밀번호는 새 등록 규칙과 달라도 로그인할 수 있다")
+    void existingPasswordsOutsideTheNewRegistrationRulesCanStillLogin() throws Exception {
+        BCryptPasswordEncoder encoder =
+                new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
+        employeeRepository.saveAndFlush(
+                new Employee("홍길동", encoder.encode("기존한글비밀번호입니다"), TODAY, WorkGroupType.GENERAL));
+        mockMvc.perform(
+                        post("/login")
+                                .with(csrf())
+                                .param("name", "홍길동")
+                                .param("password", "기존한글비밀번호입니다"))
+                .andExpect(redirectedUrl("/sharing-shop"));
+    }
+
+    @Test
+    @DisplayName("동시에 같은 이름을 등록해도 계정 하나만 생성된다")
+    void concurrentSameNameRegistrationOnlyCreatesOneAccount() throws Exception {
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            List<Future<Boolean>> attempts =
+                    executor.invokeAll(
+                            List.<java.util.concurrent.Callable<Boolean>>of(
+                                    () -> {
+                                        try {
+                                            register("홍길동");
+                                            return true;
+                                        } catch (IllegalArgumentException e) {
+                                            return false;
+                                        }
+                                    },
+                                    () -> {
+                                        try {
+                                            register("홍길동");
+                                            return true;
+                                        } catch (IllegalArgumentException e) {
+                                            return false;
+                                        }
+                                    }));
+            long successful = 0;
+            for (Future<Boolean> attempt : attempts) if (attempt.get()) successful++;
+            assertThat(successful).isEqualTo(1);
+        }
+        assertThat(employeeRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("프로필 카드로 직원을 조회하고 관리자는 여러 담당 업무를 지정한다")
+    void employeeCardsLinkToProfilesAndAdministratorsCanAssignMultipleResponsibilities()
+            throws Exception {
+        register("홍길동");
+        register("김민수");
+        Long id = employeeRepository.findByName("홍길동").orElseThrow().getId();
+        mockMvc.perform(
+                        post("/admin/employees/" + id + "/responsibilities")
+                                .with(testUser("admin", "ADMIN"))
+                                .with(csrf())
+                                .param(
+                                        "responsibilities",
+                                        " 나눔가계 운영 ",
+                                        "물품 정리",
+                                        "나눔가계 운영",
+                                        "행사 준비"))
+                .andExpect(redirectedUrl("/admin/employees/" + id));
+        assertThat(rosterService.getEmployeeView(id).responsibilities())
+                .containsExactly("나눔가계 운영", "물품 정리", "행사 준비");
+        mockMvc.perform(
+                        get("/admin")
+                                .param("section", "employees")
+                                .with(testUser("admin", "ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "employee-profile-card")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "href=\"/admin/employees/" + id + "\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("물품 정리")));
+        mockMvc.perform(get("/employees/" + id).with(testUser("김민수", "STAFF")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("행사 준비")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.not(
+                                                org.hamcrest.Matchers.containsString("담당 업무 편집"))))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.not(
+                                                org.hamcrest.Matchers.containsString(
+                                                        "name=\"photo\""))));
+        mockMvc.perform(
+                        post("/admin/employees/" + id + "/responsibilities")
+                                .with(testUser("홍길동", "STAFF"))
+                                .with(csrf())
+                                .param("responsibilities", "권한 없는 변경"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/employees").with(testUser("김민수", "STAFF")))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/employees/" + id).with(testUser("admin", "ADMIN")))
+                .andExpect(status().isOk());
+        mockMvc.perform(
+                        post("/admin/employees/" + id + "/responsibilities")
+                                .with(testUser("admin", "ADMIN"))
+                                .with(csrf()))
+                .andExpect(status().is3xxRedirection());
+        assertThat(rosterService.getEmployeeView(id).responsibilities()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("본인 프로필이라도 직군·담당 업무는 관리자 상세 화면에서만 바꾼다")
+    void workGroupAndResponsibilitiesAreEditableOnlyInsideAdminEmployeeManagement()
+            throws Exception {
+        register("김철수");
+        register("홍길동");
+        Long id = employeeRepository.findByName("김철수").orElseThrow().getId();
+        for (org.springframework.test.web.servlet.request.RequestPostProcessor account :
+                List.of(
+                        testUser("김철수", "STAFF"),
+                        testUser("홍길동", "STAFF"),
+                        testUser("admin", "ADMIN"))) {
+            mockMvc.perform(get("/employees/" + id).param("management", "true").with(account))
+                    .andExpect(status().isOk())
+                    .andExpect(model().attribute("management", false))
+                    .andExpect(
+                            content()
+                                    .string(
+                                            org.hamcrest.Matchers.not(
+                                                    org.hamcrest.Matchers.containsString(
+                                                            "name=\"workGroupCode\""))))
+                    .andExpect(
+                            content()
+                                    .string(
+                                            org.hamcrest.Matchers.not(
+                                                    org.hamcrest.Matchers.containsString(
+                                                            "name=\"responsibilities\""))));
+        }
+        for (String name : List.of("김철수", "홍길동")) {
+            mockMvc.perform(get("/admin/employees/" + id).with(testUser(name, "STAFF")))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(
+                            post("/admin/employees/" + id + "/work-group")
+                                    .with(testUser(name, "STAFF"))
+                                    .with(csrf())
+                                    .param("workGroupCode", "RESTAURANT"))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(
+                            post("/admin/employees/" + id + "/responsibilities")
+                                    .with(testUser(name, "STAFF"))
+                                    .with(csrf())
+                                    .param("responsibilities", "물품 정리"))
+                    .andExpect(status().isForbidden());
+        }
+        assertThat(rosterService.getEmployeeView(id).workGroupCode()).isEqualTo("GENERAL");
+        assertThat(rosterService.getEmployeeView(id).responsibilities()).isEmpty();
+        mockMvc.perform(get("/admin/employees/" + id))
+                .andExpect(redirectedUrl("http://localhost/login"));
+        mockMvc.perform(get("/admin/employees/" + id).with(testUser("admin", "ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("management", true))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "name=\"workGroupCode\"")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "name=\"responsibilities\"")));
+        mockMvc.perform(
+                        post("/admin/employees/" + id + "/work-group")
+                                .with(testUser("admin", "ADMIN"))
+                                .with(csrf())
+                                .param("workGroupCode", "THIRD_FLOOR"))
+                .andExpect(redirectedUrl("/admin/employees/" + id));
+        mockMvc.perform(
+                        post("/admin/employees/" + id + "/responsibilities")
+                                .with(testUser("admin", "ADMIN"))
+                                .with(csrf())
+                                .param("responsibilities", "물품 정리", "행사 준비"))
+                .andExpect(redirectedUrl("/admin/employees/" + id));
+        assertThat(rosterService.getEmployeeView(id).workGroupCode()).isEqualTo("THIRD_FLOOR");
+        assertThat(rosterService.getEmployeeView(id).responsibilities())
+                .containsExactly("물품 정리", "행사 준비");
+        mockMvc.perform(
+                        post("/admin/employees/" + id + "/work-group")
+                                .with(testUser("admin", "ADMIN"))
+                                .with(csrf())
+                                .param("workGroupCode", "INVALID"))
+                .andExpect(redirectedUrl("/admin/employees/" + id))
+                .andExpect(flash().attributeExists("error"));
+        mockMvc.perform(
+                        post("/admin/employees/" + id + "/responsibilities")
+                                .with(testUser("admin", "ADMIN"))
+                                .with(csrf())
+                                .param("responsibilities", "없는 업무"))
+                .andExpect(redirectedUrl("/admin/employees/" + id))
+                .andExpect(flash().attributeExists("error"));
+        mockMvc.perform(get("/employees").with(testUser("김철수", "STAFF")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "href=\"/employees/" + id + "\"")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.not(
+                                                org.hamcrest.Matchers.containsString(
+                                                        "href=\"/admin/employees/" + id + "\""))));
+    }
+
+    @Test
+    @DisplayName("프로필 사진은 본인·관리자만 등록하고 실제 이미지와 용량을 검사한다")
+    void profilePhotosAreOwnerOrAdminOnlyAndMustBeRealImages() throws Exception {
+        register("홍길동");
+        registerRestaurant("강수진");
+        Long id = employeeRepository.findByName("강수진").orElseThrow().getId();
+        BufferedImage image =
+                new java.awt.image.BufferedImage(
+                        800, 400, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(image, "png", bytes);
+        MockMultipartFile file =
+                new org.springframework.mock.web.MockMultipartFile(
+                        "photo", "photo.png", "image/png", bytes.toByteArray());
+        mockMvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .multipart("/employees/" + id + "/photo")
+                                .file(file)
+                                .with(testUser("홍길동", "STAFF"))
+                                .with(csrf()))
+                .andExpect(status().isForbidden());
+        assertThat(employeePhotoRepository.existsById(id)).isFalse();
+        mockMvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .multipart("/employees/" + id + "/photo")
+                                .file(file)
+                                .with(testUser("강수진", "STAFF")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .multipart("/employees/" + id + "/photo")
+                                .file(file)
+                                .with(testUser("강수진", "STAFF"))
+                                .with(csrf()))
+                .andExpect(redirectedUrl("/employees/" + id));
+        byte[] response =
+                mockMvc.perform(get("/employees/" + id + "/photo").with(testUser("홍길동", "STAFF")))
+                        .andExpect(status().isOk())
+                        .andExpect(content().contentType("image/jpeg"))
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsByteArray();
+        BufferedImage thumbnail =
+                javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(response));
+        assertThat(thumbnail.getWidth()).isEqualTo(512);
+        assertThat(thumbnail.getHeight()).isEqualTo(256);
+        assertThat(rosterService.getEmployeeView(id).hasPhoto()).isTrue();
+        mockMvc.perform(get("/employees/" + id + "/photo")).andExpect(status().is3xxRedirection());
+        mockMvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .multipart("/employees/" + id + "/photo")
+                                .file(file)
+                                .with(testUser("admin", "ADMIN"))
+                                .with(csrf()))
+                .andExpect(status().is3xxRedirection());
+        mockMvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .multipart("/admin/employees/" + id + "/photo")
+                                .file(file)
+                                .with(testUser("강수진", "STAFF"))
+                                .with(csrf()))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .multipart("/admin/employees/" + id + "/photo")
+                                .file(file)
+                                .with(testUser("admin", "ADMIN"))
+                                .with(csrf()))
+                .andExpect(redirectedUrl("/admin/employees/" + id));
+        MockMultipartFile invalid =
+                new org.springframework.mock.web.MockMultipartFile(
+                        "photo",
+                        "fake.png",
+                        "image/png",
+                        "<svg>not a photo</svg>".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        mockMvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .multipart("/employees/" + id + "/photo")
+                                .file(invalid)
+                                .with(testUser("강수진", "STAFF"))
+                                .with(csrf()))
+                .andExpect(redirectedUrl("/employees/" + id))
+                .andExpect(flash().attribute("error", "JPG 또는 PNG 사진을 선택해주세요."));
+        MockMultipartFile oversized =
+                new org.springframework.mock.web.MockMultipartFile(
+                        "photo", "large.png", "image/png", new byte[2 * 1024 * 1024 + 1]);
+        mockMvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .multipart("/employees/" + id + "/photo")
+                                .file(oversized)
+                                .with(testUser("강수진", "STAFF"))
+                                .with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute("error", "사진은 2MB 이하의 JPG 또는 PNG 파일로 선택해주세요."));
+        assertThat(employeePhotoRepository.findById(id).orElseThrow().getImage())
+                .isEqualTo(response);
+    }
+
+    @Test
+    @DisplayName("직군은 정해진 네 가지 중 하나이며 담당 업무는 여러 개 선택한다")
+    void groupsAreSingleChoiceAndEmployeeResponsibilitiesAreMultipleValidatedChoices()
+            throws Exception {
+        mockMvc.perform(get("/admin").param("section", "employees").with(testUser("admin", "ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"RESTAURANT\">식당</option>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"GENERAL\">운영지원</option>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"FACILITY_SUPPORT\">운영지원(기계실)</option>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"THIRD_FLOOR\">3층</option>")));
+        mockMvc.perform(
+                        post("/admin/employees")
+                                .with(testUser("admin", "ADMIN"))
+                                .with(csrf())
+                                .param("name", "홍길동")
+                                .param("password", "Staff!2026")
+                                .param("workGroupCode", "FACILITY_SUPPORT")
+                                .param("responsibilities", "물품 정리", "행사 준비"))
+                .andExpect(redirectedUrl("/admin?section=employees"));
+        Employee employee = employeeRepository.findByName("홍길동").orElseThrow();
+        assertThat(rosterService.getEmployeeView(employee.getId()).workGroupName())
+                .isEqualTo("운영지원(기계실)");
+        assertThat(rosterService.getEmployeeView(employee.getId()).responsibilities())
+                .containsExactly("물품 정리", "행사 준비");
+        assertThatThrownBy(
+                        () ->
+                                rosterService.registerEmployee(
+                                        "김민수", "Staff!2026", "GENERAL,RESTAURANT"))
+                .hasMessageContaining("직군");
+        assertThatThrownBy(
+                        () ->
+                                rosterService.registerEmployee(
+                                        "김민수", "Staff!2026", "GENERAL", List.of("없는 업무")))
+                .hasMessageContaining("목록에서");
+        mockMvc.perform(
+                        post("/admin/employees/" + employee.getId() + "/responsibilities")
+                                .with(testUser("admin", "ADMIN"))
+                                .with(csrf())
+                                .param("responsibilities", "없는 업무"))
+                .andExpect(flash().attribute("error", "목록에서 담당 업무를 선택해주세요."));
+        assertThat(rosterService.getEmployeeView(employee.getId()).responsibilities())
+                .containsExactly("물품 정리", "행사 준비");
+        mockMvc.perform(
+                        get("/admin")
+                                .param("section", "employees")
+                                .with(testUser("admin", "ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "data-password-toggle")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "name=\"responsibilities\"")));
+        mockMvc.perform(get("/employees/" + employee.getId()).with(testUser("admin", "ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.not(
+                                                org.hamcrest.Matchers.containsString(
+                                                        "<textarea"))));
+    }
+
+    @Test
+    @DisplayName("관리자가 담당 업무 목록을 추가하고 중복 이름은 거절한다")
+    void administratorsCanAddSelectableResponsibilitiesAndDuplicateTitlesAreRejected()
+            throws Exception {
+        mockMvc.perform(
+                        post("/admin/responsibility-options")
+                                .with(testUser("admin", "ADMIN"))
+                                .with(csrf())
+                                .param("title", "직원 교육"))
+                .andExpect(redirectedUrl("/admin?section=employees"));
+        assertThat(responsibilityCatalogService.getChoices()).contains("직원 교육");
+        assertThatThrownBy(() -> responsibilityCatalogService.add("직원 교육"))
+                .hasMessage("이미 등록된 업무입니다.");
+        mockMvc.perform(
+                        post("/admin/responsibility-options")
+                                .with(testUser("홍길동", "STAFF"))
+                                .with(csrf())
+                                .param("title", "권한 없는 업무"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/login"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("비밀번호 보기")));
+        mockMvc.perform(get("/forms.js")).andExpect(status().isOk());
+    }
+}

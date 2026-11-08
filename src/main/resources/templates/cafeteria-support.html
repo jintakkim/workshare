@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>식당지원표 · 장복인간</title>
+  <link rel="stylesheet" th:href="@{/style.css}">
+  <script defer th:src="@{/admin.js}"></script>
+</head>
+<body class="app-page admin-page">
+<header th:replace="~{fragments/staff-navigation :: header}"></header>
+<dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog>
+<main class="admin-shell">
+  <div class="pane-heading">
+    <div>
+      <h1>식당지원표</h1>
+      <p>날짜별 식당지원 담당자를 확인하세요.</p>
+    </div>
+    <a class="button subtle" th:href="@{/supports}">내 일정·교환 요청</a>
+  </div>
+  <section class="card support-month" aria-labelledby="cafeteria-month">
+    <div class="section-heading">
+      <h2 id="cafeteria-month" th:text="${month.year + '년 ' + month.monthValue + '월'}"></h2>
+      <nav class="month-nav" aria-label="식당지원표 월 이동">
+        <a class="icon-button" th:href="@{/supports/cafeteria(month=${month.minusMonths(1)})}" aria-label="이전 달">‹</a>
+        <a class="button subtle" th:href="@{/supports/cafeteria}">이번 달</a>
+        <a class="icon-button" th:href="@{/supports/cafeteria(month=${month.plusMonths(1)})}" aria-label="다음 달">›</a>
+      </nav>
+    </div>
+    <p class="small muted" th:if="${days.isEmpty()}">이 달에 등록된 식당지원 일정이 없습니다.</p>
+    <div class="quota-rule" th:each="day : ${days}">
+      <strong th:text="${#temporals.format(day.date, 'M월 d일 E요일')}"></strong>
+      <span th:text="${#strings.listJoin(day.employeeNames, ', ')}"></span>
+    </div>
+  </section>
+</main>
+</body>
+</html>

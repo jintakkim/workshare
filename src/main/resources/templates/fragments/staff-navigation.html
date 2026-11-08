@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"><body>
+<header th:fragment="header" class="admin-header"><div class="admin-header-inner">
+  <a class="admin-brand" th:href="@{/sharing-shop}" aria-label="장복인간 홈"><span class="app-wordmark"><span>장복</span><span>인간</span></span><span class="brand-purpose">복지관 업무 배정</span></a>
+  <div class="admin-header-actions"><button type="button" class="menu-trigger" aria-label="메뉴 열기" aria-controls="staff-menu" aria-expanded="false"><span></span><span></span><span></span></button></div>
+</div></header>
+<dialog th:fragment="menu" id="staff-menu" class="admin-menu" aria-labelledby="staff-menu-title">
+  <div class="menu-heading"><div><p class="eyebrow">장복인간</p><h2 id="staff-menu-title">나의 메뉴</h2></div><button class="menu-close" type="button" aria-label="메뉴 닫기">×</button></div>
+  <nav aria-label="직원 메뉴">
+    <a th:href="@{/sharing-shop}" th:classappend="${section == 'sharing' ? 'active' : ''}" th:attr="aria-current=${section == 'sharing' ? 'page' : null}"><span>나눔가게 활동<small>날짜별 참여 현황과 오전·오후 배정</small></span><span aria-hidden="true">→</span></a>
+    <a th:if="${!admin}" th:href="@{/my-leave}" th:classappend="${section == 'leave' ? 'active' : ''}" th:attr="aria-current=${section == 'leave' ? 'page' : null}"><span>내 휴가 일정<small>연차·병가·반차와 업무 선호 입력</small></span><span aria-hidden="true">→</span></a>
+    <a th:if="${!admin}" th:href="@{/supports}" th:classappend="${section == 'supports' ? 'active' : ''}"><span>내 지원 일정<small>식당지원 확인과 직원 간 지원일 교환</small></span><span aria-hidden="true">→</span></a>
+    <a th:if="${!admin}" th:href="@{/supports/cafeteria}" th:classappend="${section == 'cafeteria-support' ? 'active' : ''}" th:attr="aria-current=${section == 'cafeteria-support' ? 'page' : null}"><span>식당지원표<small>월별 식당지원 담당자 확인</small></span><span aria-hidden="true">→</span></a>
+    <a th:href="@{/employees}" th:classappend="${section == 'employees' ? 'active' : ''}" th:attr="aria-current=${section == 'employees' ? 'page' : null}"><span>직원 프로필<small>함께 일하는 사람과 담당 업무</small></span><span aria-hidden="true">→</span></a>
+    <a th:if="${!admin}" th:href="@{/my-profile}"><span>내 프로필<small>내 정보 확인과 사진 등록</small></span><span aria-hidden="true">→</span></a>
+  </nav>
+  <div class="menu-footer"><form th:action="@{/logout}" method="post"><button class="text-button" type="submit">로그아웃</button></form></div>
+</dialog>
+</body></html>

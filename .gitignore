@@ -1,0 +1,9 @@
+target/
+data/
+.idea/
+*.iml
+.DS_Store
+.env
+.tools/
+backups/
+workshare-backup.sql

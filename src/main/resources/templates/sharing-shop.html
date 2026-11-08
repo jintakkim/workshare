@@ -1,0 +1,16 @@
+<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#495d3f"><title>나눔가게 활동 · 장복인간</title><link rel="stylesheet" th:href="@{/style.css}"><script defer th:src="@{/admin.js}"></script><script defer th:src="@{/sharing-shop.js}"></script></head><body class="app-page admin-page"><th:block th:if="${management}"><header th:replace="~{admin :: adminHeader}"></header><dialog th:replace="~{admin :: adminMenu}"></dialog></th:block><th:block th:if="${!management}"><header th:replace="~{fragments/staff-navigation :: header}"></header><dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog></th:block><main class="admin-shell sharing-shell"><div class="pane-heading"><div><h1>나눔가게 활동</h1><p>옆으로 넘겨 날짜별 참여 현황을 확인하세요.</p></div></div><div th:if="${success}" class="notice" role="status" th:text="${success}"></div>
+<div th:if="${error}" class="notice danger" role="alert" th:text="${error}"></div>
+<section th:if="${!admin}" class="card" aria-label="나눔가게 시간대 선호도">
+  <h2>나눔가게 시간대 선호도</h2>
+  <p class="small muted">직원별로 저장되며, 변경한 선호도는 다음 추첨부터 반영됩니다.</p>
+  <form th:if="${timePreferenceSettings.canChange}" th:action="@{/sharing-shop/time-preference}" method="post" class="stack">
+    <label>선호 시간대
+      <select name="timePreference" aria-label="나눔가게 선호 시간대">
+        <option th:each="choice : ${timePreferenceChoices}" th:value="${choice}" th:text="${choice.label}" th:selected="${choice == timePreferenceSettings.timePreference}"></option>
+      </select>
+    </label>
+    <button class="primary" type="submit">나눔가게 시간대 선호도 저장</button>
+  </form>
+  <p th:unless="${timePreferenceSettings.canChange}" class="small muted" th:text="${timePreferenceSettings.reason}"></p>
+</section>
+<div class="day-navigation"><button type="button" class="icon-button" data-day-prev aria-label="이전 날짜">‹</button><button type="button" class="button subtle" data-day-today>오늘로</button><button type="button" class="icon-button" data-day-next aria-label="다음 날짜">›</button></div><div class="day-deck" tabindex="0" aria-label="날짜별 나눔가게 활동 카드" aria-roledescription="캐러셀" th:attr="data-today=${#temporals.format(today,'yyyy-MM-dd')},data-api-base=@{/api/sharing-shop/days/},data-photo-base=@{/employees/}"><article class="day-card" th:each="date : ${dates}" th:attr="data-date=${#temporals.format(date,'yyyy-MM-dd')},aria-label=${#temporals.format(date,'M월 d일 E요일')}" th:classappend="${date == today ? 'is-today' : ''}"><div class="day-card-heading"><div><p class="eyebrow" th:text="${#temporals.format(date,'yyyy년 M월')}"></p><h2 th:text="${#temporals.format(date,'d일 E요일')}"></h2></div><span class="badge working" th:if="${date == today}">오늘</span></div><div class="day-card-body" data-day-content><p class="day-loading" role="status">참여 현황을 불러오고 있어요.</p></div></article></div><p class="day-live-status sr-only" aria-live="polite" data-day-live></p><a th:if="${!admin}" class="button sharing-leave-link" th:href="@{/my-leave}">내 휴가 입력 →</a><p class="sharing-note">휴가는 해당 날짜 08:49 전까지 · 배정 결과는 08:50:10부터 확인해요.</p></main></body></html>
