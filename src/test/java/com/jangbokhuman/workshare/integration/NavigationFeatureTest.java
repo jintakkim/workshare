@@ -27,8 +27,6 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                         "직원 월별 휴가 달력",
                         "employees",
                         "함께 일하는 사람들",
-                        "tasks",
-                        "추가 업무 관리",
                         "holidays",
                         "휴일 달력",
                         "activities",
@@ -45,7 +43,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                             .getContentAsString();
             assertThat(result)
                     .contains("장복인간", "관리 메뉴 열기", markers.get(section))
-                    .doesNotContain("WorkShare", "직원과 휴일 관리");
+                    .doesNotContain("WorkShare", "직원과 휴일 관리", "section=tasks", "추가 업무 관리");
             for (String other : markers.keySet())
                 if (!other.equals(section)) assertThat(result).doesNotContain(markers.get(other));
         }
@@ -57,6 +55,8 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(status().isOk());
         mockMvc.perform(get("/admin").param("section", "unknown").with(testUser("admin", "ADMIN")))
                 .andExpect(status().is3xxRedirection());
+        mockMvc.perform(get("/admin").param("section", "tasks").with(testUser("admin", "ADMIN")))
+                .andExpect(redirectedUrl("/admin"));
     }
 
     @Test

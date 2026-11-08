@@ -257,49 +257,15 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
     }
 
     @Test
-    @DisplayName("관리자만 추가 업무를 등록·취소할 수 있다")
-    void adminCanCreateAndCancelWorkThroughSeparateSecuredRoutes() throws Exception {
+    @DisplayName("관리자 웹에서 추가 업무를 등록하거나 취소하는 경로를 제공하지 않는다")
+    void adminCannotManageAdditionalWorkThroughTheWeb() throws Exception {
         register("홍길동");
-        mockMvc.perform(
-                        post("/admin/tasks")
-                                .with(testUser("홍길동", "STAFF"))
-                                .with(csrf())
-                                .param("date", TODAY.toString())
-                                .param("activityCode", Activity.SHARING_SHOP.getCode())
-                                .param("name", "추가 업무")
-                                .param("period", "EVENING")
-                                .param("requiredWorkers", "1"))
-                .andExpect(status().isForbidden());
-        mockMvc.perform(
-                        post("/admin/tasks")
-                                .with(testUser("admin", "ADMIN"))
-                                .with(csrf())
-                                .param("date", TODAY.toString())
-                                .param("activityCode", Activity.SHARING_SHOP.getCode())
-                                .param("name", "추가 업무")
-                                .param("period", "EVENING")
-                                .param("requiredWorkers", "1"))
-                .andExpect(
-                        redirectedUrl(
-                                "/admin?section=tasks&date="
-                                        + TODAY
-                                        + "&activityCode="
-                                        + Activity.SHARING_SHOP));
-        Long id = workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks().getFirst().id();
-        mockMvc.perform(get("/admin").param("section", "tasks").with(testUser("admin", "ADMIN")))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("대기 업무 취소")));
-        mockMvc.perform(
-                        post("/admin/tasks/" + id + "/remove")
-                                .with(testUser("admin", "ADMIN"))
-                                .with(csrf()))
-                .andExpect(
-                        redirectedUrl(
-                                "/admin?section=tasks&date="
-                                        + TODAY
-                                        + "&activityCode="
-                                        + Activity.SHARING_SHOP));
-        assertThat(workTaskRepository.count()).isZero();
+        Long id = addTask(TODAY, "기존 업무", WorkPeriod.EVENING, 1);
+        mockMvc.perform(post("/admin/tasks").with(testUser("admin", "ADMIN")).with(csrf()))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/admin/tasks/{id}/remove", id).with(testUser("admin", "ADMIN")).with(csrf()))
+                .andExpect(status().isNotFound());
+        assertThat(workTaskRepository.count()).isEqualTo(1);
     }
 
     @Test
@@ -492,8 +458,6 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(jsonPath("$.participants.length()").value(2))
                 .andExpect(jsonPath("$.leaves.length()").value(0));
         now("08:50");
-        mockMvc.perform(get("/admin").with(testUser("admin", "ADMIN")).param("section", "tasks"))
-                .andExpect(status().isOk());
         workTaskService.allocateTodayIfDue();
         List<WorkQueryService.TaskView> tasks =
                 workQueryService.getDashboard(TODAY, selfId).tasks();

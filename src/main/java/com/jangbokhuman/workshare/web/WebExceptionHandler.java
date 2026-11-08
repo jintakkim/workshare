@@ -57,7 +57,6 @@ public class WebExceptionHandler {
                         || path.endsWith("/photo")))
             return "redirect:" + path.substring(0, path.lastIndexOf('/'));
         if (path.startsWith("/admin/employees")) return "redirect:/admin?section=employees";
-        if (path.startsWith("/admin/tasks")) return "redirect:/admin?section=tasks";
         if (path.startsWith("/admin/holidays")) return "redirect:/admin?section=holidays";
         if (path.startsWith("/admin/responsibility-options"))
             return "redirect:/admin?section=employees";

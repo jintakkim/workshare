@@ -3,10 +3,8 @@ package com.jangbokhuman.workshare.web;
 import com.jangbokhuman.workshare.activity.Activity;
 import com.jangbokhuman.workshare.activity.ActivityManagementService;
 import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
-import com.jangbokhuman.workshare.activity.WorkTaskService;
 import com.jangbokhuman.workshare.calendar.HolidayCalendarService;
 import com.jangbokhuman.workshare.calendar.HolidayService;
-import com.jangbokhuman.workshare.calendar.WorkPeriod;
 import com.jangbokhuman.workshare.calendar.WorkTime;
 import com.jangbokhuman.workshare.employee.ResponsibilityCatalogService;
 import com.jangbokhuman.workshare.employee.RosterService;
@@ -33,7 +31,6 @@ public class AdminController {
     private final HolidayService holidayService;
     private final WorkQueryService workQueryService;
     private final WorkTime workTime;
-    private final WorkTaskService workTaskService;
     private final LeaveRequestService leaveRequestService;
     private final ResponsibilityCatalogService responsibilityCatalogService;
     private final ActivityManagementService activityManagementService;
@@ -47,7 +44,7 @@ public class AdminController {
             @RequestParam(defaultValue = "leave") String section,
             @RequestParam(required = false) Long employeeId,
             Model model) {
-        if (!java.util.Set.of("leave", "employees", "tasks", "holidays", "activities")
+        if (!java.util.Set.of("leave", "employees", "holidays", "activities")
                 .contains(section)) {
             throw new IllegalArgumentException("관리 메뉴를 선택하세요.");
         }
@@ -82,10 +79,8 @@ public class AdminController {
         model.addAttribute("section", section);
         model.addAttribute("attendances", Attendance.values());
         model.addAttribute("effectiveDate", rosterService.getRosterChangeEffectiveDate());
-        model.addAttribute("periods", java.util.List.of(WorkPeriod.MORNING, WorkPeriod.EVENING));
         model.addAttribute("groups", WorkGroupType.values());
         model.addAttribute("responsibilityOptions", responsibilityCatalogService.getChoices());
-        model.addAttribute("activities", Activity.values());
         return "admin";
     }
 
@@ -143,36 +138,6 @@ public class AdminController {
         holidayService.removeHoliday(date);
         flash.addFlashAttribute("success", "추가 휴일을 취소했습니다. 평일이면 배정이 다시 활성화됩니다.");
         return "redirect:/admin?section=holidays&date=" + date;
-    }
-
-    @PostMapping("/admin/tasks")
-    public String addTask(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam String name,
-            @RequestParam WorkPeriod period,
-            @RequestParam int requiredWorkers,
-            @RequestParam String activityCode,
-            RedirectAttributes flash) {
-        workTaskService.addTask(activityCode, date, name, period, requiredWorkers);
-        flash.addFlashAttribute(
-                "success", "업무를 추가했습니다. 당일 배정 시각 이후라면 바로 배정하고, 미래 업무는 당일 자동 배정합니다.");
-        flash.addAttribute("section", "tasks");
-        flash.addAttribute("date", date.toString());
-        flash.addAttribute("activityCode", activityCode);
-        return "redirect:/admin";
-    }
-
-    @PostMapping("/admin/tasks/{id}/remove")
-    public String removeTask(
-            @PathVariable Long id,
-            @RequestParam(defaultValue = "SHARING_SHOP") String activityCode,
-            RedirectAttributes flash) {
-        LocalDate date = workTaskService.removePendingTask(id);
-        flash.addFlashAttribute("success", "배정 대기 중인 업무를 취소했습니다.");
-        flash.addAttribute("section", "tasks");
-        flash.addAttribute("date", date.toString());
-        flash.addAttribute("activityCode", activityCode);
-        return "redirect:/admin";
     }
 
     @PostMapping("/admin/employees/{id}/work-group")

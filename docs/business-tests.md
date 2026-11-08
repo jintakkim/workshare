@@ -41,7 +41,7 @@
 | 주어진 상황 | 사용자 동작·실행 | 확인하는 결과 | 실행 횟수 |
 | --- | --- | --- | --- |
 | 정상 출근자 0~5명, 휴가·선호도 미입력 | 관리자 직원 등록 → 실제 로그인 → 08:50 배정 → 08:50:10 REST 조회 | YAML 설정과 기본 비율, 1명 겸임, 별도 상주 인원 미제외, 재실행 시 동일 결과 | 6 |
-| 일반 직원 6명 + 식당 직원 1명, 식당지원 2명, 연차 1명, 반차 1명 | YAML에서 3명 기준 1/2 설정 → 관리자가 지원표 입력 → 직원이 휴가·오후 선호 신청 → 배정 → 추가 업무 등록 | 실제 가능 인원 3명, 반차자 오전 1명, 오후 선호자 2명, 지원·연차·식당 직군 제외, 추가 업무 후 기존 배정 보존 | 1 |
+| 일반 직원 6명 + 식당 직원 1명, 식당지원 2명, 연차 1명, 반차 1명 | YAML에서 3명 기준 1/2 설정 → 관리자가 지원표 입력 → 직원이 휴가·오후 선호 신청 → 배정 → 서비스에서 추가 업무 등록 | 실제 가능 인원 3명, 반차자 오전 1명, 오후 선호자 2명, 지원·연차·식당 직군 제외, 추가 업무 후 기존 배정 보존 | 1 |
 | 홍길동 오늘 지원, 김민수 내일 지원 | 홍길동이 요청 → 제3자 수락 시도 → 김민수가 로그인해 08:50 직전 수락 | 수락 전 명단 유지, 제3자 403, 두 날짜의 지원자·활동 제외 인원 동시 변경, 재수락 불가 | 1 |
 | 당일 지원표와 휴가가 있는 직원 | 08:49 전 휴가 신청 → 08:49 휴가·선호도 변경 시도 → 08:50 직전 지원표 수정 → 08:50 지원표 변경 시도 | 휴가는 08:49부터 거절, 나눔가게 시간대 선호도는 계속 변경 가능, 지원표는 08:50 직전까지 허용, 실패 요청이 기존 기록을 바꾸지 않음 | 1 |
 | 내일 연차를 미리 신청한 직원 | 관리자가 사유 없는 휴일 등록 → 직원 신청 시도 → 관리자 휴일 해제 → 직원 연차 취소 → 주말 배정 실행 | 휴일 신청 차단·OFF 표시, 기존 연차 보존, 정상 출근으로 취소, 주말에는 배정 없음 | 1 |
@@ -108,7 +108,7 @@
 - 대기 중 추가 업무는 취소할 수 있고 휴일에는 배정하지 않는다: `pendingTaskCanBeCancelledAndHolidaysPausePendingWork`
 - 업무 입력 조건을 검사하고 가능한 직원이 없으면 부족을 표시한다: `taskValidationAndNoEligibleStaffAreHandledExplicitly`
 - 동시에 추가 업무를 등록해도 오전·오후를 다시 추첨하지 않는다: `concurrentAdditionalWorkDoesNotTriggerAnotherShiftDraw`
-- 관리자만 추가 업무를 등록·취소할 수 있다: `adminCanCreateAndCancelWorkThroughSeparateSecuredRoutes`
+- 관리자 웹에서 추가 업무를 등록·취소하는 경로를 제공하지 않는다: `adminCannotManageAdditionalWorkThroughTheWeb`
 - 식당 직군을 먼저 제외한 인원으로 기본·추가 업무를 배정한다: `shiftQuotasAndAllAdditionalWorkExcludeRestaurantStaffBeforeCounting`
 - 추가 업무 필요 인원을 10명으로 제한하지 않으며 부족 인원을 표시한다: `extraTasksCanRequestMoreThanTenWorkersAndReportTheShortfall`
 - 오전·오후 반차를 입력하면 선호와 관계없이 가능한 시간대의 기본·추가 업무만 배정한다(2회): `bothHalfDayTypesRestrictEveryAllocationPath`

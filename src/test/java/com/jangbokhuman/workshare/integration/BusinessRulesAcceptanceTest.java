@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
+import com.jangbokhuman.workshare.calendar.WorkPeriod;
 import com.jangbokhuman.workshare.support.SupportExchangeService;
 import com.jangbokhuman.workshare.leave.Attendance;
 import com.jangbokhuman.workshare.activity.Activity;
@@ -121,22 +122,8 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
                 .andExpect(jsonPath("$.morning[*].name").value(containsInAnyOrder("박지훈")))
                 .andExpect(jsonPath("$.evening[*].name").value(containsInAnyOrder("최유진", "정하늘")));
         JsonNode before = day(worker, TODAY);
-        mockMvc.perform(
-                        post("/admin/tasks")
-                                .session(admin)
-                                .with(csrf())
-                                .param("date", TODAY.toString())
-                                .param("activityCode", Activity.SHARING_SHOP.getCode())
-                                .param("name", "오후 물품 정리")
-                                .param("period", "EVENING")
-                                .param("requiredWorkers", "2"))
-                .andExpect(flash().attributeExists("success"));
-        MvcResult tasksPage =
-                mockMvc.perform(get("/admin").session(admin).param("section", "tasks"))
-                        .andExpect(status().isOk())
-                        .andReturn();
-        WorkQueryService.Dashboard tasksView =
-                (WorkQueryService.Dashboard) tasksPage.getModelAndView().getModel().get("view");
+        addTask(TODAY, "오후 물품 정리", WorkPeriod.EVENING, 2);
+        WorkQueryService.Dashboard tasksView = workQueryService.getDashboard(TODAY, employeeId("박지훈"));
         WorkQueryService.TaskView extra =
                 tasksView.tasks().stream()
                         .filter(task -> task.name().equals("오후 물품 정리"))
