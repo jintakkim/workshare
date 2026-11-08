@@ -250,7 +250,7 @@
 | 일반 나눔가게 날짜 카드 | `/sharing-shop` |
 | 본인 휴가 달력 | `/my-leave` |
 | 본인 지원 일정·교환 요청함 | `/supports` |
-| 직원용 월별 식당지원표 | `/supports/cafeteria` |
+| 월별 식당지원표 조회 (직원·관리자) | `/supports/cafeteria` |
 | 직원 프로필 | `/employees`, `/employees/{id}` |
 | 관리자 진입 | `/admin` |
 | 관리자 직원 관리 | `/admin?section=employees`, `/admin/employees/{id}` |

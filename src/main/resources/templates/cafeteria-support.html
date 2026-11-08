@@ -16,7 +16,7 @@
       <h1>식당지원표</h1>
       <p>날짜별 식당지원 담당자를 확인하세요.</p>
     </div>
-    <a class="button subtle" th:href="@{/supports}">내 일정·교환 요청</a>
+    <a th:if="${!admin}" class="button subtle" th:href="@{/supports}">내 일정·교환 요청</a>
   </div>
   <section class="card support-month" aria-labelledby="cafeteria-month">
     <div class="section-heading">

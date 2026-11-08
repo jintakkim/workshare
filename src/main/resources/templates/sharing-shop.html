@@ -1,7 +1,7 @@
 <!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#495d3f"><title>나눔가게 활동 · 장복인간</title><link rel="stylesheet" th:href="@{/style.css}"><script defer th:src="@{/admin.js}"></script><script defer th:src="@{/sharing-shop.js}"></script></head><body class="app-page admin-page"><th:block th:if="${management}"><header th:replace="~{admin :: adminHeader}"></header><dialog th:replace="~{admin :: adminMenu}"></dialog></th:block><th:block th:if="${!management}"><header th:replace="~{fragments/staff-navigation :: header}"></header><dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog></th:block><main class="admin-shell sharing-shell">
 <div class="pane-heading">
   <div><h1>나눔가게 활동</h1><p>옆으로 넘겨 날짜별 참여 현황을 확인하세요.</p></div>
-  <a th:if="${!admin}" class="button subtle" th:href="@{/supports/cafeteria}">식당지원표 보기</a>
+  <a th:if="${!management}" class="button subtle" th:href="@{/supports/cafeteria}">식당지원표 보기</a>
 </div>
 <div th:if="${success}" class="notice" role="status" th:text="${success}"></div>
 <div th:if="${error}" class="notice danger" role="alert" th:text="${error}"></div>

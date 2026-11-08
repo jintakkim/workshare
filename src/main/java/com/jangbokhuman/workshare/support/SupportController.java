@@ -25,12 +25,15 @@ public class SupportController {
     @GetMapping("/supports/cafeteria")
     public String showCafeteriaSupport(
             @RequestParam(required = false) @DateTimeFormat(pattern = "uuuu-MM") YearMonth month,
+            @AuthenticationPrincipal AuthenticatedUser user,
             Model model
     ) {
         YearMonth selectedMonth = month == null ? YearMonth.from(workTime.getToday()) : month;
+        boolean admin = user.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
         model.addAttribute("month", selectedMonth);
         model.addAttribute("days", dailyExclusionReader.getSupportDays(Activity.SHARING_SHOP, "식당지원", selectedMonth));
-        model.addAttribute("admin", false);
+        model.addAttribute("admin", admin);
         model.addAttribute("section", "cafeteria-support");
         return "cafeteria-support";
     }

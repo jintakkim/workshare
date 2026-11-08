@@ -310,8 +310,8 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
     }
 
     @Test
-    @DisplayName("직원은 메뉴에서 월별 식당지원표를 조회하고 맞교환 화면으로 이동할 수 있다")
-    void staffCanReadTheMonthlyCafeteriaScheduleFromTheMenu() throws Exception {
+    @DisplayName("직원과 관리자는 일반 화면에서 식당지원표를 조회하고 직원은 맞교환 화면으로 이동할 수 있다")
+    void staffAndAdministratorsCanReadTheMonthlyCafeteriaSchedule() throws Exception {
         register("홍길동");
         register("김민수");
         register("이서연");
@@ -340,8 +340,18 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                 .andReturn().getResponse().getContentAsString();
         assertThat(december).contains("2026년 12월", "이서연").doesNotContain("홍길동", "김민수");
 
-        mockMvc.perform(get("/supports/cafeteria").with(testUser("admin", "ADMIN")))
-                .andExpect(status().isForbidden());
+        String adminHome = mockMvc.perform(get("/sharing-shop").with(testUser("admin", "ADMIN")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(adminHome).contains(
+                "href=\"/supports/cafeteria\"><span>식당지원표",
+                "href=\"/supports/cafeteria\">식당지원표 보기</a>");
+
+        String adminNovember = mockMvc.perform(get("/supports/cafeteria").with(testUser("admin", "ADMIN")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(adminNovember).contains("2026년 11월", "홍길동", "김민수")
+                .doesNotContain("href=\"/supports\"", "내 일정·교환 요청", "/admin/supports/month");
         mockMvc.perform(get("/supports/cafeteria")).andExpect(status().is3xxRedirection());
     }
 

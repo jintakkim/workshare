@@ -148,7 +148,7 @@
 - 수락할 때 새 휴가·다른 지원 충돌을 다시 검사하고 상대는 거절할 수 있다: `exchangeAcceptanceRechecksNewLeaveAndOtherSupportConflictsAndCanBeRejected`
 - 두 직원 모두 맡을 수 있는 날짜만 교환 후보로 보여준다: `exchangeChoicesOnlyShowDatesBothEmployeesCanActuallyTake`
 - 월별 지원표는 한 번에 저장·롤백하고 관리자와 직원 접근 권한을 구분한다: `monthlySupportSaveIsTransactionalAndSupportPagesAreRoleProtected`
-- 직원 메뉴에서 식당지원표를 조회하고 월을 이동하거나 맞교환 화면으로 이동한다. 날짜별 실제 지원 인원은 기준과 다를 수 있다. `staffCanReadTheMonthlyCafeteriaScheduleFromTheMenu`
+- 직원과 관리자는 일반 화면에서 월별 식당지원표를 조회한다. 직원은 맞교환 화면으로 이동할 수 있고, 날짜별 실제 지원 인원은 기준과 다를 수 있다. `staffAndAdministratorsCanReadTheMonthlyCafeteriaSchedule`
 
 ### 로그인·권한·본인 확인
 

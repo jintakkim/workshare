@@ -6,6 +6,7 @@ import com.jangbokhuman.workshare.employee.EmployeeRepository;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.*;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -93,6 +94,8 @@ public class SecurityConfiguration {
                                         .permitAll()
                                         .requestMatchers("/admin", "/admin/**")
                                         .hasRole("ADMIN")
+                                        .requestMatchers(HttpMethod.GET, "/supports/cafeteria")
+                                        .hasAnyRole("STAFF", "ADMIN")
                                         .requestMatchers(
                                                 "/leave-requests",
                                                 "/sharing-shop/time-preference",
