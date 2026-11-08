@@ -80,6 +80,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                             "id=\"staff-menu\"",
                             "href=\"/sharing-shop\"",
                             "href=\"/my-leave\"",
+                            "href=\"/supports/cafeteria\"",
                             "href=\"/my-profile\"",
                             "내 휴가 일정")
                     .doesNotContain(

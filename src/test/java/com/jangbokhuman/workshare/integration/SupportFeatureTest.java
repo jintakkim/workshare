@@ -321,10 +321,12 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         supportOn(outside, TODAY, "이서연");
         supportOn(cafeteria, LocalDate.of(2026, 12, 1), "이서연");
 
-        String menu = mockMvc.perform(get("/sharing-shop").with(testUser("홍길동", "STAFF")))
+        String staffHome = mockMvc.perform(get("/sharing-shop").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(menu).contains("href=\"/supports/cafeteria\"", "식당지원표");
+        assertThat(staffHome).contains(
+                "href=\"/supports/cafeteria\"><span>식당지원표",
+                "href=\"/supports/cafeteria\">식당지원표 보기</a>");
 
         String november = mockMvc.perform(get("/supports/cafeteria").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
