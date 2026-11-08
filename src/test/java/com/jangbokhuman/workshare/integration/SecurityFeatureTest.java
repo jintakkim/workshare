@@ -15,6 +15,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jangbokhuman.workshare.config.AuthenticatedUser;
 
+import jakarta.servlet.http.Cookie;
+
 import org.junit.jupiter.api.*;
 import org.springframework.boot.test.context.*;
 import org.springframework.context.annotation.*;
@@ -30,6 +32,30 @@ import java.util.concurrent.*;
 
 @DisplayName("로그인·본인 확인·관리자 화면 분리")
 class SecurityFeatureTest extends BusinessFeatureTestSupport {
+    @Test
+    @DisplayName("직원 로그인은 세션이 없어도 유지되고 로그아웃과 비밀번호 변경을 반영한다")
+    void staffLoginSurvivesSessionExpiry() throws Exception {
+        register("홍길동");
+        MvcResult login = mockMvc.perform(post("/login").with(csrf())
+                        .param("name", "홍길동")
+                        .param("password", "staff-password"))
+                .andExpect(redirectedUrl("/sharing-shop"))
+                .andExpect(cookie().maxAge("remember-me", (int) Duration.ofDays(90).toSeconds()))
+                .andExpect(cookie().httpOnly("remember-me", true))
+                .andReturn();
+        Cookie rememberMe = login.getResponse().getCookie("remember-me");
+
+        mockMvc.perform(get("/my-profile").cookie(rememberMe))
+                .andExpect(redirectedUrl("/employees/" + employeeId("홍길동")));
+        mockMvc.perform(post("/logout").cookie(rememberMe).with(csrf()))
+                .andExpect(redirectedUrl("/login?logout"))
+                .andExpect(cookie().maxAge("remember-me", 0));
+
+        rosterService.changePassword(employeeId("홍길동"), "staff-password", "Changed2!", "Changed2!");
+        mockMvc.perform(get("/my-profile").cookie(rememberMe))
+                .andExpect(redirectedUrl("http://localhost/login"));
+    }
+
     @Test
     @DisplayName("로그인·권한·CSRF를 검사하고 직원 입력은 본인에게만 반영한다")
     void authenticatedTemplatesAndRoleRestrictionsAndCsrfAndOwnRequests() throws Exception {

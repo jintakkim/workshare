@@ -4,6 +4,7 @@ data/
 *.iml
 .DS_Store
 .env
+compose.override.yaml
 .tools/
 backups/
 workshare-backup.sql

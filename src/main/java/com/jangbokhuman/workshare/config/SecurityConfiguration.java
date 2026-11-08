@@ -4,6 +4,7 @@ import com.jangbokhuman.workshare.employee.LoginNames;
 import com.jangbokhuman.workshare.employee.Employee;
 import com.jangbokhuman.workshare.employee.EmployeeRepository;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.*;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.*;
@@ -15,6 +16,7 @@ import org.springframework.security.web.authentication.DelegatingAuthenticationE
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 
@@ -72,7 +74,12 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    SecurityFilterChain createSecurityFilterChain(HttpSecurity httpSecurity) throws Exception {
+    SecurityFilterChain createSecurityFilterChain(
+            HttpSecurity httpSecurity,
+            UserDetailsService userDetailsService,
+            WorkSettings workSettings,
+            @Value("${server.servlet.session.cookie.secure:false}") boolean secureCookies
+    ) throws Exception {
         return httpSecurity
                 .authorizeHttpRequests(
                         auth ->
@@ -103,6 +110,12 @@ public class SecurityConfiguration {
                                         .usernameParameter("name")
                                         .defaultSuccessUrl("/sharing-shop", true)
                                         .permitAll())
+                .rememberMe(rememberMe -> rememberMe
+                        .userDetailsService(userDetailsService)
+                        .key("workshare-remember-me:" + workSettings.adminPassword())
+                        .alwaysRemember(true)
+                        .tokenValiditySeconds((int) Duration.ofDays(90).toSeconds())
+                        .useSecureCookie(secureCookies))
                 .logout(logout -> logout.logoutSuccessUrl("/login?logout"))
                 .build();
     }
