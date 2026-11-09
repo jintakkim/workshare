@@ -30,6 +30,19 @@ docker compose logs -f app
 
 코드를 업데이트할 때는 `git pull`과 `docker compose up -d --build`를 실행합니다. 직원 계정과 일정은 MySQL 볼륨에 남습니다. 월별 식당지원표는 앱의 **관리자 → 지원표 → 식당지원**에서 해당 월을 골라 저장합니다.
 
+### GitHub Actions로 운영 배포
+
+브랜치에 푸시하거나 `main`을 대상으로 PR을 열고 수정하면 GitHub에서 Java 21로 테스트합니다. 운영에 반영할 때는 **Actions → WorkShare CI and deploy → Run workflow → `main`**을 선택합니다. 실행 시점의 `main` 커밋이 테스트를 통과하면 그 커밋을 서버 노트북에 배포합니다.
+
+운영 서버 연결은 한 번만 설정합니다.
+
+1. 운영 노트북에서 기존 `workshare` 폴더에 들어가 `pwd`로 절대 경로를 확인합니다. `main` 브랜치, 기존 `.env`, 실행 중인 MySQL이 있어야 합니다.
+2. 비공개 GitHub 저장소의 **Settings → Actions → Runners → New self-hosted runner**에서 Linux를 고릅니다. 화면에 나온 설치 명령을 운영 노트북에서 실행하고 `./config.sh` 명령에 `--labels workshare-production`을 추가합니다. 설치 후 `sudo ./svc.sh install`과 `sudo ./svc.sh start`로 러너를 서비스로 실행합니다.
+3. 러너 서비스 계정으로 기존 체크아웃에서 `git fetch origin main`과 `docker compose ps`가 성공하는지 확인합니다. GitHub 접근이 필요하면 해당 체크아웃에 읽기 전용 배포 키를 설정합니다.
+4. GitHub **Settings → Secrets and variables → Actions → Variables → New repository variable**에서 `WORKSHARE_DEPLOY_DIR`에 1번의 절대 경로를 입력합니다.
+
+배포는 기존 `.env`와 MySQL 볼륨을 사용하며 앱 컨테이너만 빌드하고 교체합니다. 마지막에 `/login`의 응답을 확인합니다. 서버 체크아웃에 수정한 파일이 있거나 이미 더 최신 커밋으로 배포했다면 작업을 중단합니다. Cloudflare Tunnel의 연결 설정은 그대로 사용합니다.
+
 ### 기존 직원과 지원표를 서버로 옮기기
 
 기존 PC에서 MySQL을 덤프합니다. 아래 파일에는 직원과 일정 데이터가 들어가므로 서버로 별도 전송합니다.

@@ -1,0 +1,67 @@
+name: WorkShare CI and deploy
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Run tests
+        run: ./mvnw -B -ntp test
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: [self-hosted, linux, workshare-production]
+    timeout-minutes: 20
+    concurrency:
+      group: workshare-production
+      cancel-in-progress: false
+    steps:
+      - name: Deploy tested commit to Docker Compose
+        shell: bash
+        env:
+          DEPLOY_DIRECTORY: ${{ vars.WORKSHARE_DEPLOY_DIR }}
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          : "${DEPLOY_DIRECTORY:?Set the WORKSHARE_DEPLOY_DIR repository variable}"
+          cd "$DEPLOY_DIRECTORY"
+          if [[ "$(git rev-parse --show-toplevel)" != "$(pwd -P)" || "$(git symbolic-ref --quiet HEAD)" != refs/heads/main || ! -f .env ]]; then
+            echo 'Use the existing production checkout on main with its .env file.' >&2
+            exit 1
+          fi
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo 'The production checkout has local changes.' >&2
+            exit 1
+          fi
+          docker compose ps --status running --services mysql | grep -Fx mysql
+
+          GIT_TERMINAL_PROMPT=0 git fetch origin main
+          if ! git merge-base --is-ancestor "$DEPLOY_SHA" FETCH_HEAD || ! git merge-base --is-ancestor HEAD "$DEPLOY_SHA"; then
+            echo 'The tested commit must be on origin/main and extend the current production checkout.' >&2
+            exit 1
+          fi
+          git merge --ff-only "$DEPLOY_SHA"
+
+          docker compose build app
+          docker compose up -d --no-deps --no-build app
+          app_address="$(docker compose port app 8080)"
+          curl --fail --silent --show-error --retry 30 --retry-connrefused \
+            --retry-delay 2 --max-time 5 --output /dev/null "http://${app_address}/login"
