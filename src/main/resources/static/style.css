@@ -65,6 +65,9 @@
   .signin-form-panel { padding: 26px 23px 23px; }
   .signin-form-heading h2 { font-size: 23px; }
 }
+.intro .time-note { grid-template-columns:1fr; gap:6px; }
+.intro .time-note strong { margin-left:0; font-size:16px; line-height:1.5; white-space:normal; word-break:keep-all; }
+.intro .time-note small { white-space:normal; }
 /* Phone-first interaction sizes and a direct jump from the calendar to its request forms. */
 @media(max-width:760px) {
   .shell { padding: 24px 16px 0; }

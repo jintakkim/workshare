@@ -85,6 +85,10 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                             "내 휴가 일정")
                     .doesNotContain(
                             "href=\"/admin", "name=\"workGroupCode\"", "name=\"responsibilities\"");
+            if (page.equals("/") || page.equals("/my-leave")) {
+                assertThat(html).contains("입력 마감", "휴가 입력은 해당 날짜 오전 8시 49분에 마감돼요.")
+                        .doesNotContain("우리의 하루를 조금 더 공평하게", "자동 배정");
+            }
         }
         for (String role : List.of("STAFF", "ADMIN")) {
             String html =

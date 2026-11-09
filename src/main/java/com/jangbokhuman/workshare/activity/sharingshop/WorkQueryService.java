@@ -117,7 +117,6 @@ public class WorkQueryService {
                         && !workTaskRepository.existsByWorkDateAndStatus(
                                 date, WorkTask.Status.ASSIGNED),
                 workSettings.leaveCutoff(),
-                workSettings.allocationTime(),
                 holidayMap.get(date),
                 month.minusMonths(1).atDay(1),
                 month.plusMonths(1).atDay(1),
@@ -189,7 +188,6 @@ public class WorkQueryService {
             boolean editable,
             boolean holidayEditable,
             LocalTime cutoff,
-            LocalTime allocationTime,
             String holidayName,
             LocalDate previousMonth,
             LocalDate nextMonth,

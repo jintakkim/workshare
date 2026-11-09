@@ -4,7 +4,19 @@
 <body class="app-page admin-page">
 <header th:replace="~{fragments/staff-navigation :: header}"></header><dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog>
 <main class="shell">
-  <section class="intro"><div><p class="eyebrow">우리의 하루를 조금 더 공평하게</p><h1>내 휴가 일정</h1><p class="muted">날짜를 눌러 나의 연차·병가·반차를 미리 알려주세요.</p><a class="profile-directory-link sharing-shortcut" th:href="@{/sharing-shop}">나눔가게 배정 카드 보기 →</a> <a class="profile-directory-link" th:href="@{/employees}">직원 프로필 보기 →</a></div><div class="time-note"><span>입력 마감 <strong th:text="${view.cutoff}">08:49</strong></span><span>자동 배정 <strong th:text="${view.allocationTime}">08:50</strong></span><small>한국 시간 · 토·일 및 등록 휴일 제외</small></div></section>
+  <section class="intro">
+    <div>
+      <h1>내 휴가 일정</h1>
+      <p class="muted">날짜를 눌러 나의 연차·병가·반차를 미리 알려주세요.</p>
+      <a class="profile-directory-link sharing-shortcut" th:href="@{/sharing-shop}">나눔가게 배정 카드 보기 →</a>
+      <a class="profile-directory-link" th:href="@{/employees}">직원 프로필 보기 →</a>
+    </div>
+    <div class="time-note">
+      <span>입력 마감</span>
+      <strong th:text="${'휴가 입력은 해당 날짜 ' + (view.cutoff.hour < 12 ? '오전 ' : '오후 ') + #temporals.format(view.cutoff, 'h시 mm분') + '에 마감돼요.'}">휴가 입력은 해당 날짜 오전 8시 49분에 마감돼요.</strong>
+      <small>한국 시간 · 토·일 및 등록 휴일 제외</small>
+    </div>
+  </section>
   <div th:if="${success}" class="notice" role="status" th:text="${success}"></div>
   <div th:if="${error}" class="notice danger" role="alert" th:text="${error}"></div>
   <div class="workspace">
