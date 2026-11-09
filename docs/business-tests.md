@@ -13,7 +13,7 @@
 
 ## 현재 실행 결과
 
-**기본 총 125회 통과: 기능·통합 95회 + 보조 검증 30회.** MySQL 선택 실행 테스트는 이 숫자에 포함하지 않는다.
+기본 테스트는 기능·통합 98회와 보조 검증 30회다. 로컬에서 `heif-thumbnailer`가 없으면 HEIC 업로드 테스트 한 개를 건너뛴다. MySQL 선택 실행 테스트는 별도로 실행한다.
 
 | 구분 | 테스트 파일 | 실행 횟수 |
 | --- | --- | --- |
@@ -23,13 +23,13 @@
 | 직원별 나눔가게 시간대 선호도 | [SharingShopTimePreferenceFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/SharingShopTimePreferenceFeatureTest.java) | 4 |
 | 휴가·근무일·마감 | [LeaveFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/LeaveFeatureTest.java) | 7 |
 | 배정·설정·확정 기록 | [AllocationFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/AllocationFeatureTest.java) | 20 |
-| 직원·직군·프로필 | [EmployeeFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/EmployeeFeatureTest.java) | 12 |
+| 직원·직군·프로필 | [EmployeeFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/EmployeeFeatureTest.java) | 15 |
 | 지원표·맞교환 | [SupportFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/SupportFeatureTest.java) | 11 |
 | 로그인·권한·본인 확인 | [SecurityFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/SecurityFeatureTest.java) | 9 |
 | enum 활동·가입·참여 제한 | [ActivityFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/ActivityFeatureTest.java) | 7 |
 | 활동 전용 배정기와 공통 추가 업무 분리 | [ActivityAllocatorFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/ActivityAllocatorFeatureTest.java) | 1 |
 | 메뉴·전체 휴가 일정·휴일 달력·결과 공개 | [NavigationFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/NavigationFeatureTest.java) | 5 |
-| 출근 상태별 오전·오후 배정과 근무 시간 | [AttendanceTest](../src/test/java/com/jangbokhuman/workshare/leave/AttendanceTest.java) | 5 |
+| 출근 상태별 오전·오후 배정과 근무 시간 | [AttendanceTest](../src/test/java/com/jangbokhuman/workshare/attendance/AttendanceTest.java) | 5 |
 | 인원 배분·선호도 정책 | [PreferenceAllocationPolicyTest](../src/test/java/com/jangbokhuman/workshare/activity/sharingshop/PreferenceAllocationPolicyTest.java) | 19 |
 | 추가 업무 시간대·배정 제약 | [RandomTaskAllocationPolicyTest](../src/test/java/com/jangbokhuman/workshare/activity/sharingshop/RandomTaskAllocationPolicyTest.java) | 3 |
 | 활동 가입 자격 정책 | [ActivityRegistrationPolicyTest](../src/test/java/com/jangbokhuman/workshare/activity/ActivityRegistrationPolicyTest.java) | 3 |
@@ -50,11 +50,11 @@
 
 | 업무 규칙 | 주요 기능 테스트 |
 | --- | --- |
-| 한글 이름 로그인·이름 중복·비밀번호·직군 단일 선택·담당 업무 복수 선택·사진 권한 | `EmployeeFeatureTest`, `SecurityFeatureTest` |
+| 한글 이름 로그인·이름 중복·비밀번호·직군 단일 선택·가입 활동 표시·사진 권한 | `EmployeeFeatureTest`, `SecurityFeatureTest` |
 | 직원 본인 입력·관리자 대리 휴가·08:49 마감·미래 예약·취소·주말·휴일 | `LeaveFeatureTest`, `BusinessRulesAcceptanceTest` |
 | 식당 직군 금지·영구 활동 명부와 날짜별 제외 구분·나눔가게 전용 시간대 선호도 | `ActivityFeatureTest`, `AllocationFeatureTest`, `SupportFeatureTest` |
 | 0~5명 기본 배분·1명 겸임·정원 제한 없음·설정 배분·오전·오후 반차의 시간대 제한·선호도 추첨 | `AllocationFeatureTest`, `BusinessRulesAcceptanceTest`, 배분 정책 테스트 |
-| 월별 지원표·필요 인원 변경·다른 제외 사유·지원 중복·지원 당일 08:49 마감 | `SupportFeatureTest`, `BusinessRulesAcceptanceTest` |
+| 월별 식당지원표·필요 인원 변경·지원 중복·지원 당일 08:49 마감 | `SupportFeatureTest`, `BusinessRulesAcceptanceTest` |
 | 본인 요청·상대 수락·두 날짜 동시 교환·만료·관리자 수정·동시 수락·휴가 충돌·정리 | `SupportFeatureTest`, `BusinessRulesAcceptanceTest` |
 | 여러 업무 추가·추가 업무만 배정·확정 결과 보존·중복 추첨 금지 | `AllocationFeatureTest`, `BusinessRulesAcceptanceTest` |
 | 관리자 URL 직접 접근·직원 403·일반 화면 관리자 메뉴 미노출 | `SecurityFeatureTest` |
@@ -129,11 +129,11 @@
 - 발달지원 직원을 등록하고 본인만 비밀번호를 변경한다: `onlyEmployeesCanChangeTheirOwnPassword`
 - 기존 비밀번호는 새 등록 규칙과 달라도 로그인할 수 있다: `existingPasswordsOutsideTheNewRegistrationRulesCanStillLogin`
 - 동시에 같은 이름을 등록해도 계정 하나만 생성된다: `concurrentSameNameRegistrationOnlyCreatesOneAccount`
-- 프로필 카드로 직원을 조회하고 관리자는 여러 담당 업무를 지정한다: `employeeCardsLinkToProfilesAndAdministratorsCanAssignMultipleResponsibilities`
-- 본인 프로필이라도 직군·담당 업무는 관리자 상세 화면에서만 바꾼다: `workGroupAndResponsibilitiesAreEditableOnlyInsideAdminEmployeeManagement`
+- 직원 카드와 프로필에 가입 활동을 표시한다: `employeeCardsAndProfilesShowRegisteredActivities`
+- 직군 변경은 관리자 직원 상세 화면에서만 가능하다: `workGroupIsEditableOnlyInsideAdminEmployeeManagement`
 - 프로필 사진은 본인·관리자만 등록하고 실제 이미지와 용량을 검사한다: `profilePhotosAreOwnerOrAdminOnlyAndMustBeRealImages`
-- 직군은 정해진 목록 중 하나이며 담당 업무는 여러 개 선택한다: `groupsAreSingleChoiceAndEmployeeResponsibilitiesAreMultipleValidatedChoices`
-- 관리자가 담당 업무 목록을 추가하고 중복 이름은 거절한다: `administratorsCanAddSelectableResponsibilitiesAndDuplicateTitlesAreRejected`
+- 직군은 정해진 목록에서 하나만 선택하고 비밀번호 입력값을 표시할 수 있다: `groupsAreSingleChoiceAndPasswordVisibilityIsAvailable`
+- HEIC 원본을 JPEG 썸네일로 저장하고 손상된 HEIC 파일은 거절한다: `heicProfilePhotosAreSavedAsJpegThumbnails`
 
 ### 지원표·맞교환
 
@@ -142,7 +142,7 @@
 - 기존 식당지원 사유로도 나눔가게 미가입 직원을 등록하고 지원일을 교환한다. `cafeteriaSupportDoesNotRequireSharingShopMembership`
 
 - 식당지원자를 기본 업무와 추가 업무의 자동 배정에서 제외한다: `scheduledSupportIsExcludedFromAutomaticShiftAndExtraTaskAssignments`
-- 제외 사유를 추가해도 활동 가입은 유지하며 날짜별 지원 중복은 막는다: `exclusionReasonsPreserveActivityMembershipAndPreventDoubleBooking`
+- 식당지원은 나눔가게 가입을 유지하고 당일 휴가와 겹치지 않는다: `cafeteriaSupportPreservesSharingShopMembershipAndRejectsLeaveConflicts`
 - 휴가와 지원표는 08:49에 함께 마감한다: `supportAndLeaveCloseAtEightFortyNine`
 - 상대방 수락 전에는 표를 유지하고 수락하면 두 지원일을 함께 교환한다: `supportExchangeRequiresRecipientConsentAndSwapsBothDatesAtomically`
 - 만료 요청은 수락할 수 없고 정리 시 미만료 요청과 지원표는 보존한다: `expiredExchangesCannotBeAcceptedAndDailyCleanupRetainsFutureRequests`
@@ -205,8 +205,6 @@
 - 여러 날짜의 휴가와 직원별 나눔가게 시간대 선호도를 동시에 저장해도 서로 덮어쓰지 않는다.
 - 동일 지원일을 서로 다른 두 상대방이 동시에 교환 수락해도 한 교환만 반영된다.
 
-[MySqlLockingIT](../src/test/java/com/jangbokhuman/workshare/integration/MySqlLockingIT.java)는 별도로 **실제 MySQL 3회**를 실행한다. JPA 최초 저장 경합과 기존 ID 보존, 겹치는 지원일 맞교환, 가입과 식당 이동의 동시 처리에 따른 가입·선호도 무결성을 검증한다. 테스트가 만든 직원·지원 사유·관련 기록만 정리한다.
-
 잠금이 필요한 이유와 실제 대상은 [동시 저장과 잠금 기준](concurrency.md)에 정리한다.
 
 ## 실행 방법
@@ -229,21 +227,13 @@
 ./mvnw -Dtest=SupportFeatureTest test
 ```
 
-별도 검증 DB 주소를 `MYSQL_TEST_URL`에 지정한 뒤 실제 MySQL 동시성 검증만 실행:
-
-```bash
-./mvnw -Dtest=MySqlLockingIT test
-```
-
 ## 검증 범위와 한계
 
 - MockMvc를 사용하는 서버 기능·통합 테스트다. HTTP 요청, Spring Security, 컨트롤러, 실제 업무 서비스, JPA, Flyway로 생성한 테스트 DB를 거친다.
 - 새 전체 흐름 테스트는 `/login`으로 인증해 받은 세션을 사용한다. `user(...)`로 인증을 대신 주입하거나 업무 서비스·저장소의 반환값을 모킹하지 않는다. 나머지 기능 테스트 일부는 권한 분기를 위해 인증 사용자 주입 기능을 사용한다.
 - 배경 스케줄러가 실제 시각에 임의로 실행되지 않도록 해당 진입 빈은 공통 환경에서 모킹한다. 전체 흐름 테스트는 실제 `AllocationScheduler` 객체의 진입 메서드를 호출해 실제 배정 서비스와 DB 저장을 검증한다.
 - 마감 검증은 한국 시간의 고정 날짜와 조절 가능한 `Clock`으로 진행한다. 매번 실제 오전까지 기다리지는 않는다. 만료 요청 정리는 실제 정리 메서드를 실행해 삭제 결과를 확인한다.
-- 기본 실행 DB는 기본 모드의 테스트 전용 H2다. 실제 MySQL의 JPA 저장·잠금 차이는 별도 `MySqlIntegrationIT`와 `MySqlLockingIT` 선택 실행 대상으로 구분한다. 기본 125회에 실제 MySQL 테스트가 포함된 것처럼 계산하지 않는다.
+- 테스트는 도메인 규칙을 확인하는 기능 테스트 위주로 두며 테스트 전용 H2를 사용한다. 실제 MySQL의 잠금 동작을 따로 검증하는 테스트는 두지 않는다.
 - HTML 메뉴와 카드 구조, REST 결과 공개 조건은 확인하지만 브라우저의 JavaScript 카운트다운·가로 스와이프·모바일 배치까지 자동 실행하는 테스트는 아니다.
 - 30일 자동 로그인은 아직 구현하지 않은 논의 항목이므로 제공 기능이나 통과한 기능 테스트로 포함하지 않는다.
 
-
-개발 단계의 DB 초기화 정책에 따라 데이터 보존용 이관 테스트 4회는 제거했다. 현재 업무 규칙 기능·통합 95회를 실행하며, 운영 MySQL과 테스트 H2 모두 현재 초기 스키마로 검증한다.
