@@ -1,5 +1,7 @@
 package com.jangbokhuman.workshare.activity;
 
+import com.jangbokhuman.workshare.common.BusinessException;
+
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Controller;
@@ -39,5 +41,11 @@ public class ActivityAlbumController {
         activityRegistrationService.deleteRegistration(code, employeeId);
         flash.addFlashAttribute("success", "활동에서 직원을 제외했습니다.");
         return "redirect:/admin/activities/" + code;
+    }
+
+    @ExceptionHandler(BusinessException.class)
+    public String handleBusinessException(BusinessException error, RedirectAttributes flash) {
+        flash.addFlashAttribute("error", error.getMessage());
+        return "redirect:/admin?section=activities";
     }
 }

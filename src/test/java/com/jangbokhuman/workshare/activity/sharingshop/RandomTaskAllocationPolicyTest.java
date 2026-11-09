@@ -10,7 +10,7 @@ import com.jangbokhuman.workshare.activity.WorkTask;
 import com.jangbokhuman.workshare.activity.Worker;
 import com.jangbokhuman.workshare.activity.Activity;
 import com.jangbokhuman.workshare.calendar.WorkPeriod;
-import com.jangbokhuman.workshare.leave.Attendance;
+import com.jangbokhuman.workshare.attendance.Attendance;
 
 import static org.assertj.core.api.Assertions.*;
 

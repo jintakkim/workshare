@@ -5,7 +5,7 @@ import com.jangbokhuman.workshare.activity.ParticipationDeniedException;
 import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
 import com.jangbokhuman.workshare.activity.Worker;
 import com.jangbokhuman.workshare.calendar.WorkPeriod;
-import com.jangbokhuman.workshare.leave.Attendance;
+import com.jangbokhuman.workshare.attendance.Attendance;
 import com.jangbokhuman.workshare.activity.sharingshop.Preference;
 
 import static org.assertj.core.api.Assertions.*;
@@ -93,7 +93,7 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
                 .isEqualTo(Attendance.WORK);
         addTask(TODAY, "정리 업무", WorkPeriod.EVENING, 1);
         now("09:00");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks())
                 .extracting(WorkQueryService.TaskView::name)
                 .contains("정리 업무");
@@ -186,7 +186,7 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
                                                         "강수진",
                                                         Attendance.WORK))))
                 .isInstanceOf(ParticipationDeniedException.class);
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         assertThat(
                         workQueryService
                                 .getDashboard(TODAY, employeeId("홍길동"))
@@ -358,10 +358,9 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
         mockMvc.perform(get("/admin/sharing-shop").session(staffSession))
                 .andExpect(status().isForbidden());
         mockMvc.perform(
-                        post("/admin/responsibility-options")
+                        post("/admin/employees")
                                 .session(staffSession)
-                                .with(csrf())
-                                .param("title", "권한 없는 업무"))
+                                .with(csrf()))
                 .andExpect(status().isForbidden());
     }
 

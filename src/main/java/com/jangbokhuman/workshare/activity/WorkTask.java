@@ -93,7 +93,7 @@ public class WorkTask {
     public List<TaskAssignment> assign(TaskAllocation allocation, Instant now) {
         if (status != Status.PENDING) throw new IllegalStateException("확정된 업무는 다시 추첨할 수 없습니다.");
         if (allocation.workers().size() > requiredWorkers
-                || allocation.workers().stream().anyMatch(w -> !period.isEligible(w))
+                || allocation.workers().stream().anyMatch(w -> !w.canWork(period))
                 || allocation.workers().stream().map(Worker::id).distinct().count()
                         != allocation.workers().size()) {
             throw new IllegalArgumentException("업무 배정이 인원·출근 조건을 위반했습니다.");

@@ -1,5 +1,7 @@
 package com.jangbokhuman.workshare.activity.sharingshop;
 
+import com.jangbokhuman.workshare.common.BusinessException;
+import com.jangbokhuman.workshare.common.ErrorCode;
 import com.jangbokhuman.workshare.activity.Activity;
 import com.jangbokhuman.workshare.activity.ActivityRegistrationDeleted;
 import com.jangbokhuman.workshare.employee.Employee;
@@ -22,9 +24,9 @@ public class SharingShopTimePreferenceService {
 
     public void save(Long employeeId, Preference timePreference) {
         Employee employee = employeeRepository.findByIdForUpdate(employeeId)
-                .orElseThrow(() -> new IllegalArgumentException("등록된 직원이 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "등록된 직원이 없습니다."));
         if (timePreference == null) {
-            throw new IllegalArgumentException("나눔가게 시간대 선호도를 선택하세요.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "나눔가게 시간대 선호도를 선택하세요.");
         }
         sharingShopTimePreferenceChangePolicy.evaluateChangePermission(employee).requireAllowed();
         SharingShopTimePreference sharingShopTimePreference = sharingShopTimePreferenceRepository.findByEmployeeId(employeeId)
@@ -56,7 +58,7 @@ public class SharingShopTimePreferenceService {
 
     private Employee getEmployee(Long employeeId) {
         return employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new IllegalArgumentException("등록된 직원이 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "등록된 직원이 없습니다."));
     }
 
     public record Settings(Preference timePreference, boolean canChange, String reason) {}

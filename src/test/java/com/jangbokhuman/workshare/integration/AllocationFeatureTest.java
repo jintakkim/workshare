@@ -1,11 +1,12 @@
 package com.jangbokhuman.workshare.integration;
 
+import com.jangbokhuman.workshare.common.BusinessException;
 import com.jangbokhuman.workshare.activity.Activity;
 import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
 import com.jangbokhuman.workshare.activity.WorkTask;
 import com.jangbokhuman.workshare.activity.Worker;
 import com.jangbokhuman.workshare.calendar.WorkPeriod;
-import com.jangbokhuman.workshare.leave.Attendance;
+import com.jangbokhuman.workshare.attendance.Attendance;
 import com.jangbokhuman.workshare.activity.sharingshop.Preference;
 
 import static org.assertj.core.api.Assertions.*;
@@ -41,11 +42,11 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         saveRequest("김민수", TODAY, Attendance.WORK, Preference.EVENING);
         addTask(TODAY, "정리 업무", WorkPeriod.EVENING, 1);
         now("08:49:09.999999999");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks())
                 .singleElement().satisfies(task -> assertThat(task.assigned()).isFalse());
         now("08:49:10");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         List<WorkQueryService.TaskView> first =
                 workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks();
         assertThat(task(first, "MORNING").assignees())
@@ -56,7 +57,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
                 .containsExactly("김민수");
         assertThat(first).extracting(WorkQueryService.TaskView::name).contains("정리 업무");
         now("15:00");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks())
                 .isEqualTo(first);
         assertThat(workTaskRepository.count()).isEqualTo(3);
@@ -71,7 +72,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         try (ExecutorService executor = Executors.newFixedThreadPool(4)) {
             List<Future<?>> results = new ArrayList<>();
             for (int i = 0; i < 8; i++) {
-                results.add(executor.submit(workTaskService::allocateTodayIfDue));
+                results.add(executor.submit(dailyAllocationService::allocateTodayIfDue));
             }
             for (Future<?> result : results) {
                 try {
@@ -102,7 +103,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
                 .contains("정하늘")
                 .doesNotContain("홍길동");
         now("09:00");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         assertThat(
                         workQueryService.getDashboard(TODAY, employeeId("김민수")).tasks().stream()
                                 .filter(t -> t.code().equals("MORNING") || t.code().equals("EVENING"))
@@ -120,7 +121,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         saveRequest("홍길동", TODAY, Attendance.AFTERNOON_HALF_DAY, Preference.MORNING);
         saveRequest("이서연", TODAY, Attendance.VACATION, Preference.ANY);
         now("08:50");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         List<WorkQueryService.TaskView> original =
                 workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks();
         now("10:00");
@@ -137,7 +138,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
                 .containsExactly("김민수");
         assertThat(added.warnings()).hasSize(1);
         addTask(TODAY, "다른 독립 업무", WorkPeriod.MORNING, 2);
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks())
                 .containsAll(afterOne)
                 .hasSize(4);
@@ -160,7 +161,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
                 .hasSize(2)
                 .allSatisfy(t -> assertThat(t.assigned()).isFalse());
         testClock.set(date.atTime(8, 50));
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         List<WorkQueryService.TaskView> day =
                 workQueryService.getDashboard(date, employeeId("홍길동")).tasks();
         assertThat(day).hasSize(4).allSatisfy(t -> assertThat(t.assigned()).isTrue());
@@ -184,7 +185,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         assertThatThrownBy(() -> saveRequest("홍길동", TODAY, Attendance.VACATION, Preference.ANY))
                 .hasMessageContaining("마감");
         now("08:49:10");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks())
                 .hasSize(3)
                 .allSatisfy(t -> assertThat(t.assigned()).isTrue());
@@ -201,7 +202,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         addTask(date, "휴일 전에 등록한 일", WorkPeriod.EVENING, 1);
         holidayService.addHoliday(date, "휴무");
         testClock.set(date.atTime(9, 0));
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         assertThat(workQueryService.getDashboard(date, employeeId("홍길동")).tasks())
                 .hasSize(1)
                 .allSatisfy(t -> assertThat(t.assigned()).isFalse());
@@ -213,15 +214,15 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         register("홍길동");
         saveRequest("홍길동", TODAY, Attendance.AFTERNOON_HALF_DAY, Preference.ANY);
         assertThatThrownBy(() -> addTask(TODAY.minusDays(1), "과거 업무", WorkPeriod.MORNING, 1))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessException.class);
         assertThatThrownBy(() -> addTask(TODAY.plusDays(3), "주말 업무", WorkPeriod.MORNING, 1))
                 .hasMessageContaining("주말");
         assertThatThrownBy(() -> addTask(TODAY, " ", WorkPeriod.MORNING, 1))
                 .hasMessageContaining("업무명");
         assertThatThrownBy(() -> addTask(TODAY, "업무", WorkPeriod.MORNING, 0))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessException.class);
         assertThatThrownBy(() -> addTask(TODAY, "업무", WorkPeriod.UNSPECIFIED, 1))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessException.class);
         now("09:00");
         addTask(TODAY, "저녁 추가 업무", WorkPeriod.EVENING, 1);
         WorkQueryService.TaskView view =
@@ -229,7 +230,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         assertThat(view.assigned()).isTrue();
         assertThat(view.assignees()).isEmpty();
         assertThat(view.warnings()).hasSize(1);
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks()).hasSize(3);
     }
 
@@ -239,7 +240,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         register("홍길동");
         register("김민수");
         now("09:00");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         List<WorkQueryService.TaskView> original =
                 workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks();
         try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
@@ -276,7 +277,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         registerRestaurant("윤서준");
         registerRestaurant("한지민");
         now("08:50");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         WorkQueryService.Dashboard view = workQueryService.getDashboard(TODAY, employeeId("홍길동"));
         assertThat(view.workers()).hasSize(3);
         assertThat(task(view.tasks(), "MORNING").assignees()).hasSize(2);
@@ -295,7 +296,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         register("홍길동");
         Long id = addTask(TODAY, "대규모 행사 지원", WorkPeriod.MORNING, 12);
         now("08:50");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         WorkQueryService.TaskView task =
                 workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks().stream()
                         .filter(t -> t.id().equals(id))
@@ -305,7 +306,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         assertThat(task.assignees()).hasSize(1);
         assertThat(task.warnings()).hasSize(1);
         assertThatThrownBy(() -> addTask(TODAY.plusDays(1), "잘못된 인원", WorkPeriod.MORNING, 0))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
@@ -319,7 +320,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(jsonPath("$.morningSlots").value(3))
                 .andExpect(jsonPath("$.eveningSlots").value(1));
         now("08:50");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         List<WorkQueryService.TaskView> original =
                 workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks();
         assertThat(task(original, "MORNING").assignees()).hasSize(3);
@@ -330,7 +331,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         assertThat(task(original, "EVENING").warnings())
                 .containsExactly("오후 기계실 인원 부족: 상주할 직원이 없습니다.");
         now("08:51");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks())
                 .isEqualTo(original);
     }
@@ -353,7 +354,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(jsonPath("$.eveningSlots").value(1));
 
         now("08:50");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         List<WorkQueryService.TaskView> tasks = workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks();
         assertThat(task(tasks, "MORNING").assignees()).extracting(WorkQueryService.AssigneeView::name)
                 .containsExactly("홍길동");
@@ -387,7 +388,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(jsonPath("$.eveningSlots").value(1));
 
         now("08:50");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         List<WorkQueryService.TaskView> tasks = workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks();
         assertThat(tasks).hasSize(2).allSatisfy(task ->
                 assertThat(task.assignees()).extracting(WorkQueryService.AssigneeView::name).containsExactly("김민수"));
@@ -418,7 +419,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(jsonPath("$.eveningSlots").value(0));
 
         now("08:50");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         List<WorkQueryService.TaskView> tasks = workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks();
         WorkQueryService.TaskView morning = task(tasks, "MORNING");
         WorkQueryService.TaskView evening = task(tasks, "EVENING");
@@ -457,7 +458,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(jsonPath("$.participants.length()").value(2))
                 .andExpect(jsonPath("$.leaves.length()").value(0));
         now("08:50");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         List<WorkQueryService.TaskView> tasks =
                 workQueryService.getDashboard(TODAY, selfId).tasks();
         assertThat(task(tasks, available.name()).assignees())

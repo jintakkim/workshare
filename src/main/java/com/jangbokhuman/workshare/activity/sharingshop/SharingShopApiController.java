@@ -1,5 +1,6 @@
 package com.jangbokhuman.workshare.activity.sharingshop;
 
+import com.jangbokhuman.workshare.common.BusinessException;
 import com.jangbokhuman.workshare.config.AuthenticatedUser;
 
 import lombok.RequiredArgsConstructor;
@@ -28,8 +29,8 @@ public class SharingShopApiController {
                 .body(sharingShopQueryService.getDay(date, principal.getEmployeeId()));
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, String>> handleInvalidInput(IllegalArgumentException error) {
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidInput(BusinessException error) {
         return ResponseEntity.badRequest().body(Map.of("message", error.getMessage()));
     }
 }

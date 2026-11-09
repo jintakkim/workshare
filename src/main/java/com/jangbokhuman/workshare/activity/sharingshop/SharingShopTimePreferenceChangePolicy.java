@@ -20,8 +20,7 @@ public class SharingShopTimePreferenceChangePolicy {
     private final WorkTime workTime;
 
     public ChangePermission evaluateChangePermission(Employee employee) {
-        if (employee.getInactiveFrom() != null
-                && !workTime.getToday().isBefore(employee.getInactiveFrom())) {
+        if (employee.isExcludedByAdminOn(workTime.getToday())) {
             return ChangePermission.deny("제외된 직원은 나눔가게 시간대 선호도를 변경할 수 없습니다.");
         }
         boolean registered = activityRegistrationRepository.existsByActivityCodeAndEmployeeId(

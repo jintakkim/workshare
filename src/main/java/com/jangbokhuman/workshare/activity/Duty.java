@@ -1,5 +1,8 @@
 package com.jangbokhuman.workshare.activity;
 
+import com.jangbokhuman.workshare.common.BusinessException;
+import com.jangbokhuman.workshare.common.ErrorCode;
+
 /** 업무 코드와 화면에 표시할 이름. */
 public record Duty(String code, String label) {
     public Duty {
@@ -8,7 +11,7 @@ public record Duty(String code, String label) {
                 || label == null
                 || label.isBlank()
                 || label.length() > 60) {
-            throw new IllegalArgumentException("업무 코드·이름이 올바르지 않습니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "업무 코드·이름이 올바르지 않습니다.");
         }
     }
 }

@@ -21,7 +21,7 @@ public final class RandomTaskAllocationPolicy implements TaskAllocationPolicy {
         if (workers.stream().map(Worker::id).distinct().count() != workers.size())
             throw new IllegalArgumentException("중복 직원입니다.");
         ArrayList<Worker> eligible = workers.stream()
-                .filter(requirement.period()::isEligible)
+                .filter(worker -> worker.canWork(requirement.period()))
                 .collect(Collectors.toCollection(ArrayList::new));
         ArrayList<Worker> selected = new ArrayList<Worker>();
         while (!eligible.isEmpty() && selected.size() < requirement.requiredWorkers()) {

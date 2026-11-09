@@ -1,12 +1,13 @@
 package com.jangbokhuman.workshare.activity.sharingshop;
 
 import com.jangbokhuman.workshare.calendar.WorkTime;
-
+import com.jangbokhuman.workshare.common.BusinessException;
 import com.jangbokhuman.workshare.config.AuthenticatedUser;
 import com.jangbokhuman.workshare.config.WorkSettings;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -43,9 +44,20 @@ public class SharingShopController {
         return "redirect:/sharing-shop";
     }
 
+    @ExceptionHandler(BusinessException.class)
+    public String handleBusinessException(BusinessException error, RedirectAttributes flash) {
+        flash.addFlashAttribute("error", error.getMessage());
+        return "redirect:/sharing-shop";
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public String handleConcurrentSave(RedirectAttributes flash) {
+        flash.addFlashAttribute("error", "같은 정보가 동시에 저장되었습니다. 새로고침 후 다시 저장해주세요.");
+        return "redirect:/sharing-shop";
+    }
+
     private String renderSharingShopPage(AuthenticatedUser authenticatedUser, Model model, boolean management) {
-        boolean admin = authenticatedUser.getAuthorities().stream()
-                        .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
+        boolean admin = authenticatedUser.isAdmin();
         model.addAttribute("admin", admin);
         if (!admin) {
             model.addAttribute("timePreferenceSettings", sharingShopTimePreferenceService.getTimePreferenceSettings(authenticatedUser.getEmployeeId()));
