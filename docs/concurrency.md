@@ -35,12 +35,12 @@
 
 나눔가게의 `SharingShopDailyAllocator`만 오전·오후 업무를 생성한다. 두 업무와 추가 업무는 같은 실행 트랜잭션에 저장된다. 뒤 호출은 확정된 업무를 건너뛰며, DB의 활동·날짜·코드 고유 제약은 무결성을 보장한다.
 
-자동 업무의 생성은 각 활동의 `DailyActivityAllocator` 구현이 담당한다. 배정 대기 중인 기존 업무는 공통 배정 서비스가 처리한다.
+자동 업무의 생성은 각 활동의 `DailyActivityAllocator` 구현이 담당한다. 나눔가게의 추가 업무 추첨도 `SharingShopExtraTaskService`가 같은 실행에서 처리한다. 공통 배정 서비스는 추첨하지 않는다.
 
 ## 검증
 
 - `ConcurrencyFeatureTest`: 최초 저장 경합, ID 보존, 겹치는 맞교환.
 - `ActivityRegistrationFeatureTest`: 가입과 식당 이동의 동시 처리, 선호도 정리, 확정 배정 보존.
-- `ActivityAllocatorFeatureTest`: 전용 정책이 없을 때 암묵적인 오전·오후 업무를 만들지 않는지 검증.
+- `ActivityAllocatorFeatureTest`: 전용 배정기가 없는 활동은 업무를 만들거나 추첨하지 않는지 검증.
 
 스키마 변경은 MySQL·H2에 같은 번호의 새 Flyway 버전을 추가한다.

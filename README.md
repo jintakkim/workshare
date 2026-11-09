@@ -158,7 +158,7 @@ H2 의존성은 Maven `test` scope이고, H2 초기 스키마와 `application-te
 관리자 페이지는 `/admin`으로 분리되어 있습니다. 직원 계정 등록·인원 제외, 추가 휴일 등록·취소를 담당합니다. 직원은 관리자 URL과 관리자 POST 요청에 접근할 수 없습니다. 관리자는 휴가 일정에서 직원을 선택해 연차·병가·반차를 대신 입력할 수 있으며 직원과 같은 마감 규칙을 적용합니다.
 
 - 직원 등록 수와 활동 참여 인원에는 상한을 두지 않습니다. 활동 참여 자격과 당일 휴가·반차를 기준으로 배정합니다. 직원이 추가되거나 제외되어도 과거 배정 기록은 유지합니다.
-- 신규 직원의 기본 소집일은 계정 등록일입니다. 내 프로필에서 실제 소집일을 저장하면 21개월 기준 소집해제 예정일을 표시합니다. 복무가 연장됐다면 자동 계산일보다 늦고 오늘보다 이르지 않은 소집해제일을 직접 저장할 수 있습니다.
+- 신규 직원의 기본 소집일은 계정 등록일입니다. 내 프로필에서 소집일을 입력하면 21개월 기준 소집해제일이 바로 채워지고, 실제 날짜가 다르면 직접 고쳐 저장할 수 있습니다. 소집해제일은 소집일보다 늦고 오늘보다 이르지 않아야 합니다.
 - 관리자가 인원 제외를 마감 이후에 하면 다음 날부터 적용합니다. 근무 기간이나 인원 제외를 변경해도 확정된 배정은 유지합니다.
 - 공휴일은 관리자 화면에서 직접 등록합니다. 정부 공휴일 API를 자동 조회하지 않습니다.
 - 휴일 변경도 당일 08:49 이전까지만 가능합니다. 당일 마감 후와 과거 날짜는 변경할 수 없습니다.
@@ -186,16 +186,16 @@ com.jangbokhuman.workshare/
 │  ├─ EmployeeActivityReader                           직원 화면의 가입 활동 이름 조회 계약. 활동 영역이 구현
 │  ├─ EmployeeUserDetailsService                       로그인 이름으로 관리자·직원 계정 조회
 │  ├─ EmployeeRegistered                               직원 등록 이벤트. 활동별 자동 가입 리스너가 처리
+│  ├─ EmployeeWorkGroupChanged                         직군 변경 이벤트. 활동 영역이 자격을 잃은 가입을 정리
 │  └─ AdminEmployeeController                          관리자 직원 등록·인원 제외 요청
 ├─ activity/                                           활동 종류·가입·참여 자격·공통 업무 배정
 │  ├─ Activity                                         코드에서 정의한 활동 종류, 표시 이름, 설명
 │  ├─ ActivityRegistration                             활동과 직원의 가입 관계 한 건
 │  ├─ ActivityRegistrationRepository                   가입 여부·가입자 명단·활동별 인원 집계 조회
-│  ├─ ActivityRegistrationService                      직원별 가입·탈퇴와 직군 변경 시 자격을 잃은 가입 정리
+│  ├─ ActivityRegistrationService                      직원별 가입·탈퇴와 직군 변경 이벤트를 받아 자격을 잃은 가입 정리
 │  ├─ RegisteredActivityReader                         직원별 가입 활동 이름 조회(EmployeeActivityReader 구현)
 │  ├─ ActivityExclusionReader                          날짜별 활동 후보 제외 명단 조회 계약. 식당지원 패키지가 구현
 │  ├─ WorkTaskAllocationStatus                         날짜별 배정 확정 여부 조회(DailyAllocationStatus 구현)
-│  ├─ ActivityConfiguration                            추가 업무 배정 정책을 Spring 빈으로 등록
 │  ├─ ActivityRegistrationDeleted                      탈퇴한 활동과 직원 ID를 전달하는 삭제 이벤트
 │  ├─ ActivityRegistrationPolicy                       현재 직군과 인원 제외 상태로 가입 가능 여부 판단
 │  ├─ ActivityManagementService                        관리자 활동 카드와 가입·탈퇴 대상 직원 목록 구성
@@ -211,15 +211,13 @@ com.jangbokhuman.workshare/
 │  ├─ Worker                                        배정 후보의 직원 ID·이름·근무 상태를 담는 값
 │  ├─ Duty                                          저장할 업무의 코드와 표시 이름을 담는 값
 │  ├─ TaskRequirement                               한 업무의 종류·근무 시간대·필요 인원을 담는 배정 조건
-│  ├─ TaskAllocationPolicy                          업무 하나의 배정 조건과 후보를 받아 담당자를 선택하는 정책 계약
-│  ├─ RandomTaskAllocationPolicy                    추가 업무의 가능 시간대와 필요 인원에 따라 담당자를 추첨
 │  ├─ TaskAllocation                                업무 하나의 담당 직원과 부족 경고를 담는 배정 결과
 │  ├─ AssignmentGuard                               배정 저장 전 가입·지원 제외·출근 상태·시간대 조건 재검사
 │  ├─ WorkTask                                      날짜별 업무의 상태, 인원, 확정 시각, 배정과 경고를 보관하는 엔티티
 │  ├─ TaskAssignment                                확정 당시 담당 직원의 ID·이름·근무 상태를 보관하는 엔티티
 │  ├─ TaskAssignmentRepository                      업무 ID별 배정 기록 조회와 저장
 │  ├─ WorkTaskRepository                            활동·날짜별 업무 조회와 대기 업무 행 잠금
-│  ├─ WorkTaskService                               활동 하나의 자동 업무·대기 업무 배정, 추가 업무 등록과 취소
+│  ├─ WorkTaskService                               활동 하나의 전용 배정기(DailyActivityAllocator) 실행
 │  ├─ cafeteria/                                       식당지원 활동. 관리자가 입력한 월별 명단·필요 인원·맞교환
 │  │  ├─ CafeteriaSupportAssignment                    날짜별 식당지원 담당 직원 한 명을 저장하는 엔티티
 │  │  ├─ CafeteriaSupportRequirement                   적용일별 하루 필요 인원을 저장하는 엔티티
@@ -238,6 +236,9 @@ com.jangbokhuman.workshare/
 │     ├─ SharingShopApiController                      날짜별 나눔가게 카드 데이터를 제공하는 REST API
 │     ├─ SharingShopQueryService                       휴무·참여자·예정 인원·확정 배정과 결과 공개 시각을 반영한 카드 조회
 │     ├─ SharingShopDailyAllocator                     당일 나눔가게 오전·오후 업무를 생성하고 배정을 확정
+│     ├─ SharingShopExtraTaskService                   나눔가게 추가 업무 등록·취소와 대기 업무 추첨 배정
+│     ├─ TaskAllocationPolicy                          추가 업무 하나의 담당자를 고르는 추첨 정책 계약
+│     ├─ RandomTaskAllocationPolicy                    추가 업무의 가능 시간대와 필요 인원에 따라 담당자를 추첨
 │     ├─ AllocationPolicy                              근무 후보와 오전·오후 필요 인원을 받아 배정하는 정책 계약
 │     ├─ PreferenceAllocationPolicy                    전원 배정, 기계실 상주, 목표 비율과 시간대 선호를 반영
 │     ├─ Allocation                                    직원별 담당 시간대와 배정 경고를 담는 결과
@@ -353,7 +354,7 @@ DB와 스케줄러를 포함한 단일 프로세스 운영을 전제로 합니�
 
 ## 검증
 
-`./mvnw test`는 기능·통합 98회와 배분 정책·참여 제한·출근 시간대 30회, 패키지 순환 의존 검사 3회를 더해 총 132회를 검증합니다. 로컬에서 `heif-thumbnailer`가 없으면 HEIC 업로드 테스트 한 개를 건너뜁니다. [업무 규칙별 테스트 목록](docs/business-tests.md)에서 시나리오를 확인할 수 있습니다.
+`./mvnw test`는 기능·통합 99회와 배분 정책·참여 제한·출근 시간대 30회, 패키지 순환 의존 검사 3회를 더해 총 133회를 검증합니다. 로컬에서 `heif-thumbnailer`가 없으면 HEIC 업로드 테스트 한 개를 건너뜁니다. [업무 규칙별 테스트 목록](docs/business-tests.md)에서 시나리오를 확인할 수 있습니다.
 
 주요 확인 사항은 다음과 같습니다.
 
@@ -421,15 +422,15 @@ DB와 스케줄러를 포함한 단일 프로세스 운영을 전제로 합니�
 
 ## 식당지원표·교환
 
-- `/admin/supports`: 월별 식당지원표를 관리합니다. 식당지원은 추첨하지 않고 관리자가 입력한 명단으로 운영하는 활동입니다. 기본 하루 2명이며 필요 인원을 날짜 효력으로 변경할 수 있습니다. 하루 명단은 식당지원에 가입한 직원 중 여러 명을 선택하며 월별로 한 번에 저장합니다. 같은 날 이미 등록되었거나 연차·병가·반차인 직원은 지원자로 저장할 수 없습니다. 미입력·인원 불일치는 표와 나눔가게 카드에 경고합니다. 명단을 입력하기 전에는 특정 직원을 임의로 제외하지 않습니다.
-- `/supports`: 직원 자신의 지원 일정과 교환 요청함입니다. 본인의 지원일을 선택하고 같은 지원 업무를 맡은 다른 직원의 다른 지원일과 맞교환을 요청합니다. 상대방 수락 전에는 명단이 바뀌지 않습니다. 수락 시 두 날짜를 하나의 트랜잭션으로 변경하고, 해당 슬롯의 나머지 요청은 무효화합니다. 관리자 표 수정, 휴가·직군·지원 중복과 마감도 다시 검사합니다.
-- `/supports/cafeteria`: 직원과 관리자가 일반 화면에서 월별 식당지원 날짜와 담당자를 확인합니다. 직원은 본인 교환 화면으로 이동할 수 있습니다.
+- `/admin/cafeteria-support`: 월별 식당지원표를 관리합니다. 식당지원은 추첨하지 않고 관리자가 입력한 명단으로 운영하는 활동입니다. 기본 하루 2명이며 필요 인원을 날짜 효력으로 변경할 수 있습니다. 하루 명단은 식당지원에 가입한 직원 중 여러 명을 선택하며 월별로 한 번에 저장합니다. 같은 날 이미 등록되었거나 연차·병가·반차인 직원은 지원자로 저장할 수 없습니다. 미입력·인원 불일치는 표와 나눔가게 카드에 경고합니다. 명단을 입력하기 전에는 특정 직원을 임의로 제외하지 않습니다.
+- `/cafeteria-support`: 직원 자신의 지원 일정과 교환 요청함입니다. 본인의 지원일을 선택하고 같은 지원 업무를 맡은 다른 직원의 다른 지원일과 맞교환을 요청합니다. 상대방 수락 전에는 명단이 바뀌지 않습니다. 수락 시 두 날짜를 하나의 트랜잭션으로 변경하고, 해당 슬롯의 나머지 요청은 무효화합니다. 관리자 표 수정, 휴가·직군·지원 중복과 마감도 다시 검사합니다.
+- `/cafeteria-support/schedule`: 직원과 관리자가 일반 화면에서 월별 식당지원 날짜와 담당자를 확인합니다. 직원은 본인 교환 화면으로 이동할 수 있습니다.
 - 휴가 입력과 지원표·교환 수락은 **당일 08:49 전**까지입니다. 나눔가게 시간대 선호도는 다음 추첨부터 반영합니다. 지원 필요 인원을 마감 이후 변경하면 다음 날부터 적용합니다. 교환 마감은 두 날짜 중 이른 날짜의 08:49입니다.
 - 매일 한국 시간 **09:00**에 `SupportExchangeCleanupScheduler`가 만료 요청을 DB에서 삭제합니다. 마감 시각부터 조회·수락에서 만료로 처리합니다.
 
 `ExclusionReason`(사유), `DailyExclusion`(날짜별 지원), `ExclusionRequirement`(필요 인원 이력), `SupportExchangeRequest`(상대방 동의)를 분리했습니다. `RosterReader`는 날짜별 제외를 한 번 반영해 자동 추첨·추가 업무·카드가 같은 가능 인원을 사용합니다. 영구 활동 명부는 날짜별 지원 때문에 변경하지 않습니다.
 
-식당지원은 활동 가입과 별도로 관리합니다. 나눔가게는 배정할 때 식당지원표를 조회합니다. 식당지원 마감은 `app.cafeteria-support-cutoff`에서 관리합니다.
+식당지원은 하나의 활동이며 식당 외 직군은 계정을 등록할 때 자동 가입합니다. 나눔가게는 배정할 때 당일 식당지원 담당자를 후보에서 뺍니다. 식당지원 마감은 `app.cafeteria-support-cutoff`에서 관리합니다.
 
 ## 나눔가게 오전·오후 배분
 

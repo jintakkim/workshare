@@ -28,7 +28,7 @@
 | 로그인·권한·본인 확인 | [SecurityFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/SecurityFeatureTest.java) | 9 |
 | enum 활동·가입·참여 제한 | [ActivityFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/ActivityFeatureTest.java) | 7 |
 | 활동 전용 배정기와 공통 추가 업무 분리 | [ActivityAllocatorFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/ActivityAllocatorFeatureTest.java) | 1 |
-| 메뉴·전체 휴가 일정·휴일 달력·결과 공개 | [NavigationFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/NavigationFeatureTest.java) | 5 |
+| 메뉴·전체 휴가 일정·휴일 달력·결과 공개·공통 오류 화면 | [NavigationFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/NavigationFeatureTest.java) | 6 |
 | 출근 상태별 오전·오후 배정과 근무 시간 | [AttendanceTest](../src/test/java/com/jangbokhuman/workshare/attendance/AttendanceTest.java) | 5 |
 | 인원 배분·선호도 정책 | [PreferenceAllocationPolicyTest](../src/test/java/com/jangbokhuman/workshare/activity/sharingshop/PreferenceAllocationPolicyTest.java) | 19 |
 | 추가 업무 시간대·배정 제약 | [RandomTaskAllocationPolicyTest](../src/test/java/com/jangbokhuman/workshare/activity/sharingshop/RandomTaskAllocationPolicyTest.java) | 3 |
@@ -183,7 +183,7 @@
 
 [ActivityAllocatorFeatureTest.java](../src/test/java/com/jangbokhuman/workshare/integration/ActivityAllocatorFeatureTest.java)
 
-- 전용 배정기를 등록하지 않은 실행에서는 미리 등록한 대기 업무만 배정한다.
+- 전용 배정기가 없는 활동은 오전·오후 업무를 만들지 않고 대기 업무도 추첨하지 않는다. 추가 업무 추첨은 나눔가게에만 있다.
 
 ### 메뉴·휴일 달력·결과 공개
 
@@ -195,6 +195,7 @@
 - 직원 햄버거 메뉴에서 날짜 카드·본인 휴가·프로필로 이동한다: `staffMenuOpensSharingCardsAndOwnLeaveCalendarAcrossStaffPages`
 - 08:50 전에는 예정 인원만 보여주고 이후 저장된 배정 결과를 공개한다: `sharingApiPreviewsCountsAndRevealsPersistedAssignmentsAtEightFifty`
 - 배정 지연은 준비 중으로 표시하고 토·일·사유 없는 휴일에는 배정하지 않는다: `sharingApiHandlesDelayedSchedulerWeekendsAndBlankHolidayReasons`
+- 예상하지 못한 서버 오류는 원인을 짐작하지 않고 공통 오류 화면으로 안내한다: `unexpectedServerErrorsShowTheCommonRetryPage`
 
 ## 동시 저장·행 잠금 기능 검증
 

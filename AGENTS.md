@@ -30,12 +30,12 @@
 - 새 활동의 자동 업무는 해당 활동 패키지에서 코드로 정의한다. YAML에 자동 업무 템플릿을 등록하는 기능을 두지 않는다.
 - 당일 다른 활동을 맡은 직원을 후보에서 빼야 하면 `Activity.getExcludingActivities()`에 선언한다. 나눔가게는 식당지원 담당자를 제외한다.
 - 활동 가입은 `ActivityRegistration(activityCode, employee)` 한 행과 활동·직원 고유 제약으로 관리한다. 가입·탈퇴는 즉시 반영하며 가입 적용일이나 명단 스냅샷을 두지 않는다. 직원 계정을 등록하면 `EmployeeRegistered` 이벤트를 발행하고, 각 활동 패키지의 리스너가 직군 기준으로 자동 가입시킨다. 식당 외 직군은 식당지원에, 운영지원·기계실 직군은 나눔가게에 가입한다. 당일 배정 후보와 확정 배정은 별도로 관리한다.
-- 식당 등 등록 불가 직군으로 바뀌면 같은 트랜잭션에서 해당 활동 가입과 나눔가게 선호도를 정리한다. 직군이 원래대로 돌아와도 자동 재가입하지 않는다.
+- 직군 변경은 `RosterService`가 처리하고 `EmployeeWorkGroupChanged` 이벤트를 발행한다. 활동 영역의 동기 리스너가 같은 트랜잭션에서 자격을 잃은 활동 가입과 나눔가게 선호도를 정리한다. 활동 영역이 직원 서비스를 호출해 직군을 바꾸지 않는다. 직군이 원래대로 돌아와도 자동 재가입하지 않는다.
 - 공통 가입 서비스는 가입 삭제 이벤트를 발행한다. 활동별 연관 데이터 정리는 해당 활동 패키지의 동기 리스너에서 같은 트랜잭션으로 처리한다.
 - 나눔가게 선호도 변경 권한은 활동 가입 여부와 현재 비활성 여부로 판단한다. 근무 시작 전 담당 직원도 변경할 수 있다. 날짜별 참여 자격 정책인 `DailyActivityParticipationPolicy`와 선호도 변경 권한을 분리한다. 검사 날짜를 근무 시작일로 보정하지 않는다.
 - 업무 규칙에 없는 임의의 연도 범위 제한을 추가하지 않는다. 날짜 검증은 필수 입력, 마감, 근무 기간 등 실제 업무 조건에 따른다.
 - 운영 DB에 보존할 데이터가 있다. 스키마 변경은 MySQL(`db/mysql`)과 테스트 H2(`db/migration`)에 같은 번호의 새 Flyway 버전을 추가하고 필요한 기존 데이터를 이관한다. 이미 커밋하거나 적용한 버전 파일은 수정하지 않는다. 다른 프로젝트 DB는 대상이 아니다.
 - 패키지 사이 순환 의존을 만들지 않는다. 의존 방향은 `config` → `calendar` → `employee` → `attendance` → `activity` → `activity.cafeteria` → `activity.sharingshop` → `web` 순서로 아래 영역만 참조한다. 아래 영역이 위 영역의 정보가 필요하면 아래 영역에 인터페이스를 두고 위 영역이 구현한다. `PackageDependencyTest`가 순환을 검사한다.
-- 사용자에게 보여줄 업무 규칙 위반은 `common.BusinessException`으로 던진다. 예외에는 `common.ErrorCode` 분류(입력 오류·없음·중복·마감·불허·충돌)를 함께 지정하고, 분류별로 처리 방식이 달라지면 하위 예외로 나눈다. 오류 화면 복귀 경로는 각 컨트롤러의 `@ExceptionHandler`에서 정한다. 코드 오류나 불변식 위반에는 `IllegalArgumentException`·`IllegalStateException`을 사용한다.
+- 사용자에게 보여줄 업무 규칙 위반은 `common.BusinessException`으로 던진다. 예외에는 `common.ErrorCode` 분류(입력 오류·없음·중복·마감·불허·충돌)를 함께 지정하고, 분류별로 처리 방식이 달라지면 하위 예외로 나눈다. 오류 화면 복귀 경로는 각 컨트롤러의 `@ExceptionHandler`에서 정한다. DB 제약 위반처럼 업무 규칙으로 판별하지 않은 예외는 원인을 짐작해 안내하지 않고 공통 오류 화면(`error.html`, 500)으로 처리한다. 날짜·숫자 형식이 틀린 요청은 업무 오류가 아니므로 `@RequestParam` 타입 바인딩이나 `ResponseStatusException(BAD_REQUEST)`로 400을 응답한다. 코드 오류나 불변식 위반에는 `IllegalArgumentException`·`IllegalStateException`을 사용한다.
 - 주석은 코드만으로 의도가 드러나지 않는 곳에만 짧게 단다. Javadoc `{@link}`·`{@code}` 같은 태그 주석을 달지 않는다.
 - 업무 규칙은 docs/business-rules.md, 개발 DB 원칙은 docs/persistence.md를 따른다.
