@@ -39,4 +39,26 @@ public class CafeteriaSupportExchangeRequest {
         this.recipientId = recipientId;
         this.expiresAt = expiresAt;
     }
+
+    static CafeteriaSupportExchangeRequest create(CafeteriaSupportExchange exchange, Instant expiresAt) {
+        return new CafeteriaSupportExchangeRequest(
+                exchange.source().getId(),
+                exchange.target().getId(),
+                exchange.source().getEmployeeId(),
+                exchange.target().getEmployeeId(),
+                expiresAt
+        );
+    }
+
+    public boolean isRecipient(Long employeeId) {
+        return recipientId.equals(employeeId);
+    }
+
+    public boolean isParticipant(Long employeeId) {
+        return requesterId.equals(employeeId) || recipientId.equals(employeeId);
+    }
+
+    public boolean isExpiredAt(Instant now) {
+        return !now.isBefore(expiresAt);
+    }
 }

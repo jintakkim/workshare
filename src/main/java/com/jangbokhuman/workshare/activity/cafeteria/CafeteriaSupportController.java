@@ -1,12 +1,10 @@
 package com.jangbokhuman.workshare.activity.cafeteria;
 
-import com.jangbokhuman.workshare.calendar.WorkTime;
 import com.jangbokhuman.workshare.common.BusinessException;
 import com.jangbokhuman.workshare.config.AuthenticatedUser;
 
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -17,14 +15,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.time.YearMonth;
-
 @Controller
 @RequiredArgsConstructor
 public class CafeteriaSupportController {
     private final CafeteriaSupportExchangeService cafeteriaSupportExchangeService;
-    private final CafeteriaSupportScheduleService cafeteriaSupportScheduleService;
-    private final WorkTime workTime;
 
     @GetMapping("/cafeteria-support")
     public String showSupportPage(
@@ -36,20 +30,6 @@ public class CafeteriaSupportController {
         model.addAttribute("admin", false);
         model.addAttribute("section", "my-cafeteria-support");
         return "my-cafeteria-support";
-    }
-
-    @GetMapping("/cafeteria-support/schedule")
-    public String showCafeteriaSupport(
-            @RequestParam(required = false) @DateTimeFormat(pattern = "uuuu-MM") YearMonth month,
-            @AuthenticationPrincipal AuthenticatedUser user,
-            Model model
-    ) {
-        YearMonth selectedMonth = month == null ? YearMonth.from(workTime.getToday()) : month;
-        model.addAttribute("month", selectedMonth);
-        model.addAttribute("days", cafeteriaSupportScheduleService.getSchedule(selectedMonth));
-        model.addAttribute("admin", user.isAdmin());
-        model.addAttribute("section", "cafeteria-support");
-        return "cafeteria-support-schedule";
     }
 
     @PostMapping("/cafeteria-support/exchange-requests")

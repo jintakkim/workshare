@@ -4,7 +4,7 @@ import com.jangbokhuman.workshare.common.BusinessException;
 import com.jangbokhuman.workshare.activity.Activity;
 import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportExchangeCleanupScheduler;
 import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportExchangeService;
-import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
+import com.jangbokhuman.workshare.activity.sharingshop.SharingShopTaskReader;
 import com.jangbokhuman.workshare.activity.Worker;
 import com.jangbokhuman.workshare.calendar.WorkPeriod;
 import com.jangbokhuman.workshare.attendance.Attendance;
@@ -31,15 +31,15 @@ import java.util.concurrent.*;
 })
 class SupportFeatureTest extends BusinessFeatureTestSupport {
     @Test
-    @DisplayName("식당지원자를 기본 업무와 추가 업무의 자동 배정에서 제외한다")
-    void scheduledSupportIsExcludedFromAutomaticShiftAndExtraTaskAssignments()
+    @DisplayName("식당지원자를 오전·오후 업무의 자동 배정에서 제외한다")
+    void scheduledSupportIsExcludedFromAutomaticShiftAssignments()
             throws Exception {
         for (String name : List.of("홍길동", "김민수", "이서연", "박지훈", "최유진")) register(name);
         sharingShopTimePreferenceService.save(employeeId("박지훈"), Preference.EVENING);
         sharingShopTimePreferenceService.save(employeeId("최유진"), Preference.EVENING);
         requireCafeteriaWorkers(2);
         supportOn(TODAY, "홍길동", "김민수");
-        assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).workers())
+        assertThat(sharingShopWorkers(TODAY))
                 .extracting(Worker::name)
                 .containsExactlyInAnyOrder("이서연", "박지훈", "최유진");
         sharingShopTimePreferenceService.save(employeeId("홍길동"), Preference.EVENING);
@@ -50,22 +50,21 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(jsonPath("$.excluded.length()").value(2))
                 .andExpect(jsonPath("$.morningSlots").value(1))
                 .andExpect(jsonPath("$.eveningSlots").value(2));
-        addTask(TODAY, "오전 추가 업무", WorkPeriod.MORNING, 1);
         now("08:50");
         dailyAllocationService.allocateTodayIfDue();
-        List<WorkQueryService.TaskView> tasks =
-                workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks();
+        List<SharingShopTaskReader.TaskView> tasks =
+                sharingShopTasks(TODAY);
         assertThat(task(tasks, "MORNING").assignees())
-                .extracting(WorkQueryService.AssigneeView::name)
+                .extracting(SharingShopTaskReader.AssigneeView::name)
                 .containsExactly("이서연");
         assertThat(task(tasks, "EVENING").assignees())
-                .extracting(WorkQueryService.AssigneeView::name)
+                .extracting(SharingShopTaskReader.AssigneeView::name)
                 .containsExactlyInAnyOrder("박지훈", "최유진");
         assertThat(tasks)
                 .allSatisfy(
                         t ->
                                 assertThat(t.assignees())
-                                        .extracting(WorkQueryService.AssigneeView::name)
+                                        .extracting(SharingShopTaskReader.AssigneeView::name)
                                         .doesNotContain("홍길동", "김민수"));
     }
 
@@ -77,7 +76,7 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         register("이서연");
         requireCafeteriaWorkers(1);
         supportOn(TODAY, "홍길동");
-        assertThat(workQueryService.getDashboard(TODAY, employeeId("이서연")).workers())
+        assertThat(sharingShopWorkers(TODAY))
                 .extracting(Worker::name)
                 .containsExactlyInAnyOrder("김민수", "이서연");
         assertThat(activityRegistrationRepository.findEmployeeIdsByActivityCode(Activity.SHARING_SHOP)).hasSize(3);
@@ -105,7 +104,7 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         assertThatThrownBy(() -> supportOn(TODAY, "김민수")).hasMessageContaining("08:49");
         cafeteriaSupportScheduleService.changeRequiredWorkers(2);
         assertThat(
-                        cafeteriaSupportScheduleService
+                        cafeteriaSupportQueryService
                                 .getMonth(YearMonth.from(TODAY))
                                 .days()
                                 .stream()
@@ -115,7 +114,7 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                                 .required())
                 .isEqualTo(1);
         assertThat(
-                        cafeteriaSupportScheduleService
+                        cafeteriaSupportQueryService
                                 .getMonth(YearMonth.from(TODAY))
                                 .days()
                                 .stream()
@@ -162,11 +161,11 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         assertThat(cafeteriaSupportAssignmentRepository.findById(target).orElseThrow().getEmployeeId())
                 .isEqualTo(employeeId("홍길동"));
         assertThat(cafeteriaSupportExchangeRequestRepository.count()).isZero();
-        assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).workers())
+        assertThat(sharingShopWorkers(TODAY))
                 .extracting(Worker::name)
                 .contains("홍길동")
                 .doesNotContain("김민수");
-        assertThat(workQueryService.getDashboard(TODAY.plusDays(1), employeeId("홍길동")).workers())
+        assertThat(sharingShopWorkers(TODAY.plusDays(1)))
                 .extracting(Worker::name)
                 .contains("김민수")
                 .doesNotContain("홍길동");

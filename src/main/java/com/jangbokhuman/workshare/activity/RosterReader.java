@@ -1,9 +1,9 @@
 package com.jangbokhuman.workshare.activity;
 
-import com.jangbokhuman.workshare.employee.Employee;
 import com.jangbokhuman.workshare.attendance.Attendance;
 import com.jangbokhuman.workshare.attendance.LeaveRequest;
 import com.jangbokhuman.workshare.attendance.LeaveRequestRepository;
+import com.jangbokhuman.workshare.employee.Employee;
 
 import lombok.RequiredArgsConstructor;
 
@@ -11,14 +11,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.*;
-import java.util.function.Function;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
 @Transactional(readOnly = true)
 public class RosterReader {
+    private static final Comparator<Employee> BY_NAME_THEN_ID = Comparator.comparing(Employee::getName).thenComparing(Employee::getId);
+
     private final ActivityRegistrationRepository activityRegistrationRepository;
     private final LeaveRequestRepository leaveRequestRepository;
     private final ActivityExclusionReader activityExclusionReader;
@@ -28,48 +31,40 @@ public class RosterReader {
     }
 
     public DayRoster getRosterOn(Activity activity, LocalDate date) {
-        Map<Long, LeaveRequest> leaveMap = leaveRequestRepository.findByWorkDate(date).stream()
-                        .collect(Collectors.toMap(LeaveRequest::getEmployeeId, Function.identity()));
-        List<Worker> result =
-                activityRegistrationRepository.findByActivityCodeOrderByEmployeeIdAsc(activity).stream()
-                        .map(ActivityRegistration::getEmployee)
-                        .filter(e -> e.isActiveOn(date))
-                        .sorted(
-                                Comparator.comparing(Employee::getName)
-                                        .thenComparing(Employee::getId))
-                        .map(
-                                e -> {
-                                    LeaveRequest leave = leaveMap.get(e.getId());
-                                    return new Worker(
-                                            e.getId(),
-                                            e.getName(),
-                                            leave == null ? Attendance.WORK : leave.getAttendance());
-                                })
-                        .toList();
-        HashMap<Long, String> reasons = new HashMap<Long, String>();
-        activityExclusionReader
-                .getExclusionsOn(activity, date)
-                .forEach(a -> reasons.put(a.employeeId(), a.reasonName()));
-        ArrayList<String> warnings =
-                new ArrayList<>(activityExclusionReader.getWarnings(activity, date));
-        result.stream()
-                .filter(w -> reasons.containsKey(w.id()) && !w.attendance().isFullDayAvailable())
-                .forEach(
-                        w ->
-                                warnings.add(
-                                        reasons.get(w.id())
-                                                + " 명단의 "
-                                                + w.name()
-                                                + " 님은 "
-                                                + w.attendance().getLabel()
-                                                + "입니다. 지원표를 조정해주세요."));
-        return new DayRoster(
-                result.stream().filter(w -> !reasons.containsKey(w.id())).toList(),
-                result.stream()
-                        .filter(w -> reasons.containsKey(w.id()))
-                        .map(w -> new ExcludedWorker(w, reasons.get(w.id())))
-                        .toList(),
-                warnings);
+        List<Worker> registeredWorkers = findRegisteredWorkers(activity, date);
+        Map<Long, String> exclusionReasons = findExclusionReasons(activity, date);
+        List<Worker> availableWorkers = registeredWorkers.stream()
+                .filter(worker -> !exclusionReasons.containsKey(worker.id()))
+                .toList();
+        List<ExcludedWorker> excludedWorkers = registeredWorkers.stream()
+                .filter(worker -> exclusionReasons.containsKey(worker.id()))
+                .map(worker -> new ExcludedWorker(worker, exclusionReasons.get(worker.id())))
+                .toList();
+        return new DayRoster(availableWorkers, excludedWorkers, activityExclusionReader.getWarnings(activity, date));
+    }
+
+    private List<Worker> findRegisteredWorkers(Activity activity, LocalDate date) {
+        Map<Long, Attendance> attendanceByEmployeeId = leaveRequestRepository.findByWorkDate(date).stream()
+                .collect(Collectors.toMap(LeaveRequest::getEmployeeId, LeaveRequest::getAttendance));
+        return activityRegistrationRepository.findByActivityCodeOrderByEmployeeIdAsc(activity).stream()
+                .map(ActivityRegistration::getEmployee)
+                .filter(employee -> employee.isActiveOn(date))
+                .sorted(BY_NAME_THEN_ID)
+                .map(employee -> new Worker(
+                        employee.getId(),
+                        employee.getName(),
+                        attendanceByEmployeeId.getOrDefault(employee.getId(), Attendance.WORK))
+                )
+                .toList();
+    }
+
+    private Map<Long, String> findExclusionReasons(Activity activity, LocalDate date) {
+        return activityExclusionReader.getExclusionsOn(activity, date).stream()
+                .collect(Collectors.toMap(
+                        ActivityExclusionReader.ActivityExclusion::employeeId,
+                        ActivityExclusionReader.ActivityExclusion::reasonName,
+                        (earlierReason, laterReason) -> laterReason
+                ));
     }
 
     public record ExcludedWorker(Worker worker, String reason) {}

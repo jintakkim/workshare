@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -28,78 +27,45 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
-@Transactional(isolation = Isolation.READ_COMMITTED)
+@Transactional
 @RequiredArgsConstructor
 public class CafeteriaSupportExchangeService {
+    private static final int EXCHANGE_PAGE_MONTHS = 3;
+
     private final CafeteriaSupportAssignmentRepository cafeteriaSupportAssignmentRepository;
     private final CafeteriaSupportExchangeRequestRepository cafeteriaSupportExchangeRequestRepository;
     private final EmployeeRepository employeeRepository;
-    private final CafeteriaSupportScheduleService cafeteriaSupportScheduleService;
+    private final CafeteriaSupportAvailabilityChecker cafeteriaSupportAvailabilityChecker;
     private final CafeteriaSupportDeadline cafeteriaSupportDeadline;
     private final WorkTime workTime;
     private final WorkSettings workSettings;
 
     public void request(Long employeeId, Long sourceId, Long targetId) {
-        Map<Long, CafeteriaSupportAssignment> assignments = lockAssignments(sourceId, targetId);
-        Employee self = getEmployee(employeeId);
-        CafeteriaSupportAssignment source = assignments.get(sourceId);
-        CafeteriaSupportAssignment target = assignments.get(targetId);
-        if (!source.getEmployeeId().equals(self.getId())) {
-            throw new AccessDeniedException("본인의 지원 일정만 교환 요청할 수 있습니다.");
-        }
-        if (target.getEmployeeId().equals(self.getId()) || source.getWorkDate().equals(target.getWorkDate())) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "같은 지원 업무를 맡은 다른 직원의 다른 날짜를 선택하세요.");
-        }
-        cafeteriaSupportDeadline.validateChange(source.getWorkDate());
-        cafeteriaSupportDeadline.validateChange(target.getWorkDate());
-        cafeteriaSupportScheduleService.requireAvailable(source.getWorkDate(), target.getEmployeeId(), source.getId());
-        cafeteriaSupportScheduleService.requireAvailable(target.getWorkDate(), source.getEmployeeId(), target.getId());
+        CafeteriaSupportExchange exchange = lockExchange(sourceId, targetId);
+        validateRequester(exchange, employeeId);
+        validateSwappable(exchange);
         if (cafeteriaSupportExchangeRequestRepository.existsBySourceIdAndTargetId(sourceId, targetId)) {
             throw new BusinessException(ErrorCode.DUPLICATE, "이미 보낸 교환 요청입니다.");
         }
-        cafeteriaSupportExchangeRequestRepository.save(new CafeteriaSupportExchangeRequest(
-                sourceId,
-                targetId,
-                self.getId(),
-                target.getEmployeeId(),
-                getExchangeDeadline(source, target)
-        ));
+        cafeteriaSupportExchangeRequestRepository.save(CafeteriaSupportExchangeRequest.create(exchange, getExchangeDeadline(exchange)));
     }
 
     public void accept(Long employeeId, Long requestId) {
-        Employee self = getEmployee(employeeId);
-        CafeteriaSupportExchangeRequest unlockedRequest = cafeteriaSupportExchangeRequestRepository.findById(requestId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "처리되었거나 만료된 요청입니다."));
-        Map<Long, CafeteriaSupportAssignment> assignments = lockAssignments(unlockedRequest.getSourceId(), unlockedRequest.getTargetId());
+        CafeteriaSupportExchange exchange = lockExchangeOf(requestId);
         CafeteriaSupportExchangeRequest request = getRequestForUpdate(requestId);
-        if (!self.getId().equals(request.getRecipientId())) {
-            throw new AccessDeniedException("요청받은 직원만 수락할 수 있습니다.");
-        }
-        if (!workTime.getInstant().isBefore(request.getExpiresAt())) {
-            throw new BusinessException(ErrorCode.DEADLINE_PASSED, "만료된 교환 요청입니다.");
-        }
-        CafeteriaSupportAssignment source = assignments.get(request.getSourceId());
-        CafeteriaSupportAssignment target = assignments.get(request.getTargetId());
-        if (!source.getEmployeeId().equals(request.getRequesterId())
-                || !target.getEmployeeId().equals(request.getRecipientId())
-        ) {
+        validateRecipient(request, employeeId);
+        if (!exchange.isStillHeldBy(request)) {
             throw new BusinessException(ErrorCode.CONFLICT, "지원표가 변경되어 이 요청을 수락할 수 없습니다.");
         }
-        cafeteriaSupportDeadline.validateChange(source.getWorkDate());
-        cafeteriaSupportDeadline.validateChange(target.getWorkDate());
-        cafeteriaSupportScheduleService.lockEmployees(List.of(request.getRequesterId(), request.getRecipientId()));
-        cafeteriaSupportScheduleService.requireAvailable(source.getWorkDate(), request.getRecipientId(), source.getId());
-        cafeteriaSupportScheduleService.requireAvailable(target.getWorkDate(), request.getRequesterId(), target.getId());
-        source.replaceEmployee(request.getRecipientId());
-        target.replaceEmployee(request.getRequesterId());
-        List<Long> ids = List.of(source.getId(), target.getId());
-        cafeteriaSupportExchangeRequestRepository.deleteBySourceIdInOrTargetIdIn(ids, ids);
+        employeeRepository.findAllByIdForUpdate(List.of(request.getRequesterId(), request.getRecipientId()));
+        validateSwappable(exchange);
+        exchange.swap();
+        deleteRequestsOf(exchange);
     }
 
     public void dismiss(Long employeeId, Long requestId) {
-        Employee self = getEmployee(employeeId);
         CafeteriaSupportExchangeRequest request = getRequestForUpdate(requestId);
-        if (!self.getId().equals(request.getRequesterId()) && !self.getId().equals(request.getRecipientId())) {
+        if (!request.isParticipant(employeeId)) {
             throw new AccessDeniedException("본인과 관련된 요청만 취소·거절할 수 있습니다.");
         }
         cafeteriaSupportExchangeRequestRepository.delete(request);
@@ -109,71 +75,146 @@ public class CafeteriaSupportExchangeService {
         return cafeteriaSupportExchangeRequestRepository.deleteExpired(workTime.getInstant());
     }
 
+    private CafeteriaSupportExchange lockExchangeOf(Long requestId) {
+        CafeteriaSupportExchangeRequest request = cafeteriaSupportExchangeRequestRepository.findById(requestId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "처리되었거나 만료된 요청입니다."));
+        return lockExchange(request.getSourceId(), request.getTargetId());
+    }
+
+    private CafeteriaSupportExchange lockExchange(Long sourceId, Long targetId) {
+        Map<Long, CafeteriaSupportAssignment> assignments = cafeteriaSupportAssignmentRepository
+                .findAllByIdForUpdate(List.of(sourceId, targetId))
+                .stream()
+                .collect(Collectors.toMap(CafeteriaSupportAssignment::getId, Function.identity()));
+        if (!assignments.containsKey(sourceId) || !assignments.containsKey(targetId)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "지원표가 변경되었거나 지원 일정이 없습니다.");
+        }
+        return new CafeteriaSupportExchange(assignments.get(sourceId), assignments.get(targetId));
+    }
+
+    private void validateRequester(CafeteriaSupportExchange exchange, Long employeeId) {
+        if (!exchange.isSourceOwnedBy(employeeId)) {
+            throw new AccessDeniedException("본인의 지원 일정만 교환 요청할 수 있습니다.");
+        }
+        if (!exchange.isBetweenDifferentEmployeesAndDates()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "같은 지원 업무를 맡은 다른 직원의 다른 날짜를 선택하세요.");
+        }
+    }
+
+    private void validateRecipient(CafeteriaSupportExchangeRequest request, Long employeeId) {
+        if (!request.isRecipient(employeeId)) {
+            throw new AccessDeniedException("요청받은 직원만 수락할 수 있습니다.");
+        }
+        if (request.isExpiredAt(workTime.getInstant())) {
+            throw new BusinessException(ErrorCode.DEADLINE_PASSED, "만료된 교환 요청입니다.");
+        }
+    }
+
+    private void validateSwappable(CafeteriaSupportExchange exchange) {
+        CafeteriaSupportAssignment source = exchange.source();
+        CafeteriaSupportAssignment target = exchange.target();
+        cafeteriaSupportDeadline.validateChange(source.getWorkDate());
+        cafeteriaSupportDeadline.validateChange(target.getWorkDate());
+        cafeteriaSupportAvailabilityChecker.validateExchangeAvailability(source.getWorkDate(), target.getEmployeeId(), source.getId());
+        cafeteriaSupportAvailabilityChecker.validateExchangeAvailability(target.getWorkDate(), source.getEmployeeId(), target.getId());
+    }
+
+    private void deleteRequestsOf(CafeteriaSupportExchange exchange) {
+        List<Long> assignmentIds = exchange.getAssignmentIds();
+        cafeteriaSupportExchangeRequestRepository.deleteBySourceIdInOrTargetIdIn(assignmentIds, assignmentIds);
+    }
+
+    private Instant getExchangeDeadline(CafeteriaSupportExchange exchange) {
+        return cafeteriaSupportDeadline.getDeadline(exchange.getFirstWorkDate());
+    }
+
+    private CafeteriaSupportExchangeRequest getRequestForUpdate(Long id) {
+        return cafeteriaSupportExchangeRequestRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "처리되었거나 만료된 요청입니다."));
+    }
+
     @Transactional(readOnly = true)
     public Page getExchangePage(Long employeeId, Long sourceId) {
         LocalDate today = workTime.getToday();
-        LocalDate lastDate = today.plusMonths(3);
-        List<CafeteriaSupportAssignment> all = cafeteriaSupportAssignmentRepository.findByWorkDateBetweenOrderByWorkDateAsc(today, lastDate);
+        LocalDate lastDate = today.plusMonths(EXCHANGE_PAGE_MONTHS);
+        List<CafeteriaSupportAssignment> assignments = cafeteriaSupportAssignmentRepository.findByWorkDateBetweenOrderByWorkDateAsc(today, lastDate);
         List<Employee> employees = employeeRepository.findAll();
         Map<Long, String> names = employees.stream()
                 .collect(Collectors.toMap(Employee::getId, Employee::getName));
         if (!names.containsKey(employeeId)) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "직원 계정을 확인하세요.");
         }
-        List<Slot> mine = all.stream()
+        Optional<CafeteriaSupportAssignment> source = findExchangeSource(assignments, employeeId, sourceId);
+        List<Slot> candidates = source
+                .map(selected -> findCandidates(assignments, selected, cafeteriaSupportAvailabilityChecker.loadAvailability(employees, today, lastDate), names))
+                .orElse(List.of());
+        RequestViews requestViews = getRequestViews(employeeId, assignments, names);
+        return new Page(
+                findMySlots(assignments, employeeId, names),
+                source.map(CafeteriaSupportAssignment::getId).orElse(null),
+                candidates,
+                requestViews.incoming(),
+                requestViews.outgoing()
+        );
+    }
+
+    private List<Slot> findMySlots(List<CafeteriaSupportAssignment> assignments, Long employeeId, Map<Long, String> names) {
+        return assignments.stream()
                 .filter(assignment -> assignment.getEmployeeId().equals(employeeId))
                 .map(assignment -> createSlot(assignment, names))
                 .toList();
-        CafeteriaSupportAssignment source = all.stream()
-                .filter(assignment -> assignment.getEmployeeId().equals(employeeId)
-                        && cafeteriaSupportDeadline.canChange(assignment.getWorkDate())
-                        && (sourceId == null || assignment.getId().equals(sourceId)))
-                .findFirst()
-                .orElse(null);
-        List<Slot> candidates = List.of();
-        if (source != null) {
-            CafeteriaSupportAvailability availability = cafeteriaSupportScheduleService.loadAvailability(employees, today, lastDate);
-            candidates = all.stream()
-                    .filter(target -> !target.getEmployeeId().equals(employeeId)
-                            && !target.getWorkDate().equals(source.getWorkDate())
-                            && cafeteriaSupportDeadline.canChange(target.getWorkDate())
-                            && isExchangeable(availability, source, target))
-                    .map(target -> createSlot(target, names))
-                    .toList();
-        }
-        List<CafeteriaSupportExchangeRequest> requests = cafeteriaSupportExchangeRequestRepository.findByRequesterIdOrRecipientId(employeeId, employeeId);
-        Map<Long, CafeteriaSupportAssignment> requestedAssignments = findRequestedAssignments(requests, all);
-        ArrayList<RequestView> incoming = new ArrayList<>();
-        ArrayList<RequestView> outgoing = new ArrayList<>();
-        for (CafeteriaSupportExchangeRequest request : requests) {
-            CafeteriaSupportAssignment from = requestedAssignments.get(request.getSourceId());
-            CafeteriaSupportAssignment to = requestedAssignments.get(request.getTargetId());
-            Optional<Instant> expiresAt = getVisibleExpiry(request, from, to);
-            if (expiresAt.isEmpty()) {
-                continue;
-            }
-            RequestView view = new RequestView(
-                    request.getId(),
-                    createSlot(from, names),
-                    createSlot(to, names),
-                    LocalDateTime.ofInstant(expiresAt.get(), workSettings.zone())
-            );
-            if (request.getRecipientId().equals(employeeId)) {
-                incoming.add(view);
-            } else {
-                outgoing.add(view);
-            }
-        }
-        return new Page(mine, source == null ? null : source.getId(), candidates, incoming, outgoing);
     }
 
-    private boolean isExchangeable(
-            CafeteriaSupportAvailability availability,
-            CafeteriaSupportAssignment source,
-            CafeteriaSupportAssignment target
+    private Optional<CafeteriaSupportAssignment> findExchangeSource(
+            List<CafeteriaSupportAssignment> assignments,
+            Long employeeId,
+            Long sourceId
     ) {
-        return cafeteriaSupportScheduleService.evaluateAvailability(availability, source.getWorkDate(), target.getEmployeeId(), source.getId()).allowed()
-                && cafeteriaSupportScheduleService.evaluateAvailability(availability, target.getWorkDate(), source.getEmployeeId(), target.getId()).allowed();
+        return assignments.stream()
+                .filter(assignment -> assignment.getEmployeeId().equals(employeeId))
+                .filter(assignment -> cafeteriaSupportDeadline.canChange(assignment.getWorkDate()))
+                .filter(assignment -> sourceId == null || assignment.getId().equals(sourceId))
+                .findFirst();
+    }
+
+    private List<Slot> findCandidates(
+            List<CafeteriaSupportAssignment> assignments,
+            CafeteriaSupportAssignment source,
+            CafeteriaSupportAvailability availability,
+            Map<Long, String> names
+    ) {
+        return assignments.stream()
+                .filter(target -> cafeteriaSupportDeadline.canChange(target.getWorkDate()))
+                .filter(target -> isSwappable(availability, new CafeteriaSupportExchange(source, target)))
+                .map(target -> createSlot(target, names))
+                .toList();
+    }
+
+    private boolean isSwappable(CafeteriaSupportAvailability availability, CafeteriaSupportExchange exchange) {
+        CafeteriaSupportAssignment source = exchange.source();
+        CafeteriaSupportAssignment target = exchange.target();
+        return exchange.isBetweenDifferentEmployeesAndDates()
+                && cafeteriaSupportAvailabilityChecker.evaluateExchangeAvailability(availability, source.getWorkDate(), target.getEmployeeId(), source.getId()).allowed()
+                && cafeteriaSupportAvailabilityChecker.evaluateExchangeAvailability(availability, target.getWorkDate(), source.getEmployeeId(), target.getId()).allowed();
+    }
+
+    private RequestViews getRequestViews(Long employeeId, List<CafeteriaSupportAssignment> loaded, Map<Long, String> names) {
+        List<CafeteriaSupportExchangeRequest> requests = cafeteriaSupportExchangeRequestRepository.findByRequesterIdOrRecipientId(employeeId, employeeId);
+        Map<Long, CafeteriaSupportAssignment> assignmentsById = findRequestedAssignments(requests, loaded);
+        List<RequestView> incoming = new ArrayList<>();
+        List<RequestView> outgoing = new ArrayList<>();
+        for (CafeteriaSupportExchangeRequest request : requests) {
+            Optional<RequestView> view = createRequestView(request, assignmentsById, names);
+            if (view.isEmpty()) {
+                continue;
+            }
+            if (request.isRecipient(employeeId)) {
+                incoming.add(view.get());
+            } else {
+                outgoing.add(view.get());
+            }
+        }
+        return new RequestViews(incoming, outgoing);
     }
 
     private Map<Long, CafeteriaSupportAssignment> findRequestedAssignments(
@@ -193,43 +234,31 @@ public class CafeteriaSupportExchangeService {
         return assignments;
     }
 
-    private Optional<Instant> getVisibleExpiry(
+    private Optional<RequestView> createRequestView(
             CafeteriaSupportExchangeRequest request,
-            CafeteriaSupportAssignment from,
-            CafeteriaSupportAssignment to
+            Map<Long, CafeteriaSupportAssignment> assignmentsById,
+            Map<Long, String> names
     ) {
-        Instant now = workTime.getInstant();
-        if (!now.isBefore(request.getExpiresAt())) {
+        CafeteriaSupportAssignment source = assignmentsById.get(request.getSourceId());
+        CafeteriaSupportAssignment target = assignmentsById.get(request.getTargetId());
+        if (source == null || target == null) {
             return Optional.empty();
         }
-        if (from == null
-                || to == null
-                || !from.getEmployeeId().equals(request.getRequesterId())
-                || !to.getEmployeeId().equals(request.getRecipientId())
-        ) {
+        CafeteriaSupportExchange exchange = new CafeteriaSupportExchange(source, target);
+        if (!exchange.isStillHeldBy(request)) {
             return Optional.empty();
         }
-        Instant deadline = getExchangeDeadline(from, to);
-        if (!now.isBefore(deadline)) {
+        Instant deadline = getExchangeDeadline(exchange);
+        Instant expiresAt = request.getExpiresAt().isBefore(deadline) ? request.getExpiresAt() : deadline;
+        if (!workTime.getInstant().isBefore(expiresAt)) {
             return Optional.empty();
         }
-        return Optional.of(request.getExpiresAt().isBefore(deadline) ? request.getExpiresAt() : deadline);
-    }
-
-    private Map<Long, CafeteriaSupportAssignment> lockAssignments(Long sourceId, Long targetId) {
-        Map<Long, CafeteriaSupportAssignment> assignments = cafeteriaSupportAssignmentRepository
-                .findAllByIdForUpdate(List.of(sourceId, targetId))
-                .stream()
-                .collect(Collectors.toMap(CafeteriaSupportAssignment::getId, Function.identity()));
-        if (!assignments.containsKey(sourceId) || !assignments.containsKey(targetId)) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "지원표가 변경되었거나 지원 일정이 없습니다.");
-        }
-        return assignments;
-    }
-
-    private Instant getExchangeDeadline(CafeteriaSupportAssignment source, CafeteriaSupportAssignment target) {
-        LocalDate firstDate = source.getWorkDate().isBefore(target.getWorkDate()) ? source.getWorkDate() : target.getWorkDate();
-        return cafeteriaSupportDeadline.getDeadline(firstDate);
+        return Optional.of(new RequestView(
+                request.getId(),
+                createSlot(source, names),
+                createSlot(target, names),
+                LocalDateTime.ofInstant(expiresAt, workSettings.zone())
+        ));
     }
 
     private Slot createSlot(CafeteriaSupportAssignment assignment, Map<Long, String> names) {
@@ -242,15 +271,7 @@ public class CafeteriaSupportExchangeService {
         );
     }
 
-    private Employee getEmployee(Long employeeId) {
-        return employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "직원 계정을 확인하세요."));
-    }
-
-    private CafeteriaSupportExchangeRequest getRequestForUpdate(Long id) {
-        return cafeteriaSupportExchangeRequestRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "처리되었거나 만료된 요청입니다."));
-    }
+    private record RequestViews(List<RequestView> incoming, List<RequestView> outgoing) {}
 
     public record Slot(Long id, LocalDate date, String reason, String name, boolean editable) {}
 

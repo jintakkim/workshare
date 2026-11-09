@@ -89,6 +89,7 @@ public class RosterService {
             throw new BusinessException(ErrorCode.DUPLICATE, "이미 제외된 직원입니다.");
         }
         employee.retire(workTime.getRosterChangeEffectiveDate());
+        applicationEventPublisher.publishEvent(new EmployeeServicePeriodChanged(id));
     }
 
     @Transactional(readOnly = true)

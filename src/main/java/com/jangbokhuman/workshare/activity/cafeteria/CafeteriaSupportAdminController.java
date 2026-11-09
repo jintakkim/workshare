@@ -30,6 +30,7 @@ public class CafeteriaSupportAdminController {
     private static final String MONTH_PATTERN = "\\d{4}-\\d{2}";
 
     private final CafeteriaSupportScheduleService cafeteriaSupportScheduleService;
+    private final CafeteriaSupportQueryService cafeteriaSupportQueryService;
     private final WorkTime workTime;
 
     @GetMapping("/admin/cafeteria-support")
@@ -38,7 +39,7 @@ public class CafeteriaSupportAdminController {
             Model model
     ) {
         YearMonth selectedMonth = month == null ? YearMonth.from(workTime.getToday()) : month;
-        model.addAttribute("view", cafeteriaSupportScheduleService.getMonth(selectedMonth));
+        model.addAttribute("view", cafeteriaSupportQueryService.getMonth(selectedMonth));
         model.addAttribute("section", "cafeteria-support");
         return "admin-cafeteria-support";
     }

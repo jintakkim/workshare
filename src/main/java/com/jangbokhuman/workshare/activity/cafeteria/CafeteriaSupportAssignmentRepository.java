@@ -20,7 +20,18 @@ public interface CafeteriaSupportAssignmentRepository extends JpaRepository<Cafe
             """)
     List<CafeteriaSupportAssignment> findAllByIdForUpdate(Collection<Long> ids);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT assignment
+            FROM CafeteriaSupportAssignment assignment
+            WHERE assignment.workDate IN :workDates
+            ORDER BY assignment.id
+            """)
+    List<CafeteriaSupportAssignment> findByWorkDateInForUpdate(Collection<LocalDate> workDates);
+
     List<CafeteriaSupportAssignment> findByWorkDate(LocalDate workDate);
+
+    List<CafeteriaSupportAssignment> findByEmployeeIdAndWorkDateGreaterThanEqual(Long employeeId, LocalDate workDate);
 
     List<CafeteriaSupportAssignment> findByWorkDateBetweenOrderByWorkDateAsc(LocalDate start, LocalDate end);
 
