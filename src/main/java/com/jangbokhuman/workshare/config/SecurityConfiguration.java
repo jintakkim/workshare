@@ -1,24 +1,23 @@
 package com.jangbokhuman.workshare.config;
 
-import com.jangbokhuman.workshare.employee.LoginNames;
-import com.jangbokhuman.workshare.employee.Employee;
-import com.jangbokhuman.workshare.employee.EmployeeRepository;
-
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.*;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.userdetails.*;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.DelegatingAuthenticationEntryPoint;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
-import java.time.Clock;
 import java.time.Duration;
-import java.time.LocalDate;
 import java.util.LinkedHashMap;
 
 @Configuration
@@ -28,49 +27,11 @@ public class SecurityConfiguration {
         return new BCryptPasswordEncoder();
     }
 
-    @Bean
-    UserDetailsService createUserDetailsService(
-            EmployeeRepository employeeRepository,
-            WorkSettings workSettings,
-            PasswordEncoder passwordEncoder,
-            Clock clock) {
-        String adminHash = passwordEncoder.encode(workSettings.adminPassword());
-        return enteredName -> {
-            String name = LoginNames.normalize(enteredName);
-            if (name.equals(LoginNames.normalize(workSettings.adminUsername()))) {
-                return new AuthenticatedUser(null, name, adminHash, true, "ADMIN");
-            }
-            Employee employee =
-                    employeeRepository
-                            .findByName(name)
-                            .orElseThrow(() -> new UsernameNotFoundException("계정 없음"));
-            LocalDate today = LocalDate.ofInstant(clock.instant(), workSettings.zone());
-            return new AuthenticatedUser(
-                    employee.getId(),
-                    employee.getName(),
-                    employee.getPasswordHash(),
-                    employee.getInactiveFrom() == null
-                            || today.isBefore(employee.getInactiveFrom()),
-                    "STAFF");
-        };
-    }
-
-    private org.springframework.security.web.AuthenticationEntryPoint
-            createAuthenticationEntryPoint() {
-        LinkedHashMap<RequestMatcher, AuthenticationEntryPoint> entries =
-                new java.util.LinkedHashMap<
-                        org.springframework.security.web.util.matcher.RequestMatcher,
-                        org.springframework.security.web.AuthenticationEntryPoint>();
-        entries.put(
-                new org.springframework.security.web.util.matcher.AntPathRequestMatcher("/api/**"),
-                new org.springframework.security.web.authentication.HttpStatusEntryPoint(
-                        org.springframework.http.HttpStatus.UNAUTHORIZED));
-        DelegatingAuthenticationEntryPoint entryPoint =
-                new org.springframework.security.web.authentication
-                        .DelegatingAuthenticationEntryPoint(entries);
-        entryPoint.setDefaultEntryPoint(
-                new org.springframework.security.web.authentication
-                        .LoginUrlAuthenticationEntryPoint("/login"));
+    private AuthenticationEntryPoint createAuthenticationEntryPoint() {
+        LinkedHashMap<RequestMatcher, AuthenticationEntryPoint> entries = new LinkedHashMap<>();
+        entries.put(new AntPathRequestMatcher("/api/**"), new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED));
+        DelegatingAuthenticationEntryPoint entryPoint = new DelegatingAuthenticationEntryPoint(entries);
+        entryPoint.setDefaultEntryPoint(new LoginUrlAuthenticationEntryPoint("/login"));
         return entryPoint;
     }
 
@@ -91,7 +52,8 @@ public class SecurityConfiguration {
                                                 "/forms.js",
                                                 "/favicon.svg",
                                                 "/fonts/**",
-                                                "/error")
+                                                "/error",
+                                                "/actuator/health")
                                         .permitAll()
                                         .requestMatchers("/admin", "/admin/**")
                                         .hasRole("ADMIN")
@@ -116,7 +78,7 @@ public class SecurityConfiguration {
                                         .permitAll())
                 .rememberMe(rememberMe -> rememberMe
                         .userDetailsService(userDetailsService)
-                        .key("workshare-remember-me:" + workSettings.adminPassword())
+                        .key(workSettings.rememberMeKey())
                         .alwaysRemember(true)
                         .tokenValiditySeconds((int) Duration.ofDays(90).toSeconds())
                         .useSecureCookie(secureCookies))

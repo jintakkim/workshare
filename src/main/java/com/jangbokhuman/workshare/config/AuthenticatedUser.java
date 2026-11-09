@@ -5,15 +5,13 @@ import lombok.Getter;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.User;
 
-import java.io.Serial;
-
 public final class AuthenticatedUser extends User {
-    @Serial private static final long serialVersionUID = 1L;
+    private static final String ADMIN_AUTHORITY = "ROLE_ADMIN";
 
-    @Getter private final Long employeeId;
+    @Getter
+    private final Long employeeId;
 
-    public AuthenticatedUser(
-            Long employeeId, String name, String password, boolean enabled, String role) {
+    public AuthenticatedUser(Long employeeId, String name, String password, boolean enabled, String role) {
         super(
                 name,
                 password,
@@ -21,7 +19,13 @@ public final class AuthenticatedUser extends User {
                 true,
                 true,
                 true,
-                AuthorityUtils.createAuthorityList("ROLE_" + role));
+                AuthorityUtils.createAuthorityList("ROLE_" + role)
+        );
         this.employeeId = employeeId;
+    }
+
+    public boolean isAdmin() {
+        return getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals(ADMIN_AUTHORITY));
     }
 }

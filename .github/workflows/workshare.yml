@@ -23,6 +23,8 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+      - name: Install HEIC decoder for photo tests
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends heif-thumbnailer libheif-plugin-libde265
       - name: Run tests
         run: ./mvnw -B -ntp test
 
@@ -64,4 +66,4 @@ jobs:
           docker compose up -d --no-deps --no-build app
           app_address="$(docker compose port app 8080)"
           curl --fail --silent --show-error --retry 30 --retry-connrefused \
-            --retry-delay 2 --max-time 5 --output /dev/null "http://${app_address}/login"
+            --retry-delay 2 --max-time 5 --output /dev/null "http://${app_address}/actuator/health"

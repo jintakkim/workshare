@@ -47,3 +47,12 @@ app:
   sharing-shop-quotas: {}
   admin-username: ${APP_ADMIN_USERNAME:admin}
   admin-password: ${APP_ADMIN_PASSWORD:}
+  remember-me-key: ${APP_REMEMBER_ME_KEY:}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
