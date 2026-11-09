@@ -294,7 +294,7 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        assertThat(html).contains("id=\"support-picker\"", "/support-exchange.js",
+        assertThat(html).contains("id=\"support-candidates\"", "type=\"radio\" name=\"targetId\"", "/support-exchange.js",
                 "data-support-candidate=\"김민수\"", "data-date=\"2026-11-05\"")
                 .doesNotContain("data-support-candidate=\"이서연\"");
         for (Attendance attendance :

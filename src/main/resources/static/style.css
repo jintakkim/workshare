@@ -71,19 +71,50 @@
 .support-footer { flex-wrap:wrap; align-items:center; gap:8px 16px; color:#526446; font-size:12px; word-break:keep-all; }
 .support-footer .app-wordmark { font-size:20px; letter-spacing:-.5px; }
 .support-footer a { text-decoration:underline; text-underline-offset:2px; }
-[data-exchange-form][hidden] { display:none; }
-[data-exchange-source-submit][hidden] { display:none; }
-.support-picker { width:min(440px,calc(100% - 24px)); max-height:80dvh; padding:20px; border:1px solid var(--line); border-radius:16px; background:var(--paper); color:var(--ink); }
-.support-picker::backdrop { background:#263821a8; }
-.support-picker .menu-heading { margin-bottom:16px; }
-.support-picker-filters { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; margin-bottom:12px; }
-.support-picker-filters input { min-width:0; font-size:16px; }
-.support-picker-list { list-style:none; padding:0; margin:8px 0 0; max-height:35dvh; overflow:auto; }
-.support-picker-option { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-height:48px; padding:10px 8px; border:0; border-bottom:1px solid var(--line); background:transparent; text-align:left; color:var(--ink); }
-.support-picker-option:hover { background:var(--bg); }
-.support-picker-option span { color:#526446; font-size:13px; }
-.support-picker-open { min-height:44px; }
+.exchange-page { max-width:680px; margin:0 auto; }
+.exchange-page>section.card+section.card { margin-top:16px; }
+.exchange-page .card>h2 { display:flex; align-items:center; gap:8px; }
+.exchange-count { min-width:22px; padding:2px 7px; border-radius:999px; background:var(--rose); color:white; font-size:12px; text-align:center; }
+.exchange-inbox.has-requests { border-color:#e5cfc3; background:#fffaf5; }
+.exchange-request { padding:16px 0; border-top:1px solid var(--line); }
+.exchange-request:first-of-type { margin-top:12px; }
+.exchange-swap { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:stretch; gap:10px; }
+.exchange-side { display:grid; align-content:center; gap:4px; padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:white; }
+.exchange-side strong { font-size:16px; }
+.exchange-owner { color:var(--muted); font-size:11px; word-break:keep-all; }
+.exchange-arrow { align-self:center; color:var(--green); font-size:20px; }
+.exchange-request>p { margin-top:10px; }
+.exchange-request>form { margin-top:12px; }
+.exchange-actions { display:flex; gap:10px; margin-top:14px; }
+.exchange-actions form { flex:1; }
+.exchange-actions button { width:100%; min-height:49px; }
+.my-support-list { list-style:none; margin:14px 0 0; padding:0; }
+.my-support-list>li { display:flex; align-items:center; gap:14px; padding:10px 12px; margin:0 -12px; border-radius:10px; }
+.my-support-list>li+li { margin-top:2px; }
+.my-support-list>li.is-selected { background:var(--light); }
+.support-date { display:grid; justify-items:center; flex-shrink:0; width:46px; padding:6px 0; border-radius:9px; background:var(--bg); }
+.support-date strong { font-size:18px; line-height:1.1; }
+.support-date span { color:var(--muted); font-size:11px; }
+.is-selected .support-date { background:var(--green); color:white; }
+.is-selected .support-date span { color:#d7e6dc; }
+.support-date-label { display:flex; flex-wrap:wrap; align-items:center; gap:6px; flex:1; min-width:0; font-size:14px; }
+.support-date-label .badge { background:var(--bg); color:var(--muted); }
+.support-date-label .badge.waiting { background:#fbefe6; color:#986342; }
+.small-button { flex-shrink:0; min-height:36px; background:white; }
+.selected-mark { flex-shrink:0; color:var(--green); font-size:12px; font-weight:600; }
 #support-exchange { scroll-margin-top:16px; }
+.exchange-source { margin:4px 0 16px; font-size:14px; }
+.exchange-source strong { color:var(--green); font-size:16px; }
+.candidate-search input { font-size:16px; }
+.candidate-search[hidden] { display:none; }
+.candidate-list { list-style:none; margin:0; padding:0; max-height:50dvh; overflow:auto; display:grid; gap:8px; }
+.candidate-list>li[hidden] { display:none; }
+.candidate-option { display:flex !important; align-items:center; gap:12px; padding:13px 14px; border:1px solid var(--line); border-radius:10px; background:white; cursor:pointer; font-weight:400 !important; }
+.candidate-option:hover { border-color:#c8d6c4; }
+.candidate-option input { width:18px !important; min-height:0 !important; height:18px; margin:0; padding:0 !important; accent-color:var(--green); flex-shrink:0; }
+.candidate-option:has(input:checked) { border-color:var(--green); background:var(--light); }
+.candidate-date { font-size:14px; font-weight:600; }
+.candidate-name { margin-left:auto; color:#526446; font-size:13px; }
 .sharing-shell>.support-footer { margin-top:0; }
 .team-leave-list { list-style:none; margin:0; padding:0; }
 .team-leave-list>li { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 0; border-top:1px solid var(--line); font-size:14px; }
