@@ -101,7 +101,7 @@
 
 - 08:49:10 전에는 배정하지 않고 재시도해도 확정 배정을 유지한다: `dueTimeRecoveryAndRepeatedCallsKeepPersistedResultsIncludingAdditionalTasks`
 - 자동 배정 서비스를 동시에 호출해도 한 세트만 저장되며, 충돌한 호출은 롤백될 수 있다: `concurrentAllocationCallsProduceOnlyOneSavedPlan`
-- 마감 후 직원 추가·제외는 다음 날부터 적용한다: `afterCutoffRosterChangesTakeEffectTomorrow`
+- 기본 소집일은 계정 등록일이고 마감 후 관리자 인원 제외는 다음 날 적용한다: `registrationDefaultsToTodayAndRetirementAfterCutoffTakesEffectTomorrow`
 - 같은 날 추가 업무가 늘어나도 이전 업무 배정을 보존한다: `severalLaterTasksKeepAllEarlierAssignmentsAndEachOthersResults`
 - 미래 업무 등록이 휴가 입력을 막지 않고 해당 근무일에 배정된다: `futureTasksDoNotLockLeaveInputAndAreAllocatedIndividuallyOnTheirDay`
 - 08:49 이후 추가한 업무는 추첨을 기다리며 휴가 마감은 연장하지 않는다: `betweenCutoffAndDrawNewWorkWaitsButDoesNotChangeTheLeaveDeadline`

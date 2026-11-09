@@ -49,6 +49,10 @@ public class WebExceptionHandler {
         }
         if (path.startsWith("/employees/") && path.endsWith("/password"))
             return "redirect:" + path.substring(0, path.lastIndexOf('/')) + "#change-password";
+        if (path.startsWith("/employees/") && path.endsWith("/service-period")) {
+            flash.addFlashAttribute("servicePeriodFeedback", true);
+            return "redirect:" + path.substring(0, path.lastIndexOf('/')) + "#service-period";
+        }
         if (path.startsWith("/employees/") && path.endsWith("/photo"))
             return "redirect:" + path.substring(0, path.lastIndexOf('/'));
         if (path.startsWith("/admin/employees/")

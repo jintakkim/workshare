@@ -88,16 +88,15 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
     }
 
     @Test
-    @DisplayName("마감 후 직원 추가·제외는 다음 날부터 적용한다")
-    void afterCutoffRosterChangesTakeEffectTomorrow() {
+    @DisplayName("신규 직원의 기본 복무 시작일은 등록일이고 마감 후 인원 제외는 다음 날부터 적용한다")
+    void registrationDefaultsToTodayAndRetirementAfterCutoffTakesEffectTomorrow() {
         for (String name : List.of("홍길동", "김민수", "이서연", "박지훈", "최유진")) register(name);
         now("08:49");
         rosterService.retireEmployee(employeeRepository.findByName("홍길동").orElseThrow().getId());
         register("정하늘");
         assertThat(workQueryService.getDashboard(TODAY, employeeId("김민수")).workers())
                 .extracting(Worker::name)
-                .contains("홍길동")
-                .doesNotContain("정하늘");
+                .contains("홍길동", "정하늘");
         assertThat(workQueryService.getDashboard(TODAY.plusDays(1), employeeId("김민수")).workers())
                 .extracting(Worker::name)
                 .contains("정하늘")
@@ -109,7 +108,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
                                 .filter(t -> t.code().equals("MORNING") || t.code().equals("EVENING"))
                                 .flatMap(t -> t.assignees().stream())
                                 .toList())
-                .hasSize(5);
+                .hasSize(6);
     }
 
     @Test

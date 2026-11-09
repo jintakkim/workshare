@@ -60,7 +60,7 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
         rosterService.changeWorkGroup(
                 employeeRepository.findByName("강수진").orElseThrow().getId(), "GENERAL");
         registerForActivity(Activity.SHARING_SHOP, "강수진");
-        assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).workers()).hasSize(13);
+        assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).workers()).hasSize(14);
         assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks())
                 .isEqualTo(before);
         assertThat(workQueryService.getDashboard(TODAY.plusDays(1), employeeId("홍길동")).workers())
@@ -86,6 +86,81 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
                                 .orElseThrow()
                                 .assignees())
                 .hasSize(6);
+    }
+
+    @Test
+    @DisplayName("본인만 소집일을 수정하며 소집해제 예정일 다음 날부터 배정 후보에서 제외한다")
+    void ownServiceStartDateControlsWorkPeriod() throws Exception {
+        now("10:00");
+        register("홍길동");
+        register("김민수");
+        Long employeeId = employeeId("홍길동");
+        String profile = "/employees/" + employeeId;
+        String changeDate = profile + "/service-period";
+
+        assertThat(rosterService.getEmployeeView(employeeId).activeFrom()).isEqualTo(TODAY);
+        mockMvc.perform(get(profile).with(testUser("김민수", "STAFF")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("name=\"serviceStartDate\""))));
+        mockMvc.perform(post(changeDate).with(testUser("김민수", "STAFF")).with(csrf())
+                        .param("serviceStartDate", "2025-02-05"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post(changeDate).with(testUser("홍길동", "STAFF")).with(csrf())
+                        .param("serviceStartDate", "2025-02-05"))
+                .andExpect(redirectedUrl(profile + "#service-period"));
+        mockMvc.perform(get(profile).with(testUser("홍길동", "STAFF")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"2025-02-05\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("2026-11-04")));
+        assertThat(rosterService.getEmployeeView(employeeId).serviceEndDate()).isEqualTo(TODAY);
+        assertThat(workQueryService.getDashboard(TODAY, employeeId).workers()).extracting(Worker::id).contains(employeeId);
+        assertThat(workQueryService.getDashboard(TODAY.plusDays(1), employeeId).workers()).extracting(Worker::id).doesNotContain(employeeId);
+
+        mockMvc.perform(post(changeDate).with(testUser("홍길동", "STAFF")).with(csrf()))
+                .andExpect(redirectedUrl(profile + "#service-period"))
+                .andExpect(flash().attribute("error", "소집일을 선택해주세요."));
+        rosterService.retireEmployee(employeeId);
+        mockMvc.perform(post(changeDate).with(testUser("홍길동", "STAFF")).with(csrf())
+                        .param("serviceStartDate", "2026-11-04"))
+                .andExpect(flash().attribute("error", "관리자가 업무 인원에서 제외한 직원은 복무 기간을 변경할 수 없습니다."));
+        assertThat(rosterService.getEmployeeView(employeeId).serviceEndDate()).isEqualTo(TODAY);
+    }
+
+    @Test
+    @DisplayName("종료 월에 같은 날짜가 없으면 윤년 여부를 반영해 그달 말일에 해제된다")
+    void serviceEndsOnTheLastDayWhenTheAnniversaryDayIsMissing() {
+        Employee employee = new Employee("홍길동", "unused", LocalDate.of(2026, 5, 31), WorkGroupType.GENERAL);
+        assertThat(employee.getServiceEndDate()).isEqualTo(LocalDate.of(2028, 2, 29));
+        employee.changeServicePeriod(LocalDate.of(2027, 5, 31), null, TODAY);
+        assertThat(employee.getServiceEndDate()).isEqualTo(LocalDate.of(2029, 2, 28));
+    }
+
+    @Test
+    @DisplayName("복무 연장 종료일은 자동 계산일보다 늦고 오늘 이후여야 한다")
+    void extensionMustFollowCalculatedDateAndCannotBackdateTheEnd() throws Exception {
+        register("홍길동");
+        Long id = employeeId("홍길동");
+        String changePeriod = "/employees/" + id + "/service-period";
+        mockMvc.perform(post(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
+                        .param("serviceStartDate", "2025-02-05").param("extendedServiceEndDate", "2026-11-04"))
+                .andExpect(flash().attribute("error", "연장된 소집해제일은 자동 계산일(2026-11-04)보다 늦어야 합니다."));
+        mockMvc.perform(post(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
+                        .param("serviceStartDate", "2025-01-05").param("extendedServiceEndDate", "2026-11-03"))
+                .andExpect(flash().attribute("error", "소집해제일은 오늘보다 이전으로 설정할 수 없습니다."));
+        mockMvc.perform(post(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
+                        .param("serviceStartDate", "2025-01-05").param("extendedServiceEndDate", "2024-12-31"))
+                .andExpect(flash().attribute("error", "연장된 소집해제일은 자동 계산일(2026-10-04)보다 늦어야 합니다."));
+        mockMvc.perform(post(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
+                        .param("serviceStartDate", "2025-01-05").param("extendedServiceEndDate", "2026-11-05"))
+                .andExpect(flash().attribute("success", "복무 기간을 저장했습니다."));
+        assertThat(rosterService.getEmployeeView(id).serviceEndDate()).isEqualTo(TODAY.plusDays(1));
+        assertThat(workQueryService.getDashboard(TODAY.plusDays(1), id).workers())
+                .extracting(Worker::id).contains(id);
+        mockMvc.perform(post(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
+                        .param("serviceStartDate", "2025-01-05"))
+                .andExpect(flash().attribute("error", "소집해제일은 오늘보다 이전으로 설정할 수 없습니다."));
+        assertThat(rosterService.getEmployeeView(id).extendedServiceEndDate()).isEqualTo(TODAY.plusDays(1));
     }
 
     @Test

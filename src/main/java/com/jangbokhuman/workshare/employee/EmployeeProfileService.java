@@ -1,5 +1,7 @@
 package com.jangbokhuman.workshare.employee;
 
+import com.jangbokhuman.workshare.calendar.WorkTime;
+
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
@@ -9,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.time.LocalDate;
 import java.util.Iterator;
 import java.util.List;
 
@@ -23,6 +26,13 @@ public class EmployeeProfileService {
     private final EmployeeRepository employeeRepository;
     private final EmployeePhotoRepository employeePhotoRepository;
     private final ResponsibilityCatalogService responsibilityCatalogService;
+    private final WorkTime workTime;
+
+    public void changeServicePeriod(Long employeeId, LocalDate serviceStartDate, LocalDate extendedServiceEndDate) {
+        Employee employee = employeeRepository.findByIdForUpdate(employeeId)
+                .orElseThrow(() -> new IllegalArgumentException("직원이 없습니다."));
+        employee.changeServicePeriod(serviceStartDate, extendedServiceEndDate, workTime.getToday());
+    }
 
     public void changeResponsibilities(Long employeeId, List<String> titles) {
         List<String> selected = responsibilityCatalogService.requireChoices(titles);

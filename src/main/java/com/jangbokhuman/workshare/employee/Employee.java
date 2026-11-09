@@ -13,6 +13,8 @@ import java.util.*;
 @Entity
 @Getter
 public class Employee {
+    private static final int SOCIAL_SERVICE_MONTHS = 21;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -27,6 +29,8 @@ public class Employee {
     private LocalDate activeFrom;
 
     private LocalDate inactiveFrom;
+
+    private LocalDate extendedServiceEndDate;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "work_group_code", nullable = false, length = 40)
@@ -56,7 +60,37 @@ public class Employee {
     }
 
     public boolean isActiveOn(LocalDate date) {
-        return !date.isBefore(activeFrom) && (inactiveFrom == null || date.isBefore(inactiveFrom));
+        return !date.isBefore(activeFrom)
+                && !date.isAfter(getServiceEndDate())
+                && (inactiveFrom == null || date.isBefore(inactiveFrom));
+    }
+
+    public LocalDate getServiceEndDate() {
+        return extendedServiceEndDate == null ? calculateServiceEndDate(activeFrom) : extendedServiceEndDate;
+    }
+
+    public void changeServicePeriod(LocalDate serviceStartDate, LocalDate extendedServiceEndDate, LocalDate today) {
+        if (inactiveFrom != null) {
+            throw new IllegalArgumentException("관리자가 업무 인원에서 제외한 직원은 복무 기간을 변경할 수 없습니다.");
+        }
+        if (serviceStartDate == null) {
+            throw new IllegalArgumentException("소집일을 선택해주세요.");
+        }
+        LocalDate calculatedEndDate = calculateServiceEndDate(serviceStartDate);
+        if (extendedServiceEndDate != null && !extendedServiceEndDate.isAfter(calculatedEndDate)) {
+            throw new IllegalArgumentException("연장된 소집해제일은 자동 계산일(" + calculatedEndDate + ")보다 늦어야 합니다.");
+        }
+        LocalDate serviceEndDate = extendedServiceEndDate == null ? calculatedEndDate : extendedServiceEndDate;
+        if (serviceEndDate.isBefore(today)) {
+            throw new IllegalArgumentException("소집해제일은 오늘보다 이전으로 설정할 수 없습니다.");
+        }
+        activeFrom = serviceStartDate;
+        this.extendedServiceEndDate = extendedServiceEndDate;
+    }
+
+    private LocalDate calculateServiceEndDate(LocalDate serviceStartDate) {
+        LocalDate anniversary = serviceStartDate.plusMonths(SOCIAL_SERVICE_MONTHS);
+        return anniversary.getDayOfMonth() == serviceStartDate.getDayOfMonth() ? anniversary.minusDays(1) : anniversary;
     }
 
     public void retire(LocalDate date) {

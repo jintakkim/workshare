@@ -1,15 +1,33 @@
 <!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#495d3f"><title>프로필 · 장복인간</title><link th:replace="~{fragments/site-layout :: icon}"><link rel="stylesheet" th:href="@{/style.css}"><script defer th:src="@{/admin.js}"></script></head><body class="app-page admin-page"><th:block th:if="${management}"><header th:replace="~{admin :: adminHeader}"></header><dialog th:replace="~{admin :: adminMenu}"></dialog></th:block>
 <th:block th:if="${!management}"><header th:replace="~{fragments/staff-navigation :: header}"></header><dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog></th:block><main th:replace="~{fragments/site-layout :: page('admin-shell', ~{::pageContent})}"><th:block th:fragment="pageContent">
   <a class="profile-back" th:href="${management} ? @{/admin(section='employees')} : @{/employees}">← 직원 목록</a>
-  <div th:if="${success}" class="notice" role="status" th:text="${success}"></div>
+  <div th:if="${success != null and servicePeriodFeedback != true}" class="notice" role="status" th:text="${success}"></div>
   <div th:if="${warning}" class="notice danger" role="status" th:text="${warning}"></div>
-  <div th:if="${error}" class="notice danger" role="alert" th:text="${error}"></div>
+  <div th:if="${error != null and servicePeriodFeedback != true}" class="notice danger" role="alert" th:text="${error}"></div>
   <div class="profile-layout">
     <section class="card profile-summary"><span class="profile-avatar profile-avatar-large"><img th:if="${employee.hasPhoto}" th:src="@{/employees/{id}/photo(id=${employee.id})}" alt="프로필 사진"><span th:if="${!employee.hasPhoto}" th:text="${#strings.substring(employee.name,0,1)}"></span></span><p class="eyebrow">함께 일하는 사람</p><h1 th:text="${employee.name}"></h1><p class="employee-group" th:text="${employee.workGroupName}"></p><p class="profile-meta" th:text="${'함께한 시작 · ' + employee.activeFrom}"></p><p class="profile-meta" th:if="${employee.inactiveFrom != null}" th:text="${'업무 제외일 · ' + employee.inactiveFrom}"></p>
       <form th:if="${canEditPhoto}" th:action="${management} ? @{/admin/employees/{id}/photo(id=${employee.id})} : @{/employees/{id}/photo(id=${employee.id})}" method="post" enctype="multipart/form-data" class="stack photo-form"><label>프로필 사진<input type="file" name="photo" accept="image/jpeg,image/png" required><small class="muted">JPG·PNG, 2MB 이하</small></label><button class="button" type="submit">사진 저장</button></form>
       <a th:if="${management}" class="button profile-leave-link" th:href="@{/admin(section='leave',employeeId=${employee.id})}">이 직원의 휴가 일정 →</a>
     </section>
     <div class="profile-content">
+      <section th:if="${canChangeServicePeriod or management or servicePeriodFeedback == true}" class="card" id="service-period">
+        <h2>복무 기간</h2>
+        <div th:if="${servicePeriodFeedback == true and success != null}" class="notice" role="status" th:text="${success}"></div>
+        <div th:if="${servicePeriodFeedback == true and error != null}" class="notice danger" role="alert" th:text="${error}"></div>
+        <p th:if="${management}" th:text="${'소집일 · ' + employee.activeFrom}"></p>
+        <p><strong>소집해제 예정일</strong> <time th:datetime="${employee.serviceEndDate}" th:text="${employee.serviceEndDate}"></time></p>
+        <form th:if="${canChangeServicePeriod}" th:action="@{/employees/{id}/service-period(id=${employee.id})}" method="post" class="stack">
+          <label>소집일 <small class="muted">첫 복무일</small>
+            <input type="date" name="serviceStartDate" th:value="${#temporals.format(employee.activeFrom, 'yyyy-MM-dd')}" required>
+          </label>
+          <label>연장된 소집해제일 <small class="muted">선택 입력</small>
+            <input type="date" name="extendedServiceEndDate" th:min="${#temporals.format(today, 'yyyy-MM-dd')}"
+                   th:value="${employee.extendedServiceEndDate == null ? '' : #temporals.format(employee.extendedServiceEndDate, 'yyyy-MM-dd')}">
+          </label>
+          <p class="small muted">비워두면 소집일부터 21개월 기준으로 계산해요. 복무가 연장됐다면 자동 계산일보다 늦고 오늘보다 이르지 않은 날짜를 입력하세요.</p>
+          <button class="button" type="submit">복무 기간 저장</button>
+        </form>
+      </section>
       <section th:if="${canChangePassword}" class="card" id="change-password">
         <h2>비밀번호 변경</h2>
         <form th:action="@{/employees/{id}/password(id=${employee.id})}" method="post" class="stack">

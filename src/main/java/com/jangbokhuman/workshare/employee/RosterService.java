@@ -39,14 +39,14 @@ public class RosterService {
             throw new IllegalArgumentException("이름은 공백 없이 한글 1~30자로 입력하세요. 예: 홍길동");
         }
         validatePassword(password);
-        LocalDate effective = workTime.getRosterChangeEffectiveDate();
+        LocalDate registrationDate = workTime.getToday();
         WorkGroupType group = WorkGroupType.getByCode(workGroupCode);
         List<String> selected =
                 responsibilityCatalogService.requireChoices(selectedResponsibilities);
         try {
             Employee employee =
                     new Employee(
-                            normalizedName, passwordEncoder.encode(password), effective, group);
+                            normalizedName, passwordEncoder.encode(password), registrationDate, group);
             employee.changeResponsibilities(selected);
             employeeRepository.saveAndFlush(employee);
         } catch (DataIntegrityViolationException error) {
@@ -127,6 +127,8 @@ public class RosterService {
                 employee.getId(),
                 employee.getName(),
                 employee.getActiveFrom(),
+                employee.getServiceEndDate(),
+                employee.getExtendedServiceEndDate(),
                 employee.getInactiveFrom(),
                 group == null ? "UNCLASSIFIED" : group.name(),
                 group == null ? "직군 미지정" : group.getLabel(),
@@ -142,6 +144,8 @@ public class RosterService {
             Long id,
             String name,
             LocalDate activeFrom,
+            LocalDate serviceEndDate,
+            LocalDate extendedServiceEndDate,
             LocalDate inactiveFrom,
             String workGroupCode,
             String workGroupName,

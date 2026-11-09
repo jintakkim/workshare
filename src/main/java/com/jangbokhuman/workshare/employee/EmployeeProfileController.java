@@ -6,6 +6,7 @@ import com.jangbokhuman.workshare.config.AuthenticatedUser;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.*;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -14,6 +15,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.time.LocalDate;
 
 @Controller
 @RequiredArgsConstructor
@@ -28,13 +31,13 @@ public class EmployeeProfileController {
     @GetMapping("/employees")
     public String showEmployeeDirectory(
             @AuthenticationPrincipal AuthenticatedUser auth, Model model) {
+        LocalDate today = workTime.getToday();
         model.addAttribute(
                 "employees",
                 rosterService.getEmployeeViews().stream()
                         .filter(
-                                e ->
-                                        e.inactiveFrom() == null
-                                                || workTime.getToday().isBefore(e.inactiveFrom()))
+                                employee -> !today.isAfter(employee.serviceEndDate())
+                                        && (employee.inactiveFrom() == null || today.isBefore(employee.inactiveFrom())))
                         .toList());
         model.addAttribute("admin", isAdmin(auth));
         model.addAttribute("section", "employees");
@@ -61,12 +64,14 @@ public class EmployeeProfileController {
     private String renderEmployeeProfile(
             Long id, AuthenticatedUser auth, Model model, boolean management) {
         RosterService.EmployeeView employee = rosterService.getEmployeeView(id);
+        boolean ownProfile = id.equals(auth.getEmployeeId());
         model.addAttribute("employee", employee);
         model.addAttribute("admin", isAdmin(auth));
         model.addAttribute("management", management);
-        model.addAttribute(
-                "canEditPhoto", management || employee.id().equals(auth.getEmployeeId()));
-        model.addAttribute("canChangePassword", employee.id().equals(auth.getEmployeeId()));
+        model.addAttribute("canEditPhoto", management || ownProfile);
+        model.addAttribute("canChangePassword", ownProfile);
+        model.addAttribute("canChangeServicePeriod", ownProfile && employee.inactiveFrom() == null);
+        model.addAttribute("today", workTime.getToday());
         model.addAttribute("section", "employees");
         if (management) {
             model.addAttribute("responsibilityOptions", responsibilityCatalogService.getChoices());
@@ -108,6 +113,23 @@ public class EmployeeProfileController {
         rosterService.changePassword(auth.getEmployeeId(), currentPassword, newPassword, confirmation);
         flash.addFlashAttribute("success", "비밀번호를 변경했습니다.");
         return "redirect:/employees/" + id + "#change-password";
+    }
+
+    @PostMapping("/employees/{id}/service-period")
+    public String changeServicePeriod(
+            @PathVariable Long id,
+            @AuthenticationPrincipal AuthenticatedUser auth,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate serviceStartDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate extendedServiceEndDate,
+            RedirectAttributes flash
+    ) {
+        if (!id.equals(auth.getEmployeeId())) {
+            throw new AccessDeniedException("본인만 복무 기간을 변경할 수 있습니다.");
+        }
+        employeeProfileService.changeServicePeriod(auth.getEmployeeId(), serviceStartDate, extendedServiceEndDate);
+        flash.addFlashAttribute("success", "복무 기간을 저장했습니다.");
+        flash.addFlashAttribute("servicePeriodFeedback", true);
+        return "redirect:/employees/" + id + "#service-period";
     }
 
     @PostMapping("/employees/{id}/photo")

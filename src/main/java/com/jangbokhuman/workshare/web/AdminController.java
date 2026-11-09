@@ -56,6 +56,7 @@ public class AdminController {
                                 .filter(
                                         e ->
                                                 !selectedDate.isBefore(e.activeFrom())
+                                                        && !selectedDate.isAfter(e.serviceEndDate())
                                                         && (e.inactiveFrom() == null
                                                                 || selectedDate.isBefore(
                                                                         e.inactiveFrom())))
@@ -78,7 +79,6 @@ public class AdminController {
         model.addAttribute("selectedEmployeeId", selected == null ? null : selected.id());
         model.addAttribute("section", section);
         model.addAttribute("attendances", Attendance.values());
-        model.addAttribute("effectiveDate", rosterService.getRosterChangeEffectiveDate());
         model.addAttribute("groups", WorkGroupType.values());
         model.addAttribute("responsibilityOptions", responsibilityCatalogService.getChoices());
         return "admin";
