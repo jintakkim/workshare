@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
-public record Allocation(
+public record ShiftAllocation(
         List<Assignment> assignments,
         List<String> morningWarnings,
         List<String> eveningWarnings

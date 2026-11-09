@@ -7,7 +7,7 @@ import java.security.SecureRandom;
 import java.util.*;
 import java.util.random.RandomGenerator;
 
-public final class PreferenceAllocationPolicy implements AllocationPolicy {
+public final class PreferenceShiftAllocationPolicy {
     private static final Comparator<PlanScore> SCORE_ORDER = Comparator
             .comparingInt(PlanScore::emptyShopShifts)
             .thenComparingInt(PlanScore::facilityShortages)
@@ -20,16 +20,15 @@ public final class PreferenceAllocationPolicy implements AllocationPolicy {
 
     private final RandomGenerator randomGenerator;
 
-    public PreferenceAllocationPolicy() {
+    public PreferenceShiftAllocationPolicy() {
         this(new SecureRandom());
     }
 
-    public PreferenceAllocationPolicy(RandomGenerator randomGenerator) {
+    public PreferenceShiftAllocationPolicy(RandomGenerator randomGenerator) {
         this.randomGenerator = Objects.requireNonNull(randomGenerator);
     }
 
-    @Override
-    public Allocation allocate(List<SharingShopWorker> workers, ShiftQuota quota, FacilityCoverage coverage) {
+    public ShiftAllocation allocate(List<SharingShopWorker> workers, ShiftQuota quota, FacilityCoverage coverage) {
         if (workers.stream().map(SharingShopWorker::id).distinct().count() != workers.size()) {
             throw new IllegalArgumentException("중복 직원입니다.");
         }
@@ -43,7 +42,6 @@ public final class PreferenceAllocationPolicy implements AllocationPolicy {
         return createAllocation(workers, selected, coverage);
     }
 
-    @Override
     public ShiftQuota getPlannedQuota(List<SharingShopWorker> workers, ShiftQuota quota, FacilityCoverage coverage) {
         ShiftPlan plan = findBestPlans(workers, quota, coverage).getFirst();
         return new ShiftQuota(plan.morning().size(), plan.evening().size());
@@ -203,12 +201,12 @@ public final class PreferenceAllocationPolicy implements AllocationPolicy {
         return count;
     }
 
-    private Allocation createAllocation(
+    private ShiftAllocation createAllocation(
             List<SharingShopWorker> workers,
             ShiftPlan plan,
             FacilityCoverage coverage
     ) {
-        List<Allocation.Assignment> assignments = new ArrayList<>();
+        List<ShiftAllocation.Assignment> assignments = new ArrayList<>();
         for (SharingShopWorker worker : workers) {
             Set<WorkPeriod> periods = EnumSet.noneOf(WorkPeriod.class);
             if (plan.morning().contains(worker)) {
@@ -217,10 +215,10 @@ public final class PreferenceAllocationPolicy implements AllocationPolicy {
             if (plan.evening().contains(worker)) {
                 periods.add(WorkPeriod.EVENING);
             }
-            assignments.add(new Allocation.Assignment(worker, periods));
+            assignments.add(new ShiftAllocation.Assignment(worker, periods));
         }
         assignments.sort(Comparator.comparing(assignment -> assignment.worker().name()));
-        return new Allocation(assignments,
+        return new ShiftAllocation(assignments,
                 getWarnings(WorkPeriod.MORNING, plan.morning(), coverage),
                 getWarnings(WorkPeriod.EVENING, plan.evening(), coverage));
     }

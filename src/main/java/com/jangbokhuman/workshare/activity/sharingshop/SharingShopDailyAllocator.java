@@ -30,11 +30,10 @@ public class SharingShopDailyAllocator implements DailyActivityAllocator {
     private final WorkTaskRepository workTaskRepository;
     private final TaskAssignmentRepository taskAssignmentRepository;
     private final RosterReader rosterReader;
-    private final AllocationPolicy allocationPolicy;
+    private final PreferenceShiftAllocationPolicy preferenceShiftAllocationPolicy;
     private final SharingShopStaffing sharingShopStaffing;
     private final AssignmentGuard assignmentGuard;
     private final WorkTime workTime;
-    private final SharingShopExtraTaskService sharingShopExtraTaskService;
 
     @Override
     public Activity getActivity() {
@@ -43,11 +42,6 @@ public class SharingShopDailyAllocator implements DailyActivityAllocator {
 
     @Override
     public void allocate(LocalDate workDate) {
-        createShiftTasks(workDate);
-        sharingShopExtraTaskService.assignPendingTasks(workDate);
-    }
-
-    private void createShiftTasks(LocalDate workDate) {
         Activity activity = getActivity();
         long existingShiftCount = workTaskRepository.countByWorkDateAndActivityCodeAndCodeIn(
                 workDate,
@@ -62,11 +56,11 @@ public class SharingShopDailyAllocator implements DailyActivityAllocator {
         }
         List<Worker> workers = rosterReader.getWorkersOn(activity, workDate);
         SharingShopStaffing.Roster roster = sharingShopStaffing.getRoster(workDate, workers);
-        Allocation allocation = allocationPolicy.allocate(roster.workers(), roster.quota(), roster.facilityCoverage());
+        ShiftAllocation allocation = preferenceShiftAllocationPolicy.allocate(roster.workers(), roster.quota(), roster.facilityCoverage());
         for (WorkPeriod period : List.of(WorkPeriod.MORNING, WorkPeriod.EVENING)) {
             List<Worker> selected = allocation.assignments().stream()
                     .filter(assignment -> assignment.periods().contains(period))
-                    .map(Allocation.Assignment::worker)
+                    .map(ShiftAllocation.Assignment::worker)
                     .map(SharingShopWorker::toWorker)
                     .toList();
             assignmentGuard.validate(activity, workDate, period, selected);
