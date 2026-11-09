@@ -72,6 +72,7 @@
 .support-footer .app-wordmark { font-size:20px; letter-spacing:-.5px; }
 .support-footer a { text-decoration:underline; text-underline-offset:2px; }
 [data-exchange-form][hidden] { display:none; }
+[data-exchange-source-submit][hidden] { display:none; }
 .support-picker { width:min(440px,calc(100% - 24px)); max-height:80dvh; padding:20px; border:1px solid var(--line); border-radius:16px; background:var(--paper); color:var(--ink); }
 .support-picker::backdrop { background:#263821a8; }
 .support-picker .menu-heading { margin-bottom:16px; }

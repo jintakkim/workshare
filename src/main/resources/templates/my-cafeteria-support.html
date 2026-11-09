@@ -3,14 +3,14 @@
 <section class="card"><h2>내 지원 일정</h2><p class="small muted">오늘부터 3개월 뒤까지의 지원 일정입니다.</p><div class="quota-rule" th:each="slot:${view.mine}"><strong th:text="${#temporals.format(slot.date,'M월 d일 E요일')}"></strong><span th:text="${slot.reason+(!slot.editable?' · 마감':'')}"></span></div><p th:if="${view.mine.isEmpty()}" class="small muted">등록된 지원 일정이 없습니다.</p></section>
 <section class="card" id="support-exchange" th:if="${view.sourceId != null}">
   <h2>지원일 교환 요청</h2>
-  <form th:action="@{/cafeteria-support} + '#support-exchange'" method="get" class="stack">
+  <form th:action="@{/cafeteria-support} + '#support-exchange'" method="get" class="stack" data-exchange-source-form>
     <label>바꿀 내 지원일
-      <select name="sourceId">
+      <select name="sourceId" data-exchange-source>
         <option th:each="slot : ${view.mine}" th:if="${slot.editable}" th:value="${slot.id}"
                 th:selected="${slot.id == view.sourceId}" th:text="${#temporals.format(slot.date,'M월 d일') + ' · ' + slot.reason}"></option>
       </select>
     </label>
-    <button class="button" type="submit">상대 일정 보기</button>
+    <button class="button" type="submit" data-exchange-source-submit>상대 일정 보기</button>
   </form>
   <hr class="form-divider">
   <p class="small muted" th:if="${view.candidates.isEmpty()}">교환 가능한 상대 일정이 없습니다.</p>

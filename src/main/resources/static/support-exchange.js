@@ -1,3 +1,11 @@
+const exchangeSourceForm = document.querySelector("[data-exchange-source-form]");
+if (exchangeSourceForm) {
+    exchangeSourceForm.querySelector("[data-exchange-source-submit]").hidden = true;
+    exchangeSourceForm.querySelector("[data-exchange-source]").addEventListener("change", () => {
+        exchangeSourceForm.requestSubmit();
+    });
+}
+
 const supportPicker = document.getElementById("support-picker");
 if (supportPicker) {
     const form = document.querySelector("[data-exchange-form]");
