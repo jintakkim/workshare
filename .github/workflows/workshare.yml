@@ -65,5 +65,5 @@ jobs:
           docker compose build app
           docker compose up -d --no-deps --no-build app
           app_address="$(docker compose port app 8080)"
-          curl --fail --silent --show-error --retry 30 --retry-connrefused \
+          curl --fail --silent --show-error --retry 30 --retry-all-errors \
             --retry-delay 2 --max-time 5 --output /dev/null "http://${app_address}/actuator/health"
