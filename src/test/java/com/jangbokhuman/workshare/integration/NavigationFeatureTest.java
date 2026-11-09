@@ -86,7 +86,8 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                     .doesNotContain(
                             "href=\"/admin", "name=\"workGroupCode\"", "name=\"responsibilities\"");
             if (page.equals("/") || page.equals("/my-leave")) {
-                assertThat(html).contains("입력 마감", "휴가 입력은 해당 날짜 오전 8시 49분에 마감돼요.")
+                assertThat(html).contains("입력 마감", "휴가 입력은 해당 날짜 오전 8시 49분에 마감돼요.",
+                                "버그나 건의사항은", "href=\"mailto:support@jangbokhuman.app\"")
                         .doesNotContain("우리의 하루를 조금 더 공평하게", "자동 배정");
             }
         }
@@ -105,7 +106,8 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
             assertThat(html)
                     .contains(
                             "class=\"day-deck\"", "data-today=\"2026-11-04\"", "/sharing-shop.js",
-                            "선정 기준 확인", "id=\"allocation-guide\"", "기계실 상주 확인", "선호도 반영과 추첨")
+                            "선정 기준 확인", "id=\"allocation-guide\"", "기계실 상주 확인", "선호도 반영과 추첨",
+                            "버그나 건의사항은", "href=\"mailto:support@jangbokhuman.app\"")
                     .doesNotContain("class=\"calendar-grid\"", "하루를 함께 나누는 일", "내 휴가 입력");
             if (role.equals("STAFF")) {
                 assertThat(html).contains("<details class=\"panel-disclosure sharing-preference\">");

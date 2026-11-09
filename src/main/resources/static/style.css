@@ -68,6 +68,9 @@
 .intro .time-note { grid-template-columns:1fr; gap:6px; }
 .intro .time-note strong { margin-left:0; font-size:16px; line-height:1.5; white-space:normal; word-break:keep-all; }
 .intro .time-note small { white-space:normal; }
+.support-footer { flex-wrap:wrap; gap:8px 16px; color:#526446; font-size:12px; }
+.support-footer a { text-decoration:underline; text-underline-offset:2px; }
+.sharing-shell>.support-footer { margin-top:0; }
 /* Phone-first interaction sizes and a direct jump from the calendar to its request forms. */
 @media(max-width:760px) {
   .shell { padding: 24px 16px 0; }
