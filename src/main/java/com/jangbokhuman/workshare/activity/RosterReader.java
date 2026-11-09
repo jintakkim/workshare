@@ -75,5 +75,8 @@ public class RosterReader {
     public record ExcludedWorker(Worker worker, String reason) {}
 
     public record DayRoster(
-            List<Worker> workers, List<ExcludedWorker> excluded, List<String> warnings) {}
+            List<Worker> workers,
+            List<ExcludedWorker> excluded,
+            List<String> warnings
+    ) {}
 }

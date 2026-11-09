@@ -107,7 +107,10 @@ public class SharingShopQueryService {
     }
 
     private ShiftQuota getSlots(
-            WorkQueryService.Dashboard view, boolean ready, List<WorkQueryService.TaskView> shiftTasks) {
+            WorkQueryService.Dashboard view,
+            boolean ready,
+            List<WorkQueryService.TaskView> shiftTasks
+    ) {
         if (!view.businessDay()) {
             return new ShiftQuota(0, 0);
         }
@@ -123,7 +126,10 @@ public class SharingShopQueryService {
     }
 
     private List<Member> getAssignees(
-            List<WorkQueryService.TaskView> tasks, String code, Set<Long> photos) {
+            List<WorkQueryService.TaskView> tasks,
+            String code,
+            Set<Long> photos
+    ) {
         return tasks.stream()
                 .filter(t -> t.code().equals(code))
                 .flatMap(t -> t.assignees().stream())
@@ -154,5 +160,6 @@ public class SharingShopQueryService {
             List<Member> morning,
             List<Member> evening,
             List<String> warnings,
-            List<Member> excluded) {}
+            List<Member> excluded
+    ) {}
 }

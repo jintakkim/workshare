@@ -147,8 +147,7 @@ public class WorkQueryService {
                         : task.getAssignedAt().atZone(workSettings.zone()).toLocalDateTime());
     }
 
-    public record AssigneeView(
-            Long employeeId, String name, Attendance attendance) {}
+    public record AssigneeView(Long employeeId, String name, Attendance attendance) {}
 
     public record TaskView(
             Long id,
@@ -159,7 +158,8 @@ public class WorkQueryService {
             boolean assigned,
             List<AssigneeView> assignees,
             List<String> warnings,
-            LocalDateTime assignedAt) {}
+            LocalDateTime assignedAt
+    ) {}
 
     public record CalendarCell(
             LocalDate date,
@@ -168,7 +168,8 @@ public class WorkQueryService {
             boolean selected,
             boolean off,
             String holiday,
-            Attendance attendance) {}
+            Attendance attendance
+    ) {}
 
     public record Dashboard(
             LocalDate date,
@@ -193,5 +194,6 @@ public class WorkQueryService {
             boolean participant,
             String participationReason,
             List<RosterReader.ExcludedWorker> excluded,
-            List<String> supportWarnings) {}
+            List<String> supportWarnings
+    ) {}
 }

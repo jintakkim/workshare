@@ -27,7 +27,8 @@ public class ActivityAlbumController {
     public String addRegistration(
             @PathVariable String code,
             @PathVariable Long employeeId,
-            RedirectAttributes flash) {
+            RedirectAttributes flash
+    ) {
         activityRegistrationService.addRegistration(code, employeeId);
         flash.addFlashAttribute("success", "활동에 직원을 추가했습니다.");
         return "redirect:/admin/activities/" + code;
@@ -37,7 +38,8 @@ public class ActivityAlbumController {
     public String deleteRegistration(
             @PathVariable String code,
             @PathVariable Long employeeId,
-            RedirectAttributes flash) {
+            RedirectAttributes flash
+    ) {
         activityRegistrationService.deleteRegistration(code, employeeId);
         flash.addFlashAttribute("success", "활동에서 직원을 제외했습니다.");
         return "redirect:/admin/activities/" + code;

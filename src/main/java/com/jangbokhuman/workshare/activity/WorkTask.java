@@ -68,7 +68,8 @@ public class WorkTask {
             Duty duty,
             WorkPeriod period,
             int requiredWorkers,
-            Instant now) {
+            Instant now
+    ) {
         this.activityCode = Objects.requireNonNull(activity);
         this.workDate = Objects.requireNonNull(workDate);
         this.code = duty.code();
@@ -80,7 +81,11 @@ public class WorkTask {
     }
 
     public static WorkTask create(
-            Activity activity, LocalDate workDate, TaskRequirement requirement, Instant now) {
+            Activity activity,
+            LocalDate workDate,
+            TaskRequirement requirement,
+            Instant now
+    ) {
         return new WorkTask(
                 activity,
                 workDate,

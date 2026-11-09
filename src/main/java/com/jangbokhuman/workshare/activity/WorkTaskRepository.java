@@ -26,7 +26,10 @@ public interface WorkTaskRepository extends JpaRepository<WorkTask, Long> {
             ORDER BY task.id
             """)
     List<WorkTask> findByWorkDateAndActivityCodeAndStatusForUpdate(
-            LocalDate workDate, Activity activityCode, WorkTask.Status status);
+            LocalDate workDate,
+            Activity activityCode,
+            WorkTask.Status status
+    );
 
     List<WorkTask> findByWorkDateAndActivityCodeOrderByCreatedAtAscCodeAsc(LocalDate workDate, Activity activityCode);
 

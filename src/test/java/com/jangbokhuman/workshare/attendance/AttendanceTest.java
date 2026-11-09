@@ -20,7 +20,10 @@ class AttendanceTest {
         "SICK_LEAVE,false,false"
     })
     void attendanceDeterminesTheAvailableShiftAndFullDaySupport(
-            Attendance attendance, boolean morning, boolean evening) {
+            Attendance attendance,
+            boolean morning,
+            boolean evening
+    ) {
         Worker worker = new Worker(1L, "직원", attendance);
         assertThat(worker.canWork(WorkPeriod.MORNING)).isEqualTo(morning);
         assertThat(worker.canWork(WorkPeriod.EVENING)).isEqualTo(evening);

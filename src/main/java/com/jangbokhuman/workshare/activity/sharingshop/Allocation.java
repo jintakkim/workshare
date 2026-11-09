@@ -7,7 +7,10 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 public record Allocation(
-        List<Assignment> assignments, List<String> morningWarnings, List<String> eveningWarnings) {
+        List<Assignment> assignments,
+        List<String> morningWarnings,
+        List<String> eveningWarnings
+) {
 
     public List<String> warnings() {
         return Stream.concat(morningWarnings.stream(), eveningWarnings.stream()).toList();

@@ -171,7 +171,12 @@ public final class PreferenceAllocationPolicy implements AllocationPolicy {
     }
 
     private PlanScore scorePlan(
-            ShiftPlan plan, ShiftQuota quota, ShiftQuota target, FacilityCoverage coverage, int present) {
+            ShiftPlan plan,
+            ShiftQuota quota,
+            ShiftQuota target,
+            FacilityCoverage coverage,
+            int present
+    ) {
         int emptyShopShifts = 0;
         if (quota.morning() > 0 && quota.evening() > 0) {
             emptyShopShifts = (plan.morning().isEmpty() ? 1 : 0) + (plan.evening().isEmpty() ? 1 : 0);
@@ -199,7 +204,10 @@ public final class PreferenceAllocationPolicy implements AllocationPolicy {
     }
 
     private Allocation createAllocation(
-            List<SharingShopWorker> workers, ShiftPlan plan, FacilityCoverage coverage) {
+            List<SharingShopWorker> workers,
+            ShiftPlan plan,
+            FacilityCoverage coverage
+    ) {
         List<Allocation.Assignment> assignments = new ArrayList<>();
         for (SharingShopWorker worker : workers) {
             Set<WorkPeriod> periods = EnumSet.noneOf(WorkPeriod.class);
@@ -218,7 +226,10 @@ public final class PreferenceAllocationPolicy implements AllocationPolicy {
     }
 
     private List<String> getWarnings(
-            WorkPeriod period, Set<SharingShopWorker> assigned, FacilityCoverage coverage) {
+            WorkPeriod period,
+            Set<SharingShopWorker> assigned,
+            FacilityCoverage coverage
+    ) {
         List<String> warnings = new ArrayList<>();
         if (assigned.isEmpty()) {
             warnings.add(period.getLabel() + " 업무 인원 부족: 배정 가능한 직원이 없습니다.");
@@ -230,7 +241,10 @@ public final class PreferenceAllocationPolicy implements AllocationPolicy {
     }
 
     private boolean hasFacilityShortage(
-            FacilityCoverage coverage, WorkPeriod period, Set<SharingShopWorker> assigned) {
+            FacilityCoverage coverage,
+            WorkPeriod period,
+            Set<SharingShopWorker> assigned
+    ) {
         int assignedFacilityWorkers = (int) assigned.stream().filter(SharingShopWorker::facilitySupport).count();
         return coverage.hasShortage(period, assignedFacilityWorkers);
     }
