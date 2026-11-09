@@ -12,7 +12,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 
-/** 직원의 휴가 신청 조건을 검증한다. 직원 조회는 호출한 서비스에서 수행한다. */
 @RequiredArgsConstructor
 @Component
 public class LeaveRequestValidator {
@@ -26,8 +25,9 @@ public class LeaveRequestValidator {
     }
 
     private void validateWorkingDay(LocalDate workDate) {
-        if (!businessCalendar.isWorkingDay(workDate))
+        if (!businessCalendar.isWorkingDay(workDate)) {
             throw new BusinessException(ErrorCode.NOT_ALLOWED, "주말·휴일에는 신청하지 않습니다.");
+        }
     }
 
     private void validateEmployeeWorkPeriod(Employee employee, LocalDate workDate) {

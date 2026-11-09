@@ -10,6 +10,8 @@ public record ParticipationDecision(boolean allowed, String reason) {
     }
 
     public void requireAllowed() {
-        if (!allowed) throw new ParticipationDeniedException(reason);
+        if (!allowed) {
+            throw new ParticipationDeniedException(reason);
+        }
     }
 }
