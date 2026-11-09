@@ -7,8 +7,11 @@ import com.jangbokhuman.workshare.activity.ActivityRegistrationRepository;
 import com.jangbokhuman.workshare.activity.ActivityRegistrationService;
 import com.jangbokhuman.workshare.activity.AllocationScheduler;
 import com.jangbokhuman.workshare.activity.AssignmentGuard;
+import com.jangbokhuman.workshare.activity.DailyActivityParticipationPolicy;
+import com.jangbokhuman.workshare.activity.RosterReader;
+import com.jangbokhuman.workshare.activity.Worker;
 import com.jangbokhuman.workshare.activity.TaskAssignmentRepository;
-import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
+import com.jangbokhuman.workshare.activity.sharingshop.SharingShopTaskReader;
 import com.jangbokhuman.workshare.activity.WorkTaskRepository;
 import com.jangbokhuman.workshare.activity.WorkTaskService;
 import com.jangbokhuman.workshare.calendar.HolidayCalendarService;
@@ -20,21 +23,23 @@ import com.jangbokhuman.workshare.employee.EmployeePhotoRepository;
 import com.jangbokhuman.workshare.employee.EmployeeRepository;
 import com.jangbokhuman.workshare.employee.RosterService;
 import com.jangbokhuman.workshare.attendance.Attendance;
+import com.jangbokhuman.workshare.attendance.LeaveCalendarService;
 import com.jangbokhuman.workshare.attendance.LeaveRequestRepository;
 import com.jangbokhuman.workshare.attendance.LeaveRequestService;
 import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportAssignmentRepository;
 import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportExchangeRequestRepository;
 import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportExchangeService;
 import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportRequirementRepository;
+import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportQueryService;
 import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportScheduleService;
 import com.jangbokhuman.workshare.activity.sharingshop.SharingShopTimePreferenceService;
-import com.jangbokhuman.workshare.activity.sharingshop.SharingShopExtraTaskService;
 import com.jangbokhuman.workshare.activity.sharingshop.Preference;
 import com.jangbokhuman.workshare.activity.sharingshop.SharingShopTimePreferenceRepository;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 import com.jangbokhuman.workshare.config.AuthenticatedUser;
+import com.jangbokhuman.workshare.config.WorkSettings;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,8 +71,12 @@ abstract class BusinessFeatureTestSupport {
     @Autowired SharingShopTimePreferenceService sharingShopTimePreferenceService;
     @Autowired RosterService rosterService;
     @Autowired HolidayService holidayService;
-    @Autowired WorkQueryService workQueryService;
+    @Autowired LeaveCalendarService leaveCalendarService;
+    @Autowired SharingShopTaskReader sharingShopTaskReader;
+    @Autowired RosterReader rosterReader;
+    @Autowired DailyActivityParticipationPolicy dailyActivityParticipationPolicy;
     @Autowired TestClock testClock;
+    @Autowired WorkSettings workSettings;
     @Autowired EmployeeRepository employeeRepository;
     @Autowired EmployeePhotoRepository employeePhotoRepository;
     @Autowired LeaveRequestRepository leaveRequestRepository;
@@ -81,13 +90,13 @@ abstract class BusinessFeatureTestSupport {
     @Autowired WorkTaskRepository workTaskRepository;
     @Autowired TaskAssignmentRepository taskAssignmentRepository;
     @Autowired WorkTaskService workTaskService;
-    @Autowired SharingShopExtraTaskService sharingShopExtraTaskService;
     @Autowired DailyAllocationService dailyAllocationService;
     @Autowired MockMvc mockMvc;
     @Autowired CafeteriaSupportRequirementRepository cafeteriaSupportRequirementRepository;
     @Autowired CafeteriaSupportAssignmentRepository cafeteriaSupportAssignmentRepository;
     @Autowired CafeteriaSupportExchangeRequestRepository cafeteriaSupportExchangeRequestRepository;
     @Autowired CafeteriaSupportScheduleService cafeteriaSupportScheduleService;
+    @Autowired CafeteriaSupportQueryService cafeteriaSupportQueryService;
     @Autowired CafeteriaSupportExchangeService cafeteriaSupportExchangeService;
 
     // Prevent wall-clock background triggers; feature scenarios invoke the real allocation entry
@@ -99,7 +108,7 @@ abstract class BusinessFeatureTestSupport {
 
     @BeforeEach
     void reset() {
-        allocationScheduler = new AllocationScheduler(dailyAllocationService);
+        allocationScheduler = new AllocationScheduler(dailyAllocationService, workSettings);
         testClock.set(TODAY.atTime(8, 30));
         cafeteriaSupportExchangeRequestRepository.deleteAll();
         cafeteriaSupportAssignmentRepository.deleteAll();
@@ -129,8 +138,21 @@ abstract class BusinessFeatureTestSupport {
         testClock.set(TODAY.atTime(LocalTime.parse(time)));
     }
 
-    protected WorkQueryService.TaskView task(List<WorkQueryService.TaskView> views, String code) {
+    protected SharingShopTaskReader.TaskView task(List<SharingShopTaskReader.TaskView> views, String code) {
         return views.stream().filter(t -> t.code().equals(code)).findFirst().orElseThrow();
+    }
+
+    protected List<SharingShopTaskReader.TaskView> sharingShopTasks(LocalDate date) {
+        return sharingShopTaskReader.getTasks(date);
+    }
+
+    protected List<Worker> sharingShopWorkers(LocalDate date) {
+        return rosterReader.getWorkersOn(Activity.SHARING_SHOP, date);
+    }
+
+    protected boolean canJoinSharingShop(Long employeeId, LocalDate date) {
+        Employee employee = employeeRepository.findById(employeeId).orElseThrow();
+        return dailyActivityParticipationPolicy.evaluateAvailability(employee, Activity.SHARING_SHOP, date).allowed();
     }
 
     protected void saveRequest(
@@ -141,10 +163,6 @@ abstract class BusinessFeatureTestSupport {
     ) {
         leaveRequestService.save(employeeId(name), date, attendance);
         sharingShopTimePreferenceService.save(employeeId(name), preference);
-    }
-
-    protected Long addTask(LocalDate date, String name, WorkPeriod period, int count) {
-        return sharingShopExtraTaskService.addTask(date, name, period, count);
     }
 
     protected void registerRestaurant(String name) {

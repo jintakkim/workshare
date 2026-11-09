@@ -2,9 +2,10 @@ package com.jangbokhuman.workshare.integration;
 
 import com.jangbokhuman.workshare.common.BusinessException;
 import com.jangbokhuman.workshare.activity.Activity;
-import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
+import com.jangbokhuman.workshare.activity.sharingshop.SharingShopTaskReader;
 import com.jangbokhuman.workshare.calendar.WorkPeriod;
 import com.jangbokhuman.workshare.attendance.Attendance;
+import com.jangbokhuman.workshare.attendance.LeaveCalendarService;
 import com.jangbokhuman.workshare.activity.sharingshop.Preference;
 
 import static org.assertj.core.api.Assertions.*;
@@ -34,8 +35,7 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
                 .hasMessageContaining("마감");
         saveRequest("홍길동", TODAY.plusDays(1), Attendance.VACATION, Preference.MORNING);
         saveRequest("홍길동", TODAY.plusDays(1), Attendance.WORK, Preference.EVENING);
-        WorkQueryService.Dashboard next =
-                workQueryService.getDashboard(TODAY.plusDays(1), employeeId("홍길동"));
+        LeaveCalendarService.LeaveCalendar next = leaveCalendarService.getCalendar(TODAY.plusDays(1), employeeId("홍길동"));
         assertThat(next.attendance()).isEqualTo(Attendance.WORK);
         assertThat(sharingShopTimePreferenceService.getTimePreference(employeeId("홍길동")))
                 .isEqualTo(Preference.EVENING);
@@ -74,9 +74,9 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
         LocalDate date = TODAY.plusDays(1);
         saveRequest("홍길동", date, Attendance.AFTERNOON_HALF_DAY, Preference.MORNING);
         holidayService.addHoliday(date, "임시 휴무");
-        assertThat(workQueryService.getDashboard(date, employeeId("홍길동")).businessDay()).isFalse();
+        assertThat(leaveCalendarService.getCalendar(date, employeeId("홍길동")).businessDay()).isFalse();
         holidayService.removeHoliday(date);
-        assertThat(workQueryService.getDashboard(date, employeeId("홍길동")).attendance())
+        assertThat(leaveCalendarService.getCalendar(date, employeeId("홍길동")).attendance())
                 .isEqualTo(Attendance.AFTERNOON_HALF_DAY);
     }
 
@@ -97,11 +97,10 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
                                 .with(csrf())
                                 .locale(Locale.US)
                                 .param("date", TODAY.toString())
-                                .param("attendance", "WORK")
-                                .param("activityCode", Activity.SHARING_SHOP.getCode()))
+                                .param("attendance", "WORK"))
                 .andExpect(
                         redirectedUrl(
-                                "/my-leave?date=2026-11-04&activityCode=SHARING_SHOP#day-details"));
+                                "/my-leave?date=2026-11-04#day-details"));
         mockMvc.perform(
                         post("/sharing-shop/time-preference")
                                 .with(testUser("홍길동", "STAFF"))
@@ -132,7 +131,7 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
                                     .param("date", TODAY.toString())
                                     .param("attendance", attendance.name()))
                     .andExpect(status().is3xxRedirection());
-            assertThat(workQueryService.getDashboard(TODAY, employeeId("김민수")).attendance())
+            assertThat(leaveCalendarService.getCalendar(TODAY, employeeId("김민수")).attendance())
                     .isEqualTo(attendance);
         }
         mockMvc.perform(
@@ -158,9 +157,9 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
                                 .param("date", TODAY.toString())
                                 .param("attendance", "SICK_LEAVE"))
                 .andExpect(status().is3xxRedirection());
-        assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).attendance())
+        assertThat(leaveCalendarService.getCalendar(TODAY, employeeId("홍길동")).attendance())
                 .isEqualTo(Attendance.SICK_LEAVE);
-        assertThat(workQueryService.getDashboard(TODAY, employeeId("김민수")).attendance())
+        assertThat(leaveCalendarService.getCalendar(TODAY, employeeId("김민수")).attendance())
                 .isEqualTo(Attendance.WORK);
         mockMvc.perform(
                         get("/admin")
@@ -178,8 +177,6 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
         register("김민수");
         Long target = employeeRepository.findByName("김민수").orElseThrow().getId();
         leaveRequestService.save(target, TODAY, Attendance.SICK_LEAVE);
-        addTask(TODAY, "아침 지원", WorkPeriod.MORNING, 2);
-        addTask(TODAY, "저녁 지원", WorkPeriod.EVENING, 2);
         assertThatThrownBy(
                         () ->
                                 leaveRequestService.save(
@@ -190,11 +187,11 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
                 .hasMessageContaining("마감");
         now("08:50");
         dailyAllocationService.allocateTodayIfDue();
-        assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks())
+        assertThat(sharingShopTasks(TODAY))
                 .allSatisfy(
                         t ->
                                 assertThat(t.assignees())
-                                        .extracting(WorkQueryService.AssigneeView::name)
+                                        .extracting(SharingShopTaskReader.AssigneeView::name)
                                         .doesNotContain("김민수"));
         mockMvc.perform(get("/").with(testUser("김민수", "STAFF")))
                 .andExpect(status().isOk())
@@ -221,9 +218,9 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
                                 .param("employeeId", String.valueOf(otherId)))
                 .andExpect(
                         redirectedUrl(
-                                "/my-leave?date=2026-11-04&activityCode=SHARING_SHOP#day-details"));
-        WorkQueryService.Dashboard view =
-                (WorkQueryService.Dashboard)
+                                "/my-leave?date=2026-11-04#day-details"));
+        LeaveCalendarService.LeaveCalendar view =
+                (LeaveCalendarService.LeaveCalendar)
                         mockMvc.perform(
                                         get("/my-leave")
                                                 .param("employeeId", String.valueOf(otherId))
@@ -235,7 +232,7 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
                                 .get("view");
         assertThat(view.myId()).isEqualTo(id);
         assertThat(view.attendance()).isEqualTo(Attendance.VACATION);
-        assertThat(workQueryService.getDashboard(TODAY, employeeId("김민수")).attendance())
+        assertThat(leaveCalendarService.getCalendar(TODAY, employeeId("김민수")).attendance())
                 .isEqualTo(Attendance.WORK);
         mockMvc.perform(
                         post("/admin/leave-requests")
@@ -268,7 +265,7 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
                                 .param("attendance", "WORK"))
                 .andExpect(redirectedUrl("/my-leave?date=2026-11-04#day-details"))
                 .andExpect(flash().attributeExists("error"));
-        assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).attendance())
+        assertThat(leaveCalendarService.getCalendar(TODAY, employeeId("홍길동")).attendance())
                 .isEqualTo(Attendance.SICK_LEAVE);
     }
 }

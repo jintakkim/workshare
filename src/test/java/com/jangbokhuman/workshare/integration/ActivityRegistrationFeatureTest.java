@@ -3,7 +3,7 @@ package com.jangbokhuman.workshare.integration;
 import com.jangbokhuman.workshare.activity.Activity;
 import com.jangbokhuman.workshare.activity.ActivityRegistration;
 import com.jangbokhuman.workshare.activity.ParticipationDeniedException;
-import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
+import com.jangbokhuman.workshare.activity.sharingshop.SharingShopTaskReader;
 import com.jangbokhuman.workshare.employee.WorkGroupType;
 import com.jangbokhuman.workshare.attendance.Attendance;
 import com.jangbokhuman.workshare.activity.sharingshop.Preference;
@@ -40,8 +40,8 @@ class ActivityRegistrationFeatureTest extends BusinessFeatureTestSupport {
         dailyAllocationService.allocateTodayIfDue();
         assertThat(activityRegistrationRepository.existsByActivityCodeAndEmployeeId(Activity.SHARING_SHOP, employeeId)).isTrue();
         assertThat(sharingShopTimePreferenceService.getTimePreferenceSettings(employeeId).canChange()).isTrue();
-        assertThat(workQueryService.getDashboard(TODAY, employeeId).tasks())
-                .allSatisfy(task -> assertThat(task.assignees()).extracting(WorkQueryService.AssigneeView::employeeId).doesNotContain(employeeId));
+        assertThat(sharingShopTasks(TODAY))
+                .allSatisfy(task -> assertThat(task.assignees()).extracting(SharingShopTaskReader.AssigneeView::employeeId).doesNotContain(employeeId));
     }
 
     @Test
@@ -70,16 +70,16 @@ class ActivityRegistrationFeatureTest extends BusinessFeatureTestSupport {
         sharingShopTimePreferenceService.save(employeeId, Preference.EVENING);
         now("08:50");
         dailyAllocationService.allocateTodayIfDue();
-        List<WorkQueryService.TaskView> confirmed = workQueryService.getDashboard(TODAY, employeeId).tasks();
+        List<SharingShopTaskReader.TaskView> confirmed = sharingShopTasks(TODAY);
         now("09:00");
         activityRegistrationService.deleteRegistration(Activity.SHARING_SHOP.getCode(), employeeId);
         assertThat(activityRegistrationRepository.existsByActivityCodeAndEmployeeId(Activity.SHARING_SHOP, employeeId)).isFalse();
         assertThat(sharingShopTimePreferenceRepository.findByEmployeeId(employeeId)).isEmpty();
-        assertThat(workQueryService.getDashboard(TODAY, employeeId).tasks()).isEqualTo(confirmed);
+        assertThat(sharingShopTasks(TODAY)).isEqualTo(confirmed);
         registerForActivity(Activity.SHARING_SHOP, "홍길동");
         assertThat(activityRegistrationRepository.existsByActivityCodeAndEmployeeId(Activity.SHARING_SHOP, employeeId)).isTrue();
         assertThat(sharingShopTimePreferenceService.getTimePreference(employeeId)).isEqualTo(Preference.ANY);
-        assertThat(workQueryService.getDashboard(TODAY, employeeId).tasks()).isEqualTo(confirmed);
+        assertThat(sharingShopTasks(TODAY)).isEqualTo(confirmed);
     }
 
     @Test
@@ -91,11 +91,11 @@ class ActivityRegistrationFeatureTest extends BusinessFeatureTestSupport {
         sharingShopTimePreferenceService.save(employeeId, Preference.MORNING);
         now("08:50");
         dailyAllocationService.allocateTodayIfDue();
-        List<WorkQueryService.TaskView> confirmed = workQueryService.getDashboard(TODAY, employeeId).tasks();
+        List<SharingShopTaskReader.TaskView> confirmed = sharingShopTasks(TODAY);
         rosterService.changeWorkGroup(employeeId, "RESTAURANT");
         assertThat(activityRegistrationRepository.existsByActivityCodeAndEmployeeId(Activity.SHARING_SHOP, employeeId)).isFalse();
         assertThat(sharingShopTimePreferenceRepository.findByEmployeeId(employeeId)).isEmpty();
-        assertThat(workQueryService.getDashboard(TODAY, employeeId).tasks()).isEqualTo(confirmed);
+        assertThat(sharingShopTasks(TODAY)).isEqualTo(confirmed);
         assertThatThrownBy(() -> registerForActivity(Activity.SHARING_SHOP, "홍길동"))
                 .isInstanceOf(ParticipationDeniedException.class);
         rosterService.changeWorkGroup(employeeId, "THIRD_FLOOR");

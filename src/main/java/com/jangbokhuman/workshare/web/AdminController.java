@@ -1,7 +1,6 @@
 package com.jangbokhuman.workshare.web;
 
 import com.jangbokhuman.workshare.activity.ActivityManagementService;
-import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
 import com.jangbokhuman.workshare.calendar.HolidayCalendarService;
 import com.jangbokhuman.workshare.calendar.WorkTime;
 import com.jangbokhuman.workshare.common.BusinessException;
@@ -9,6 +8,7 @@ import com.jangbokhuman.workshare.common.ErrorCode;
 import com.jangbokhuman.workshare.employee.RosterService;
 import com.jangbokhuman.workshare.employee.WorkGroupType;
 import com.jangbokhuman.workshare.attendance.Attendance;
+import com.jangbokhuman.workshare.attendance.LeaveCalendarService;
 import com.jangbokhuman.workshare.attendance.LeaveRequestService;
 
 import lombok.RequiredArgsConstructor;
@@ -29,7 +29,7 @@ import java.util.List;
 @Controller
 public class AdminController {
     private final RosterService rosterService;
-    private final WorkQueryService workQueryService;
+    private final LeaveCalendarService leaveCalendarService;
     private final WorkTime workTime;
     private final LeaveRequestService leaveRequestService;
     private final ActivityManagementService activityManagementService;
@@ -38,7 +38,6 @@ public class AdminController {
     @GetMapping("/admin")
     public String showAdminPage(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(defaultValue = "SHARING_SHOP") String activityCode,
             @RequestParam(name = "section", defaultValue = "leave") String sectionCode,
             @RequestParam(required = false) Long employeeId,
             Model model
@@ -52,7 +51,7 @@ public class AdminController {
             case HOLIDAYS -> model.addAttribute("view", holidayCalendarService.getHolidayCalendar(selectedDate));
             case LEAVE -> model.addAttribute(
                     "view",
-                    workQueryService.getDashboard(selectedDate, selected == null ? null : selected.id(), activityCode)
+                    leaveCalendarService.getCalendar(selectedDate, selected == null ? null : selected.id())
             );
             case EMPLOYEES -> {
             }
@@ -87,7 +86,6 @@ public class AdminController {
             @RequestParam Long employeeId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam Attendance attendance,
-            @RequestParam(defaultValue = "SHARING_SHOP") String activityCode,
             RedirectAttributes flash
     ) {
         leaveRequestService.save(employeeId, date, attendance);
@@ -95,7 +93,6 @@ public class AdminController {
         flash.addAttribute("section", AdminSection.LEAVE.getCode());
         flash.addAttribute("employeeId", employeeId);
         flash.addAttribute("date", date.toString());
-        flash.addAttribute("activityCode", activityCode);
         return "redirect:/admin#day-details";
     }
 

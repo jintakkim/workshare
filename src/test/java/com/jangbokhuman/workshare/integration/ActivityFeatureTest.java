@@ -8,7 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jangbokhuman.workshare.activity.Activity;
 import com.jangbokhuman.workshare.activity.ActivityManagementService;
 import com.jangbokhuman.workshare.activity.ParticipationDeniedException;
-import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
+import com.jangbokhuman.workshare.activity.sharingshop.SharingShopTaskReader;
 import com.jangbokhuman.workshare.activity.Worker;
 import com.jangbokhuman.workshare.employee.WorkGroupType;
 import com.jangbokhuman.workshare.activity.sharingshop.Preference;
@@ -32,7 +32,7 @@ class ActivityFeatureTest extends BusinessFeatureTestSupport {
                 .isInstanceOf(ParticipationDeniedException.class);
         now("08:50");
         dailyAllocationService.allocateTodayIfDue();
-        assertThat(workQueryService.getDashboard(TODAY, employeeId).tasks())
+        assertThat(sharingShopTasks(TODAY))
                 .allSatisfy(task -> assertThat(task.assignees()).isEmpty());
     }
 
@@ -41,11 +41,11 @@ class ActivityFeatureTest extends BusinessFeatureTestSupport {
     void eligibleWorkersMustRegisterBeforeParticipating() {
         rosterService.registerEmployee("서지우", "staff-password", "THIRD_FLOOR");
         Long employeeId = employeeId("서지우");
-        assertThat(workQueryService.getDashboard(TODAY, employeeId).participant()).isFalse();
+        assertThat(canJoinSharingShop(employeeId, TODAY)).isFalse();
         assertThatThrownBy(() -> sharingShopTimePreferenceService.save(employeeId, Preference.MORNING))
                 .isInstanceOf(ParticipationDeniedException.class);
         registerForActivity(Activity.SHARING_SHOP, "서지우");
-        assertThat(workQueryService.getDashboard(TODAY, employeeId).participant()).isTrue();
+        assertThat(canJoinSharingShop(employeeId, TODAY)).isTrue();
         sharingShopTimePreferenceService.save(employeeId, Preference.MORNING);
     }
 
@@ -56,7 +56,7 @@ class ActivityFeatureTest extends BusinessFeatureTestSupport {
         Long employeeId = employeeId("홍길동");
         now("08:50");
         dailyAllocationService.allocateTodayIfDue();
-        List<WorkQueryService.TaskView> before = workQueryService.getDashboard(TODAY, employeeId).tasks();
+        List<SharingShopTaskReader.TaskView> before = sharingShopTasks(TODAY);
         String activityName = Activity.SHARING_SHOP.getName() + ", " + Activity.CAFETERIA_SUPPORT.getName();
         mockMvc.perform(get("/admin/employees/{id}", employeeId).with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())
@@ -68,11 +68,11 @@ class ActivityFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(redirectedUrl("/admin/employees/" + employeeId))
                 .andExpect(flash().attribute("warning", "직군 변경으로 " + activityName + "에서 자동 탈퇴했습니다."));
         assertThat(employeeRepository.findById(employeeId).orElseThrow().getWorkGroup()).isEqualTo(WorkGroupType.RESTAURANT);
-        assertThat(workQueryService.getDashboard(TODAY, employeeId).participant()).isFalse();
-        assertThat(workQueryService.getDashboard(TODAY, employeeId).tasks()).isEqualTo(before);
+        assertThat(canJoinSharingShop(employeeId, TODAY)).isFalse();
+        assertThat(sharingShopTasks(TODAY)).isEqualTo(before);
         rosterService.changeWorkGroup(employeeId, "GENERAL");
-        assertThat(workQueryService.getDashboard(TODAY, employeeId).participant()).isFalse();
-        assertThat(workQueryService.getDashboard(TODAY, employeeId).tasks()).isEqualTo(before);
+        assertThat(canJoinSharingShop(employeeId, TODAY)).isFalse();
+        assertThat(sharingShopTasks(TODAY)).isEqualTo(before);
     }
 
     @Test
@@ -105,7 +105,7 @@ class ActivityFeatureTest extends BusinessFeatureTestSupport {
                 .filteredOn(card -> card.code().equals(Activity.SHARING_SHOP.getCode()))
                 .extracting(ActivityManagementService.Card::members)
                 .containsExactly(7L);
-        assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).workers()).hasSize(7);
+        assertThat(sharingShopWorkers(TODAY)).hasSize(7);
     }
 
     @Test
@@ -118,7 +118,7 @@ class ActivityFeatureTest extends BusinessFeatureTestSupport {
         Long newEmployeeId = employeeId("이서연");
         now("08:50");
         dailyAllocationService.allocateTodayIfDue();
-        List<WorkQueryService.TaskView> before = workQueryService.getDashboard(TODAY, employeeId).tasks();
+        List<SharingShopTaskReader.TaskView> before = sharingShopTasks(TODAY);
         mockMvc.perform(get("/admin/activities/SHARING_SHOP").with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/members/" + employeeId + "/delete")))
@@ -134,9 +134,9 @@ class ActivityFeatureTest extends BusinessFeatureTestSupport {
         mockMvc.perform(post("/admin/activities/SHARING_SHOP/members/{id}/delete", employeeId)
                         .with(testUser("admin", "ADMIN")).with(csrf()))
                 .andExpect(redirectedUrl("/admin/activities/SHARING_SHOP"));
-        assertThat(workQueryService.getDashboard(TODAY, employeeId).workers())
+        assertThat(sharingShopWorkers(TODAY))
                 .extracting(Worker::id).containsExactlyInAnyOrder(employeeId("김민수"), newEmployeeId);
-        assertThat(workQueryService.getDashboard(TODAY, employeeId).tasks()).isEqualTo(before);
+        assertThat(sharingShopTasks(TODAY)).isEqualTo(before);
     }
 
     @Test

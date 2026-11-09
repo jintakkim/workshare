@@ -2,7 +2,7 @@ package com.jangbokhuman.workshare.integration;
 
 import com.jangbokhuman.workshare.activity.Activity;
 import com.jangbokhuman.workshare.activity.ParticipationDeniedException;
-import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
+import com.jangbokhuman.workshare.activity.sharingshop.SharingShopTaskReader;
 import com.jangbokhuman.workshare.activity.Worker;
 import com.jangbokhuman.workshare.calendar.WorkPeriod;
 import com.jangbokhuman.workshare.attendance.Attendance;
@@ -87,16 +87,15 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
                                 .param("timePreference", "EVENING")
                                 .param("name", "김민수"))
                 .andExpect(status().is3xxRedirection());
-        assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).attendance())
+        assertThat(leaveCalendarService.getCalendar(TODAY, employeeId("홍길동")).attendance())
                 .isEqualTo(Attendance.VACATION);
-        assertThat(workQueryService.getDashboard(TODAY, employeeId("김민수")).attendance())
+        assertThat(leaveCalendarService.getCalendar(TODAY, employeeId("김민수")).attendance())
                 .isEqualTo(Attendance.WORK);
-        addTask(TODAY, "정리 업무", WorkPeriod.EVENING, 1);
         now("09:00");
         dailyAllocationService.allocateTodayIfDue();
-        assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks())
-                .extracting(WorkQueryService.TaskView::name)
-                .contains("정리 업무");
+        assertThat(sharingShopTasks(TODAY))
+                .extracting(SharingShopTaskReader.TaskView::code)
+                .containsExactlyInAnyOrder("MORNING", "EVENING");
         mockMvc.perform(get("/sharing-shop").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("day-deck")));
@@ -159,7 +158,7 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
                                 .param("date", TODAY.toString())
                                 .param("timePreference", "MORNING"))
                 .andExpect(status().isForbidden());
-        assertThat(workQueryService.getDashboard(TODAY, employeeId("강수진")).attendance())
+        assertThat(leaveCalendarService.getCalendar(TODAY, employeeId("강수진")).attendance())
                 .isEqualTo(Attendance.AFTERNOON_HALF_DAY);
         assertThat(sharingShopTimePreferenceRepository.count()).isZero();
     }
@@ -169,7 +168,6 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
     void forgedAllocationResultsAreRejectedAndAutomaticAllocationExcludesRestaurantWorkers() {
         register("홍길동");
         registerRestaurant("강수진");
-        Long id = addTask(TODAY, "오전 추가 업무", WorkPeriod.MORNING, 1);
         Long cookId = employeeRepository.findByName("강수진").orElseThrow().getId();
         Long aliceId = employeeRepository.findByName("홍길동").orElseThrow().getId();
         now("08:50");
@@ -188,15 +186,11 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
                 .isInstanceOf(ParticipationDeniedException.class);
         dailyAllocationService.allocateTodayIfDue();
         assertThat(
-                        workQueryService
-                                .getDashboard(TODAY, employeeId("홍길동"))
-                                .tasks().stream()
-                                .filter(task -> task.id().equals(id))
-                                .findFirst()
-                                .orElseThrow()
-                                .assignees())
-                .extracting(WorkQueryService.AssigneeView::employeeId)
-                .containsExactly(aliceId);
+                        sharingShopTasks(TODAY))
+                .isNotEmpty()
+                .allSatisfy(task -> assertThat(task.assignees())
+                        .extracting(SharingShopTaskReader.AssigneeView::employeeId)
+                        .containsExactly(aliceId));
     }
 
     @Test

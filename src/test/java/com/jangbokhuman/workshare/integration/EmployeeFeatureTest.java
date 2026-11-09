@@ -7,7 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jangbokhuman.workshare.common.BusinessException;
 import com.jangbokhuman.workshare.activity.Activity;
-import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
+import com.jangbokhuman.workshare.activity.sharingshop.SharingShopTaskReader;
 import com.jangbokhuman.workshare.activity.Worker;
 import com.jangbokhuman.workshare.employee.Employee;
 import com.jangbokhuman.workshare.employee.RosterService;
@@ -38,11 +38,11 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
         names.forEach(this::register);
         registerRestaurant("강수진");
         assertThat(employeeRepository.count()).isEqualTo(13);
-        assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).workers()).hasSize(12);
+        assertThat(sharingShopWorkers(TODAY)).hasSize(12);
         now("08:50");
         dailyAllocationService.allocateTodayIfDue();
-        List<WorkQueryService.TaskView> before =
-                workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks();
+        List<SharingShopTaskReader.TaskView> before =
+                sharingShopTasks(TODAY);
         assertThat(
                         before.stream()
                                 .filter(t -> t.code().equals("MORNING"))
@@ -62,18 +62,18 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
         rosterService.changeWorkGroup(
                 employeeRepository.findByName("강수진").orElseThrow().getId(), "GENERAL");
         registerForActivity(Activity.SHARING_SHOP, "강수진");
-        assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).workers()).hasSize(14);
-        assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks())
+        assertThat(sharingShopWorkers(TODAY)).hasSize(14);
+        assertThat(sharingShopTasks(TODAY))
                 .isEqualTo(before);
-        assertThat(workQueryService.getDashboard(TODAY.plusDays(1), employeeId("홍길동")).workers())
+        assertThat(sharingShopWorkers(TODAY.plusDays(1)))
                 .hasSize(13)
                 .extracting(Worker::name)
                 .contains("이도윤", "강수진")
                 .doesNotContain("김민수");
         testClock.set(TODAY.plusDays(1).atTime(8, 50));
         dailyAllocationService.allocateTodayIfDue();
-        List<WorkQueryService.TaskView> tomorrow =
-                workQueryService.getDashboard(TODAY.plusDays(1), employeeId("홍길동")).tasks();
+        List<SharingShopTaskReader.TaskView> tomorrow =
+                sharingShopTasks(TODAY.plusDays(1));
         assertThat(
                         tomorrow.stream()
                                 .filter(t -> t.code().equals("MORNING"))
@@ -116,8 +116,8 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"2025-02-05\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("2026-11-04")));
         assertThat(rosterService.getEmployeeView(employeeId).serviceEndDate()).isEqualTo(TODAY);
-        assertThat(workQueryService.getDashboard(TODAY, employeeId).workers()).extracting(Worker::id).contains(employeeId);
-        assertThat(workQueryService.getDashboard(TODAY.plusDays(1), employeeId).workers()).extracting(Worker::id).doesNotContain(employeeId);
+        assertThat(sharingShopWorkers(TODAY)).extracting(Worker::id).contains(employeeId);
+        assertThat(sharingShopWorkers(TODAY.plusDays(1))).extracting(Worker::id).doesNotContain(employeeId);
 
         mockMvc.perform(post(changeDate).with(testUser("홍길동", "STAFF")).with(csrf()))
                 .andExpect(redirectedUrl(profile + "#service-period"))
@@ -154,7 +154,7 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
                         .param("serviceStartDate", "2025-01-05").param("serviceEndDate", "2026-11-05"))
                 .andExpect(flash().attribute("success", "복무 기간을 저장했습니다."));
         assertThat(rosterService.getEmployeeView(id).serviceEndDate()).isEqualTo(TODAY.plusDays(1));
-        assertThat(workQueryService.getDashboard(TODAY.plusDays(1), id).workers())
+        assertThat(sharingShopWorkers(TODAY.plusDays(1)))
                 .extracting(Worker::id).contains(id);
         mockMvc.perform(post(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
                         .param("serviceStartDate", "2025-06-01").param("serviceEndDate", "2026-12-31"))

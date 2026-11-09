@@ -1,144 +1,201 @@
 package com.jangbokhuman.workshare.activity.sharingshop;
 
-import com.jangbokhuman.workshare.activity.Worker;
 import com.jangbokhuman.workshare.activity.Activity;
+import com.jangbokhuman.workshare.activity.RosterReader;
+import com.jangbokhuman.workshare.activity.Worker;
+import com.jangbokhuman.workshare.calendar.BusinessCalendar;
+import com.jangbokhuman.workshare.calendar.Holiday;
+import com.jangbokhuman.workshare.calendar.HolidayRepository;
 import com.jangbokhuman.workshare.calendar.WorkPeriod;
 import com.jangbokhuman.workshare.calendar.WorkTime;
-import com.jangbokhuman.workshare.employee.EmployeePhotoRepository;
-
 import com.jangbokhuman.workshare.config.WorkSettings;
+import com.jangbokhuman.workshare.employee.EmployeePhotoRepository;
 
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.*;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Stream;
 
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class SharingShopQueryService {
-    private final WorkQueryService workQueryService;
+    private final RosterReader rosterReader;
+    private final SharingShopTaskReader sharingShopTaskReader;
+    private final BusinessCalendar businessCalendar;
+    private final HolidayRepository holidayRepository;
     private final WorkTime workTime;
     private final WorkSettings workSettings;
     private final EmployeePhotoRepository employeePhotoRepository;
     private final SharingShopStaffing sharingShopStaffing;
-    private final AllocationPolicy allocationPolicy;
+    private final PreferenceShiftAllocationPolicy preferenceShiftAllocationPolicy;
 
     public Day getDay(LocalDate date, Long employeeId) {
-        WorkQueryService.Dashboard view = workQueryService.getDashboard(date, employeeId, Activity.SHARING_SHOP.getCode());
-        HashSet<Long> photoIds = new HashSet<>(employeePhotoRepository.findEmployeeIds());
-        List<Member> members = view.workers().stream()
-                .map(worker -> new Member(
-                        worker.id(),
-                        worker.name(),
-                        worker.attendance().getLabel(),
-                        photoIds.contains(worker.id()))
-                )
-                .toList();
-        Set<Long> presentIds = view.workers().stream()
-                .filter(w -> !w.attendance().isAbsent())
-                .map(Worker::id)
-                .collect(Collectors.toSet());
-        List<Member> present = members.stream().filter(w -> presentIds.contains(w.id())).toList();
-        List<Member> leave = members.stream().filter(w -> !presentIds.contains(w.id())).toList();
-        List<Member> excluded = view.excluded().stream()
-                .map(excludedWorker -> {
-                    Worker worker = excludedWorker.worker();
-                    String reason = excludedWorker.reason();
-                    if (worker.attendance().isAbsent()) {
-                        reason += " · " + worker.attendance().getLabel();
-                    }
-                    return new Member(worker.id(), worker.name(), reason, photoIds.contains(worker.id()));
-                })
-                .toList();
-        Instant refreshAt = date.atTime(workSettings.allocationResultTime())
-                .atZone(workSettings.zone())
-                .toInstant();
-        List<WorkQueryService.TaskView> shiftTasks = view.tasks().stream()
-                .filter(task -> task.code().equals(WorkPeriod.MORNING.name()) || task.code().equals(WorkPeriod.EVENING.name()))
-                .toList();
-        boolean ready = shiftTasks.stream()
-                .anyMatch(t -> t.code().equals("MORNING") && t.assigned())
-                && shiftTasks.stream()
-                .anyMatch(t -> t.code().equals("EVENING") && t.assigned());
-        String phase;
-        if (!view.businessDay()) {
-            phase = "OFF";
-        } else if (workTime.getInstant().isBefore(refreshAt)) {
-            phase = "WAITING";
-        } else if (ready) {
-            phase = "READY";
-        } else if (date.isBefore(workTime.getToday())) {
-            phase = "MISSING";
-        } else {
-            phase = "PREPARING";
-        }
-        List<Member> morning = phase.equals("READY") ? getAssignees(shiftTasks, WorkPeriod.MORNING.name(), photoIds) : List.of();
-        List<Member> evening = phase.equals("READY") ? getAssignees(shiftTasks, WorkPeriod.EVENING.name(), photoIds) : List.of();
-        ShiftQuota slots = getSlots(view, ready, shiftTasks);
-        ArrayList<String> warnings = new ArrayList<>(view.supportWarnings());
-        if (phase.equals("READY"))
-            warnings.addAll(shiftTasks.stream().flatMap(t -> t.warnings().stream()).distinct().toList());
-        String reason = view.holidayName() == null
-                ? "토·일요일은 쉬는 날이에요."
-                : view.holidayName().isBlank() ? "휴일로 지정된 날이에요." : view.holidayName();
+        RosterReader.DayRoster roster = rosterReader.getRosterOn(Activity.SHARING_SHOP, date);
+        boolean workingDay = businessCalendar.isWorkingDay(date);
+        Set<Long> photoIds = Set.copyOf(employeePhotoRepository.findEmployeeIds());
+        ShiftTasks shiftTasks = ShiftTasks.from(sharingShopTaskReader.getTasks(date));
+        Instant resultReleaseAt = getResultReleaseAt(date);
+        DayPhase phase = determinePhase(date, workingDay, resultReleaseAt, shiftTasks);
+        boolean resultReleased = phase == DayPhase.READY;
+        ShiftQuota slots = getSlots(date, workingDay, roster.workers(), shiftTasks);
         return new Day(
                 date,
                 workTime.getToday(),
                 workTime.getInstant(),
-                refreshAt,
+                resultReleaseAt,
                 phase,
-                view.businessDay(),
-                reason,
-                view.businessDay() ? slots.morning() : 0,
-                view.businessDay() ? slots.evening() : 0,
+                workingDay,
+                getOffReason(date),
+                slots.morning(),
+                slots.evening(),
                 WorkPeriod.MORNING.getTimeRange(),
                 WorkPeriod.EVENING.getTimeRange(),
-                present,
-                leave,
-                morning,
-                evening,
-                warnings,
-                excluded);
+                toMembers(roster.workers().stream().filter(worker -> !worker.attendance().isAbsent()), photoIds),
+                toMembers(roster.workers().stream().filter(worker -> worker.attendance().isAbsent()), photoIds),
+                resultReleased ? shiftTasks.getMorningAssignees(photoIds) : List.of(),
+                resultReleased ? shiftTasks.getEveningAssignees(photoIds) : List.of(),
+                getWarnings(roster.warnings(), shiftTasks, resultReleased),
+                toExcludedMembers(roster.excluded(), photoIds)
+        );
     }
 
-    private ShiftQuota getSlots(
-            WorkQueryService.Dashboard view,
-            boolean ready,
-            List<WorkQueryService.TaskView> shiftTasks
-    ) {
-        if (!view.businessDay()) {
+    private Instant getResultReleaseAt(LocalDate date) {
+        return date.atTime(workSettings.allocationResultTime())
+                .atZone(workSettings.zone())
+                .toInstant();
+    }
+
+    private DayPhase determinePhase(LocalDate date, boolean workingDay, Instant resultReleaseAt, ShiftTasks shiftTasks) {
+        if (!workingDay) {
+            return DayPhase.OFF;
+        }
+        if (workTime.getInstant().isBefore(resultReleaseAt)) {
+            return DayPhase.WAITING;
+        }
+        if (shiftTasks.isAssigned()) {
+            return DayPhase.READY;
+        }
+        if (date.isBefore(workTime.getToday())) {
+            return DayPhase.MISSING;
+        }
+        return DayPhase.PREPARING;
+    }
+
+    private ShiftQuota getSlots(LocalDate date, boolean workingDay, List<Worker> workers, ShiftTasks shiftTasks) {
+        if (!workingDay) {
             return new ShiftQuota(0, 0);
         }
-        if (ready) {
-            int morning = shiftTasks.stream().filter(task -> task.code().equals(WorkPeriod.MORNING.name()))
-                    .findFirst().orElseThrow().requiredWorkers();
-            int evening = shiftTasks.stream().filter(task -> task.code().equals(WorkPeriod.EVENING.name()))
-                    .findFirst().orElseThrow().requiredWorkers();
-            return new ShiftQuota(morning, evening);
+        if (shiftTasks.isAssigned()) {
+            return shiftTasks.getRequiredWorkers();
         }
-        SharingShopStaffing.Roster roster = sharingShopStaffing.getRoster(view.date(), view.workers());
-        return allocationPolicy.getPlannedQuota(roster.workers(), roster.quota(), roster.facilityCoverage());
+        SharingShopStaffing.Roster roster = sharingShopStaffing.getRoster(date, workers);
+        return preferenceShiftAllocationPolicy.getPlannedQuota(roster.workers(), roster.quota(), roster.facilityCoverage());
     }
 
-    private List<Member> getAssignees(
-            List<WorkQueryService.TaskView> tasks,
-            String code,
-            Set<Long> photos
-    ) {
-        return tasks.stream()
-                .filter(t -> t.code().equals(code))
-                .flatMap(t -> t.assignees().stream())
-                .map(a -> new Member(
-                        a.employeeId(),
-                        a.name(),
-                        a.attendance().getLabel(),
-                        photos.contains(a.employeeId()))
-                ).toList();
+    private String getOffReason(LocalDate date) {
+        return holidayRepository.findById(date)
+                .map(Holiday::getName)
+                .map(name -> name.isBlank() ? "휴일로 지정된 날이에요." : name)
+                .orElse("토·일요일은 쉬는 날이에요.");
+    }
+
+    private List<String> getWarnings(List<String> rosterWarnings, ShiftTasks shiftTasks, boolean resultReleased) {
+        List<String> warnings = new ArrayList<>(rosterWarnings);
+        if (resultReleased) {
+            warnings.addAll(shiftTasks.getWarnings());
+        }
+        return warnings;
+    }
+
+    private List<Member> toMembers(Stream<Worker> workers, Set<Long> photoIds) {
+        return workers
+                .map(worker -> new Member(worker.id(), worker.name(), worker.attendance().getLabel(), photoIds.contains(worker.id())))
+                .toList();
+    }
+
+    private List<Member> toExcludedMembers(List<RosterReader.ExcludedWorker> excludedWorkers, Set<Long> photoIds) {
+        return excludedWorkers.stream()
+                .map(excluded -> new Member(
+                        excluded.worker().id(),
+                        excluded.worker().name(),
+                        getExclusionLabel(excluded),
+                        photoIds.contains(excluded.worker().id()))
+                )
+                .toList();
+    }
+
+    private String getExclusionLabel(RosterReader.ExcludedWorker excluded) {
+        if (excluded.worker().attendance().isAbsent()) {
+            return excluded.reason() + " · " + excluded.worker().attendance().getLabel();
+        }
+        return excluded.reason();
+    }
+
+    public enum DayPhase {
+        OFF,
+        WAITING,
+        READY,
+        MISSING,
+        PREPARING
+    }
+
+    private record ShiftTasks(Optional<SharingShopTaskReader.TaskView> morning, Optional<SharingShopTaskReader.TaskView> evening) {
+        static ShiftTasks from(List<SharingShopTaskReader.TaskView> tasks) {
+            return new ShiftTasks(findTask(tasks, WorkPeriod.MORNING), findTask(tasks, WorkPeriod.EVENING));
+        }
+
+        private static Optional<SharingShopTaskReader.TaskView> findTask(List<SharingShopTaskReader.TaskView> tasks, WorkPeriod period) {
+            return tasks.stream()
+                    .filter(task -> task.code().equals(period.name()))
+                    .findFirst();
+        }
+
+        boolean isAssigned() {
+            return morning.isPresent() && evening.isPresent();
+        }
+
+        ShiftQuota getRequiredWorkers() {
+            return new ShiftQuota(
+                    morning.map(SharingShopTaskReader.TaskView::requiredWorkers).orElse(0),
+                    evening.map(SharingShopTaskReader.TaskView::requiredWorkers).orElse(0)
+            );
+        }
+
+        List<Member> getMorningAssignees(Set<Long> photoIds) {
+            return toAssignees(morning, photoIds);
+        }
+
+        List<Member> getEveningAssignees(Set<Long> photoIds) {
+            return toAssignees(evening, photoIds);
+        }
+
+        List<String> getWarnings() {
+            return Stream.concat(morning.stream(), evening.stream())
+                    .flatMap(task -> task.warnings().stream())
+                    .distinct()
+                    .toList();
+        }
+
+        private static List<Member> toAssignees(Optional<SharingShopTaskReader.TaskView> task, Set<Long> photoIds) {
+            return task.stream()
+                    .flatMap(view -> view.assignees().stream())
+                    .map(assignee -> new Member(
+                            assignee.employeeId(),
+                            assignee.name(),
+                            assignee.attendance().getLabel(),
+                            photoIds.contains(assignee.employeeId()))
+                    )
+                    .toList();
+        }
     }
 
     public record Member(Long id, String name, String attendance, boolean hasPhoto) {}
@@ -148,7 +205,7 @@ public class SharingShopQueryService {
             LocalDate today,
             Instant serverNow,
             Instant refreshAt,
-            String phase,
+            DayPhase phase,
             boolean workingDay,
             String offReason,
             int morningSlots,

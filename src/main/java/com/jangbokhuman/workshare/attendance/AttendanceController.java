@@ -24,7 +24,6 @@ import java.time.LocalDate;
 @RequiredArgsConstructor
 public class AttendanceController {
     private static final String DATE_PATTERN = "\\d{4}-\\d{2}-\\d{2}";
-    private static final String ACTIVITY_CODE_PATTERN = "[A-Z][A-Z0-9_]*";
 
     private final LeaveRequestService leaveRequestService;
     private final TeamLeaveCalendarService teamLeaveCalendarService;
@@ -47,13 +46,11 @@ public class AttendanceController {
             @AuthenticationPrincipal AuthenticatedUser principal,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam Attendance attendance,
-            @RequestParam(defaultValue = "SHARING_SHOP") String activityCode,
             RedirectAttributes flash
     ) {
         leaveRequestService.save(principal.getEmployeeId(), date, attendance);
         flash.addFlashAttribute("success", "근무 상태를 저장했습니다. 모든 활동에 공통으로 적용합니다.");
         flash.addAttribute("date", date.toString());
-        flash.addAttribute("activityCode", activityCode);
         return "redirect:/my-leave#day-details";
     }
 
@@ -67,10 +64,6 @@ public class AttendanceController {
         String date = request.getParameter("date");
         if (date != null && date.matches(DATE_PATTERN)) {
             flash.addAttribute("date", date);
-        }
-        String activityCode = request.getParameter("activityCode");
-        if (activityCode != null && activityCode.matches(ACTIVITY_CODE_PATTERN)) {
-            flash.addAttribute("activityCode", activityCode);
         }
         return "redirect:/my-leave#day-details";
     }

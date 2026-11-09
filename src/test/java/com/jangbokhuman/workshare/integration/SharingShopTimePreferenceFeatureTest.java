@@ -3,7 +3,7 @@ package com.jangbokhuman.workshare.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
+import com.jangbokhuman.workshare.activity.sharingshop.SharingShopTaskReader;
 import com.jangbokhuman.workshare.activity.ParticipationDeniedException;
 import com.jangbokhuman.workshare.activity.sharingshop.Preference;
 import com.jangbokhuman.workshare.employee.WorkGroupType;
@@ -34,10 +34,10 @@ class SharingShopTimePreferenceFeatureTest extends BusinessFeatureTestSupport {
                         .getId();
         now("08:50");
         dailyAllocationService.allocateTodayIfDue();
-        List<WorkQueryService.TaskView> confirmed =
-                workQueryService.getDashboard(TODAY, employeeId).tasks();
+        List<SharingShopTaskReader.TaskView> confirmed =
+                sharingShopTasks(TODAY);
         assertThat(task(confirmed, "EVENING").assignees())
-                .extracting(WorkQueryService.AssigneeView::employeeId)
+                .extracting(SharingShopTaskReader.AssigneeView::employeeId)
                 .containsExactly(employeeId);
 
         now("09:00");
@@ -49,15 +49,15 @@ class SharingShopTimePreferenceFeatureTest extends BusinessFeatureTestSupport {
                                 .orElseThrow()
                                 .getId())
                 .isEqualTo(preferenceId);
-        assertThat(workQueryService.getDashboard(TODAY, employeeId).tasks()).isEqualTo(confirmed);
+        assertThat(sharingShopTasks(TODAY)).isEqualTo(confirmed);
 
         LocalDate tomorrow = TODAY.plusDays(1);
         testClock.set(tomorrow.atTime(8, 50));
         dailyAllocationService.allocateTodayIfDue();
         assertThat(
-                        task(workQueryService.getDashboard(tomorrow, employeeId).tasks(), "MORNING")
+                        task(sharingShopTasks(tomorrow), "MORNING")
                                 .assignees())
-                .extracting(WorkQueryService.AssigneeView::employeeId)
+                .extracting(SharingShopTaskReader.AssigneeView::employeeId)
                 .containsExactly(employeeId);
     }
 
@@ -111,14 +111,14 @@ class SharingShopTimePreferenceFeatureTest extends BusinessFeatureTestSupport {
         sharingShopTimePreferenceService.save(employeeId, Preference.MORNING);
         assertThat(sharingShopTimePreferenceService.getTimePreference(employeeId))
                 .isEqualTo(Preference.MORNING);
-        assertThat(workQueryService.getDashboard(TODAY, employeeId).participant()).isFalse();
-        assertThat(workQueryService.getDashboard(TODAY, employeeId).workers()).isEmpty();
+        assertThat(canJoinSharingShop(employeeId, TODAY)).isFalse();
+        assertThat(sharingShopWorkers(TODAY)).isEmpty();
 
         now("09:00");
         sharingShopTimePreferenceService.save(employeeId, Preference.EVENING);
         assertThat(sharingShopTimePreferenceService.getTimePreference(employeeId))
                 .isEqualTo(Preference.EVENING);
-        assertThat(workQueryService.getDashboard(TODAY, employeeId).participant()).isFalse();
+        assertThat(canJoinSharingShop(employeeId, TODAY)).isFalse();
     }
 
     @Test

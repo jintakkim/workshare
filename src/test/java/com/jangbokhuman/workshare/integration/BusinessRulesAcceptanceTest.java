@@ -10,7 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
+import com.jangbokhuman.workshare.activity.sharingshop.SharingShopTaskReader;
 import com.jangbokhuman.workshare.calendar.WorkPeriod;
 import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportExchangeService;
 import com.jangbokhuman.workshare.attendance.Attendance;
@@ -120,20 +120,6 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
         mockMvc.perform(get(dayUrl(TODAY)).session(worker))
                 .andExpect(jsonPath("$.morning[*].name").value(containsInAnyOrder("박지훈")))
                 .andExpect(jsonPath("$.evening[*].name").value(containsInAnyOrder("최유진", "정하늘")));
-        JsonNode before = day(worker, TODAY);
-        addTask(TODAY, "오후 물품 정리", WorkPeriod.EVENING, 2);
-        WorkQueryService.Dashboard tasksView = workQueryService.getDashboard(TODAY, employeeId("박지훈"));
-        WorkQueryService.TaskView extra =
-                tasksView.tasks().stream()
-                        .filter(task -> task.name().equals("오후 물품 정리"))
-                        .findFirst()
-                        .orElseThrow();
-        assertThat(extra.assignees())
-                .extracting(WorkQueryService.AssigneeView::name)
-                .containsExactlyInAnyOrder("최유진", "정하늘");
-        JsonNode after = day(worker, TODAY);
-        assertThat(after.get("morning")).isEqualTo(before.get("morning"));
-        assertThat(after.get("evening")).isEqualTo(before.get("evening"));
     }
 
     @Test

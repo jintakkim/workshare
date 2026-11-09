@@ -1,10 +1,10 @@
 package com.jangbokhuman.workshare.web;
 
-import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
 import com.jangbokhuman.workshare.calendar.WorkTime;
 import com.jangbokhuman.workshare.common.BusinessException;
 import com.jangbokhuman.workshare.config.AuthenticatedUser;
 import com.jangbokhuman.workshare.attendance.Attendance;
+import com.jangbokhuman.workshare.attendance.LeaveCalendarService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,22 +22,19 @@ import java.time.LocalDate;
 @Controller
 @RequiredArgsConstructor
 public class LeaveDashboardController {
-    private final WorkQueryService workQueryService;
+    private final LeaveCalendarService leaveCalendarService;
     private final WorkTime workTime;
 
     @GetMapping({"/", "/my-leave"})
     public String showLeaveCalendar(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(defaultValue = "SHARING_SHOP") String activityCode,
             @AuthenticationPrincipal AuthenticatedUser authentication,
             Model model
     ) {
         model.addAttribute(
                 "view",
-                workQueryService.getDashboard(
-                        date == null ? workTime.getToday() : date,
-                        authentication.getEmployeeId(),
-                        activityCode));
+                leaveCalendarService.getCalendar(date == null ? workTime.getToday() : date, authentication.getEmployeeId())
+        );
         model.addAttribute("admin", authentication.isAdmin());
         model.addAttribute("attendances", Attendance.values());
         model.addAttribute("section", "leave");
