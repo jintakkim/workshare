@@ -11,17 +11,11 @@ import lombok.NoArgsConstructor;
 import java.time.*;
 import java.util.*;
 
-/** Aggregate root: one dated piece of work owns its own assignments and completion state. */
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Getter
 @Table(uniqueConstraints = @UniqueConstraint(columnNames = {"work_date", "activity_code", "code"}))
 public class WorkTask {
-    public enum Status {
-        PENDING,
-        ASSIGNED
-    }
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -45,10 +39,6 @@ public class WorkTask {
 
     @Column(nullable = false)
     private int requiredWorkers;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 16)
-    private Status status;
 
     @Column(nullable = false)
     private Instant createdAt;
@@ -76,7 +66,6 @@ public class WorkTask {
         this.name = duty.label();
         this.period = period;
         this.requiredWorkers = requiredWorkers;
-        this.status = Status.PENDING;
         this.createdAt = now;
     }
 
@@ -96,15 +85,16 @@ public class WorkTask {
     }
 
     public List<TaskAssignment> assign(TaskAllocation allocation, Instant now) {
-        if (status != Status.PENDING) throw new IllegalStateException("확정된 업무는 다시 추첨할 수 없습니다.");
+        if (assignedAt != null) {
+            throw new IllegalStateException("확정된 업무는 다시 추첨할 수 없습니다.");
+        }
         if (allocation.workers().size() > requiredWorkers
-                || allocation.workers().stream().anyMatch(w -> !w.canWork(period))
-                || allocation.workers().stream().map(Worker::id).distinct().count()
-                        != allocation.workers().size()) {
+                || allocation.workers().stream().anyMatch(worker -> !worker.canWork(period))
+                || allocation.workers().stream().map(Worker::id).distinct().count() != allocation.workers().size()
+        ) {
             throw new IllegalArgumentException("업무 배정이 인원·출근 조건을 위반했습니다.");
         }
         warnings.addAll(allocation.warnings());
-        status = Status.ASSIGNED;
         assignedAt = now;
         return allocation.workers().stream()
                 .sorted(Comparator.comparing(Worker::name).thenComparing(Worker::id))

@@ -15,6 +15,6 @@ public class WorkTaskAllocationStatus implements DailyAllocationStatus {
 
     @Override
     public boolean isAllocated(LocalDate workDate) {
-        return workTaskRepository.existsByWorkDateAndStatus(workDate, WorkTask.Status.ASSIGNED);
+        return workTaskRepository.existsByWorkDate(workDate);
     }
 }
