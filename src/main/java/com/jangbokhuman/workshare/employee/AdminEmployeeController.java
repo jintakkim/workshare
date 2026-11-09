@@ -4,7 +4,6 @@ import com.jangbokhuman.workshare.common.BusinessException;
 
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,12 +40,6 @@ public class AdminEmployeeController {
     @ExceptionHandler(BusinessException.class)
     public String handleBusinessException(BusinessException error, RedirectAttributes flash) {
         flash.addFlashAttribute("error", error.getMessage());
-        return EMPLOYEE_SECTION;
-    }
-
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    public String handleConcurrentSave(RedirectAttributes flash) {
-        flash.addFlashAttribute("error", "같은 정보가 동시에 저장되었습니다. 새로고침 후 다시 저장해주세요.");
         return EMPLOYEE_SECTION;
     }
 }

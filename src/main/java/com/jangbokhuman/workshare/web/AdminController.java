@@ -13,7 +13,6 @@ import com.jangbokhuman.workshare.attendance.LeaveRequestService;
 
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -103,12 +102,6 @@ public class AdminController {
     @ExceptionHandler(BusinessException.class)
     public String handleBusinessException(BusinessException error, RedirectAttributes flash) {
         flash.addFlashAttribute("error", error.getMessage());
-        return "redirect:/admin";
-    }
-
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    public String handleConcurrentSave(RedirectAttributes flash) {
-        flash.addFlashAttribute("error", "같은 정보가 동시에 저장되었습니다. 새로고침 후 다시 저장해주세요.");
         return "redirect:/admin";
     }
 }

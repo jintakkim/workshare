@@ -8,9 +8,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jangbokhuman.workshare.calendar.HolidayCalendarService;
 import com.jangbokhuman.workshare.attendance.Attendance;
 
+import jakarta.servlet.RequestDispatcher;
+
 import org.junit.jupiter.api.*;
 import org.springframework.boot.test.context.*;
 import org.springframework.context.annotation.*;
+import org.springframework.http.MediaType;
 
 import java.time.*;
 import java.util.*;
@@ -66,7 +69,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
         register("김민수");
         Long id = employeeRepository.findByName("홍길동").orElseThrow().getId();
         for (String page :
-                List.of("/", "/my-leave", "/sharing-shop", "/leave-calendar", "/supports", "/supports/cafeteria", "/employees", "/employees/" + id)) {
+                List.of("/", "/my-leave", "/sharing-shop", "/leave-calendar", "/cafeteria-support", "/cafeteria-support/schedule", "/employees", "/employees/" + id)) {
             String html =
                     mockMvc.perform(get(page).with(testUser("홍길동", "STAFF")))
                             .andExpect(status().isOk())
@@ -81,7 +84,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                             "href=\"/sharing-shop\"",
                             "href=\"/my-leave\"",
                             "href=\"/leave-calendar\"",
-                            "href=\"/supports/cafeteria\"",
+                            "href=\"/cafeteria-support/schedule\"",
                             "href=\"/my-profile\"",
                             "class=\"support-footer\"",
                             "href=\"mailto:support@jangbokhuman.app\"",
@@ -254,5 +257,18 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.date").value(date));
         }
+    }
+
+    @Test
+    @DisplayName("예상하지 못한 서버 오류는 저장 원인을 짐작하지 않고 공통 오류 화면으로 안내한다")
+    void unexpectedServerErrorsShowTheCommonRetryPage() throws Exception {
+        register("홍길동");
+        mockMvc.perform(get("/error")
+                        .with(testUser("홍길동", "STAFF"))
+                        .requestAttr(RequestDispatcher.ERROR_STATUS_CODE, 500)
+                        .accept(MediaType.TEXT_HTML))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("잠시 후 다시 시도해주세요")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("동시에 저장"))));
     }
 }

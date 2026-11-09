@@ -8,7 +8,6 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -61,11 +60,6 @@ public class AttendanceController {
     @ExceptionHandler(BusinessException.class)
     public String handleBusinessException(BusinessException error, HttpServletRequest request, RedirectAttributes flash) {
         return redirectToLeaveCalendar(error.getMessage(), request, flash);
-    }
-
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    public String handleConcurrentSave(HttpServletRequest request, RedirectAttributes flash) {
-        return redirectToLeaveCalendar("같은 정보가 동시에 저장되었습니다. 새로고침 후 다시 저장해주세요.", request, flash);
     }
 
     private String redirectToLeaveCalendar(String message, HttpServletRequest request, RedirectAttributes flash) {
