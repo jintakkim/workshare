@@ -309,6 +309,10 @@ body:has(.admin-menu[open]) { overflow:hidden; }
 .holiday-editor h2 { margin-top:8px; }
 .sr-only { position:absolute; width:1px; height:1px; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
 .sharing-shell { overflow:hidden; }
+.sharing-preference { margin:0 0 28px; }
+.sharing-preference>summary { cursor:pointer; }
+.sharing-preference[open] .sharing-preference-arrow { transform:rotate(180deg); }
+.sharing-preference>.sharing-preference-unavailable { padding-bottom:16px; }
 .day-navigation { display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:6px; }
 .day-navigation .icon-button { width:44px; height:44px; border-radius:12px; background:#fffefa; }
 .day-navigation .button { min-width:78px; }
@@ -362,8 +366,8 @@ body:has(.admin-menu[open]) { overflow:hidden; }
  .album-caption p { font-size:11px; }
  .holiday-calendar .calendar-day { min-height:76px; }
  .holiday-calendar .holiday-mark { font-size:9px; }
- .day-deck { margin-inline:-16px; padding-inline:24px; gap:16px; }
- .day-card { padding:23px 22px; border-radius:21px; }
+ .day-deck { margin-inline:-16px; padding-inline:max(36px, calc((100vw - 460px) / 2)); gap:12px; }
+ .day-card { flex-basis:min(460px, calc(100vw - 72px)); padding:23px 22px; border-radius:21px; opacity:.65; }
  .day-card-heading h2 { font-size:27px; }
  .day-card-heading { padding-bottom:19px; }
  .day-countdown { font-size:29px; }
@@ -378,9 +382,8 @@ body:has(.admin-menu[open]) { overflow:hidden; }
  .menu-footer { margin-top:20px; padding-top:20px; }
 }
 @media(max-width:420px) { .activity-album { grid-template-columns:minmax(0,1fr); } .album-cover { height:165px; } }
+@media(max-width:359px) { .day-deck { margin-inline:-12px; } }
 @media(prefers-reduced-motion:reduce) { .day-card { transition:none; } }
-
-.sharing-leave-link { display:flex; justify-content:center; margin:20px auto 0; max-width:420px; }
 
 /* Support rosters and quota settings reuse the small card controls. */
 .support-toolbar{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:14px 0}.support-toolbar label{flex:1;min-width:140px}.support-setting{margin:20px 0}.support-month{margin-top:20px}.support-day{border-top:1px solid var(--line)}.support-day summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 0}.support-day summary::-webkit-details-marker{display:none}.support-day summary small{display:block;color:var(--muted);margin-top:6px;line-height:1.5}.support-count{white-space:nowrap;font-size:12px;color:#607851}.support-count.mismatch{color:#a45143}.support-off{opacity:.5}.support-day-editor{padding:0 0 18px}.support-save{position:sticky;bottom:0;padding:14px 0;background:#eef1e8ed}.support-save button{width:100%}.quota-rule{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:16px 0;font-size:14px}.quota-rule span{color:var(--muted)}.exchange-card{padding:18px 0;border-top:1px solid var(--line)}.exchange-card h3{line-height:1.6}.exchange-actions{display:flex;gap:10px;margin-top:14px}.exchange-actions form{flex:1}.exchange-actions button{width:100%}.admin-shell>section.card+section.card{margin-top:20px}.excluded-roster .day-member-attendance{color:#9a7046}@media(max-width:400px){.support-toolbar{display:grid;grid-template-columns:1fr}.quota-rule{font-size:12px}}

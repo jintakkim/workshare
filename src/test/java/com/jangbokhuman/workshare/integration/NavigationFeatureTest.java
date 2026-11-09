@@ -100,7 +100,12 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                             .getContentAsString();
             assertThat(html)
                     .contains("class=\"day-deck\"", "data-today=\"2026-11-04\"", "/sharing-shop.js")
-                    .doesNotContain("class=\"calendar-grid\"", "하루를 함께 나누는 일");
+                    .doesNotContain("class=\"calendar-grid\"", "하루를 함께 나누는 일", "내 휴가 입력");
+            if (role.equals("STAFF")) {
+                assertThat(html).contains("<details class=\"panel-disclosure sharing-preference\">");
+            } else {
+                assertThat(html).doesNotContain("sharing-preference");
+            }
         }
         mockMvc.perform(get("/my-profile").with(testUser("홍길동", "STAFF")))
                 .andExpect(redirectedUrl("/employees/" + id));
