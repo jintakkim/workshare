@@ -1,5 +1,5 @@
-<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#495d3f"><title>프로필 · 장복인간</title><link rel="stylesheet" th:href="@{/style.css}"><script defer th:src="@{/admin.js}"></script></head><body class="app-page admin-page"><th:block th:if="${management}"><header th:replace="~{admin :: adminHeader}"></header><dialog th:replace="~{admin :: adminMenu}"></dialog></th:block>
-<th:block th:if="${!management}"><header th:replace="~{fragments/staff-navigation :: header}"></header><dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog></th:block><main class="admin-shell">
+<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#495d3f"><title>프로필 · 장복인간</title><link th:replace="~{fragments/site-layout :: icon}"><link rel="stylesheet" th:href="@{/style.css}"><script defer th:src="@{/admin.js}"></script></head><body class="app-page admin-page"><th:block th:if="${management}"><header th:replace="~{admin :: adminHeader}"></header><dialog th:replace="~{admin :: adminMenu}"></dialog></th:block>
+<th:block th:if="${!management}"><header th:replace="~{fragments/staff-navigation :: header}"></header><dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog></th:block><main th:replace="~{fragments/site-layout :: page('admin-shell', ~{::pageContent})}"><th:block th:fragment="pageContent">
   <a class="profile-back" th:href="${management} ? @{/admin(section='employees')} : @{/employees}">← 직원 목록</a>
   <div th:if="${success}" class="notice" role="status" th:text="${success}"></div>
   <div th:if="${warning}" class="notice danger" role="status" th:text="${warning}"></div>
@@ -32,5 +32,5 @@
         </div>
         <button class="button" type="submit">직군 변경</button></form><details th:if="${employee.inactiveFrom == null}" class="panel-disclosure"><summary>업무 인원에서 제외 <span aria-hidden="true">＋</span></summary><form th:action="@{/admin/employees/{id}/retire(id=${employee.id})}" method="post" class="stack"><p class="small muted">과거 배정 기록과 프로필은 보관합니다. 마감 이후 변경은 내일부터 적용합니다.</p><button class="button" type="submit">인원 제외</button></form></details></section>
     </div>
-  </div><footer class="admin-footer"><span>장복인간</span><span>함께 맡은 일을, 함께 나눕니다.</span></footer>
-</main></body></html>
+  </div>
+</th:block></main></body></html>

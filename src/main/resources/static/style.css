@@ -32,9 +32,9 @@
   font-weight: 400;
   line-height: 1.2;
   letter-spacing: -1.8px;
-  color: #41543a;
+  color: #263821;
 }
-.signin-wordmark span:last-child { color: #738465; }
+.signin-wordmark span:last-child { color: #405436; }
 .signin-wordmark::after { content: ""; width: 6px; height: 6px; margin-left: 3px; border-radius: 50%; background: #b9aa78; }
 .signin-purpose { margin-top: 8px; color: #818976; font-size: 12px; font-weight: 500; letter-spacing: .3px; line-height: 1.6; }
 .signin-shell { width: 100%; border: 1px solid #dee3d5; border-radius: 19px; background: #fffefa; box-shadow: 0 13px 40px -28px #3f50354a; overflow: hidden; }
@@ -68,7 +68,8 @@
 .intro .time-note { grid-template-columns:1fr; gap:6px; }
 .intro .time-note strong { margin-left:0; font-size:16px; line-height:1.5; white-space:normal; word-break:keep-all; }
 .intro .time-note small { white-space:normal; }
-.support-footer { flex-wrap:wrap; gap:8px 16px; color:#526446; font-size:12px; }
+.support-footer { flex-wrap:wrap; align-items:center; gap:8px 16px; color:#526446; font-size:12px; word-break:keep-all; }
+.support-footer .app-wordmark { font-size:20px; letter-spacing:-.5px; }
 .support-footer a { text-decoration:underline; text-underline-offset:2px; }
 .sharing-shell>.support-footer { margin-top:0; }
 /* Phone-first interaction sizes and a direct jump from the calendar to its request forms. */
@@ -110,8 +111,8 @@
 
 /* Shared olive and cream palette, matching the login screen. */
 .app-page { --green:#495d3f; --ink:#394832; --muted:#7b8273; --line:#dee3d5; --bg:#f2f3ec; --paper:#fffefa; background:radial-gradient(ellipse at 50% 0,#e6ebdf80,transparent 700px),var(--bg); }
-.app-wordmark { display:inline-flex; gap:1px; color:#41543a; font-family:"Jangbok Wordmark","Apple SD Gothic Neo",sans-serif; font-size:31px; font-weight:400; letter-spacing:-1px; line-height:1.2; }
-.app-wordmark>span:last-child { color:#738465; }
+.app-wordmark { display:inline-flex; gap:1px; color:#263821; font-family:"Jangbok Wordmark","Apple SD Gothic Neo",sans-serif; font-size:31px; font-weight:400; letter-spacing:-1px; line-height:1.2; }
+.app-wordmark>span:last-child { color:#405436; }
 .app-wordmark::after { content:""; align-self:end; width:4px; height:4px; margin:0 0 6px 3px; border-radius:50%; background:#b9aa78; }
 .admin-header { border-bottom:1px solid var(--line); background:#fffefaed; }
 .admin-header-inner { max-width:1120px; margin:auto; min-height:94px; padding:18px 24px; display:flex; align-items:center; justify-content:space-between; gap:20px; }
@@ -161,7 +162,6 @@
 .admin-page .employee-row>div { flex:1; min-width:130px; }
 .admin-page .employee-row .compact-form { width:auto; }
 .settings-grid>section:first-child { grid-column:1/-1; }
-.admin-footer { gap:14px; line-height:1.6; margin-top:32px; font-size:10px; }
 .admin-menu { position:fixed; inset:0 0 0 auto; width:min(360px,100%); max-width:100%; height:100dvh; max-height:100dvh; margin:0; padding:30px 24px; border:0; border-left:1px solid var(--line); background:#fffefa; color:#394832; box-shadow:-15px 0 60px #26332015; }
 .admin-menu::backdrop { background:#25321ec0; backdrop-filter:blur(3px); }
 .menu-heading { display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; }
@@ -196,7 +196,6 @@ body:has(.admin-menu[open]) { overflow:hidden; }
  .admin-page .employee-row .compact-form { width:100%; }
  .admin-page .employee-row .compact-form .button { flex-shrink:0; }
  .admin-page .settings-grid { gap:18px; }
- .admin-footer { flex-direction:column; align-items:flex-start; gap:6px; }
 }
 @media(max-width:359px) {
  .admin-header-inner { padding:15px 16px; }

@@ -4,7 +4,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#495d3f"><title>관리자 · 장복인간</title>
   <link rel="preload" th:href="@{/fonts/jangbokhuman-wordmark.woff2}" as="font" type="font/woff2" crossorigin="anonymous">
-  <link rel="stylesheet" th:href="@{/style.css}"><script defer th:src="@{/admin.js}"></script><script defer th:src="@{/forms.js}"></script>
+  <link th:replace="~{fragments/site-layout :: icon}"><link rel="stylesheet" th:href="@{/style.css}"><script defer th:src="@{/admin.js}"></script><script defer th:src="@{/forms.js}"></script>
 </head>
 <body class="app-page admin-page">
 <header class="admin-header" th:fragment="adminHeader"><div class="admin-header-inner">
@@ -23,7 +23,7 @@
   </nav>
   <div class="menu-footer"><a class="button" th:href="@{/sharing-shop}">일반 화면 보기</a><form th:action="@{/logout}" method="post"><button class="text-button" type="submit">로그아웃</button></form></div>
 </dialog>
-<main class="admin-shell">
+<main th:replace="~{fragments/site-layout :: page('admin-shell', ~{::pageContent})}"><th:block th:fragment="pageContent">
   <div th:if="${success}" class="notice" role="status" th:text="${success}"></div><div th:if="${error}" class="notice danger" role="alert" th:text="${error}"></div>
   <section class="admin-pane" th:if="${section == 'leave'}" aria-labelledby="leave-title">
     <div class="pane-heading"><div><p class="eyebrow">일정을 살피는 시간</p><h1 id="leave-title">휴가 일정</h1><p>직원과 날짜를 선택해 근무 상태를 알려주세요.</p></div><span class="schedule-pill" th:text="${#temporals.format(view.cutoff, 'HH:mm') + ' 입력 마감'}"></span></div>
@@ -54,5 +54,4 @@
   <div class="activity-album"><a class="activity-album-card" th:each="card, stat : ${album}" th:href="@{/admin/activities/{code}(code=${card.code})}" th:classappend="${'album-tone-' + (stat.index % 3)}"><div class="album-cover" aria-hidden="true"><svg viewBox="0 0 120 100" fill="none"><rect x="20" y="34" width="64" height="50" rx="9" stroke="currentColor" stroke-width="2"/><rect x="36" y="18" width="64" height="50" rx="9" stroke="currentColor" stroke-width="2"/><path d="M48 49h37M48 38h24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>↗</span></div><div class="album-caption"><h2 th:text="${card.code == 'SHARING_SHOP' ? '나눔가게 활동' : card.name}"></h2><p th:text="${card.description.isBlank() ? '활동 내용과 담당 직원을 확인해보세요.' : card.description}"></p><span th:text="${'담당 직원 ' + card.members + '명'}"></span></div></a></div>
   <div class="card empty-album" th:if="${album.isEmpty()}"><span aria-hidden="true">▧</span><h2>아직 등록된 활동이 없어요</h2><p>활동이 등록되면 여기서 확인할 수 있어요.</p></div>
 </section>
-<footer class="admin-footer"><span>장복인간</span><span>서로의 일정을 살피고, 일을 나눕니다.</span></footer>
-</main></body></html>
+</th:block></main></body></html>

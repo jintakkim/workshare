@@ -89,6 +89,7 @@ public class SecurityConfiguration {
                                                 "/style.css",
                                                 "/admin.js",
                                                 "/forms.js",
+                                                "/favicon.svg",
                                                 "/fonts/**",
                                                 "/error")
                                         .permitAll()

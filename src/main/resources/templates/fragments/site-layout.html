@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <link th:fragment="icon" rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+</head>
+<body>
+<main th:fragment="page(layoutClass, content)" th:class="${layoutClass}">
+  <th:block th:replace="${content}"></th:block>
+  <footer class="support-footer">
+    <strong class="app-wordmark"><span>장복</span><span>인간</span></strong>
+    <p>버그나 건의사항은 <a href="mailto:support@jangbokhuman.app">support@jangbokhuman.app</a>으로 보내주세요.</p>
+  </footer>
+</main>
+</body>
+</html>

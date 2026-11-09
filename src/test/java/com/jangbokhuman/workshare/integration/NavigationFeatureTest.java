@@ -42,7 +42,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                             .getResponse()
                             .getContentAsString();
             assertThat(result)
-                    .contains("장복인간", "관리 메뉴 열기", markers.get(section))
+                    .contains("장복인간", "관리 메뉴 열기", markers.get(section), "class=\"support-footer\"", "href=\"/favicon.svg\"")
                     .doesNotContain("WorkShare", "직원과 휴일 관리", "section=tasks", "추가 업무 관리");
             for (String other : markers.keySet())
                 if (!other.equals(section)) assertThat(result).doesNotContain(markers.get(other));
@@ -66,7 +66,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
         register("김민수");
         Long id = employeeRepository.findByName("홍길동").orElseThrow().getId();
         for (String page :
-                List.of("/", "/my-leave", "/sharing-shop", "/employees", "/employees/" + id)) {
+                List.of("/", "/my-leave", "/sharing-shop", "/supports", "/supports/cafeteria", "/employees", "/employees/" + id)) {
             String html =
                     mockMvc.perform(get(page).with(testUser("홍길동", "STAFF")))
                             .andExpect(status().isOk())
@@ -82,6 +82,9 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                             "href=\"/my-leave\"",
                             "href=\"/supports/cafeteria\"",
                             "href=\"/my-profile\"",
+                            "class=\"support-footer\"",
+                            "href=\"mailto:support@jangbokhuman.app\"",
+                            "href=\"/favicon.svg\"",
                             "내 휴가 일정")
                     .doesNotContain(
                             "href=\"/admin", "name=\"workGroupCode\"", "name=\"responsibilities\"");
@@ -118,6 +121,11 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
         mockMvc.perform(get("/my-profile").with(testUser("홍길동", "STAFF")))
                 .andExpect(redirectedUrl("/employees/" + id));
         mockMvc.perform(get("/my-leave")).andExpect(status().is3xxRedirection());
+        mockMvc.perform(get("/login"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/favicon.svg\"")));
+        mockMvc.perform(get("/favicon.svg"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("image/svg+xml"));
     }
 
     @Test

@@ -4,13 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>식당지원표 · 장복인간</title>
-  <link rel="stylesheet" th:href="@{/style.css}">
+  <link th:replace="~{fragments/site-layout :: icon}"><link rel="stylesheet" th:href="@{/style.css}">
   <script defer th:src="@{/admin.js}"></script>
 </head>
 <body class="app-page admin-page">
 <header th:replace="~{fragments/staff-navigation :: header}"></header>
 <dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog>
-<main class="admin-shell">
+<main th:replace="~{fragments/site-layout :: page('admin-shell', ~{::pageContent})}"><th:block th:fragment="pageContent">
   <div class="pane-heading">
     <div>
       <h1>식당지원표</h1>
@@ -33,6 +33,6 @@
       <span th:text="${#strings.listJoin(day.employeeNames, ', ')}"></span>
     </div>
   </section>
-</main>
+</th:block></main>
 </body>
 </html>

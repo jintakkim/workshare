@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#495d3f"><title>내 휴가 일정 · 장복인간</title><link rel="stylesheet" th:href="@{/style.css}"><script defer th:src="@{/admin.js}"></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#495d3f"><title>내 휴가 일정 · 장복인간</title><link th:replace="~{fragments/site-layout :: icon}"><link rel="stylesheet" th:href="@{/style.css}"><script defer th:src="@{/admin.js}"></script></head>
 <body class="app-page admin-page">
 <header th:replace="~{fragments/staff-navigation :: header}"></header><dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog>
-<main class="shell">
+<main th:replace="~{fragments/site-layout :: page('shell', ~{::pageContent})}"><th:block th:fragment="pageContent">
   <section class="intro">
     <div>
       <h1>내 휴가 일정</h1>
@@ -54,6 +54,5 @@
     </aside>
 
   </div>
-  <footer th:replace="~{fragments/staff-navigation :: supportFooter}"></footer>
-</main>
+</th:block></main>
 </body></html>
