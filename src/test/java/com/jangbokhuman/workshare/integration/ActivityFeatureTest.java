@@ -70,7 +70,7 @@ class ActivityFeatureTest extends BusinessFeatureTestSupport {
         assertThat(employeeRepository.findById(employeeId).orElseThrow().getWorkGroup()).isEqualTo(WorkGroupType.RESTAURANT);
         assertThat(workQueryService.getDashboard(TODAY, employeeId).participant()).isFalse();
         assertThat(workQueryService.getDashboard(TODAY, employeeId).tasks()).isEqualTo(before);
-        activityRegistrationService.changeWorkGroup(employeeId, "GENERAL");
+        rosterService.changeWorkGroup(employeeId, "GENERAL");
         assertThat(workQueryService.getDashboard(TODAY, employeeId).participant()).isFalse();
         assertThat(workQueryService.getDashboard(TODAY, employeeId).tasks()).isEqualTo(before);
     }

@@ -66,15 +66,20 @@ public class RosterService {
         }
     }
 
-    public Employee changeWorkGroup(Long id, String workGroupCode) {
+    public List<String> changeWorkGroup(Long id, String workGroupCode) {
         Employee employee = employeeRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "직원이 없습니다."));
         if (employee.isExcludedByAdmin()) {
             throw new BusinessException(ErrorCode.NOT_ALLOWED, "제외된 직원의 직군은 변경할 수 없습니다.");
         }
         WorkGroupType group = WorkGroupType.getByCode(workGroupCode);
+        List<String> activityNamesBefore = employeeActivityReader.getActivityNames(id);
         employee.changeWorkGroup(group);
-        return employee;
+        applicationEventPublisher.publishEvent(new EmployeeWorkGroupChanged(id));
+        List<String> activityNamesAfter = employeeActivityReader.getActivityNames(id);
+        return activityNamesBefore.stream()
+                .filter(activityName -> !activityNamesAfter.contains(activityName))
+                .toList();
     }
 
     public void retireEmployee(Long id) {
@@ -115,7 +120,6 @@ public class RosterService {
                 employee.getActiveFrom(),
                 employee.getInactiveFrom(),
                 employee.isExcludedByAdmin(),
-                employee.isServiceExtended(),
                 group == null ? "UNCLASSIFIED" : group.name(),
                 group == null ? "직군 미지정" : group.getLabel(),
                 activityNames,
@@ -132,7 +136,6 @@ public class RosterService {
             LocalDate activeFrom,
             LocalDate inactiveFrom,
             boolean excludedByAdmin,
-            boolean serviceExtended,
             String workGroupCode,
             String workGroupName,
             List<String> activityNames,

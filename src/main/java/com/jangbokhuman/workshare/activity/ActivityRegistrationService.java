@@ -4,15 +4,15 @@ import com.jangbokhuman.workshare.common.BusinessException;
 import com.jangbokhuman.workshare.common.ErrorCode;
 import com.jangbokhuman.workshare.employee.Employee;
 import com.jangbokhuman.workshare.employee.EmployeeRepository;
-import com.jangbokhuman.workshare.employee.RosterService;
+import com.jangbokhuman.workshare.employee.EmployeeWorkGroupChanged;
 
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -24,7 +24,6 @@ public class ActivityRegistrationService {
     private final EmployeeRepository employeeRepository;
     private final ActivityRegistrationPolicy activityRegistrationPolicy;
     private final ApplicationEventPublisher applicationEventPublisher;
-    private final RosterService rosterService;
 
     public void addRegistration(String activityCode, Long employeeId) {
         Activity activity = Activity.getByCode(activityCode);
@@ -49,13 +48,9 @@ public class ActivityRegistrationService {
                 });
     }
 
-    public List<Activity> changeWorkGroup(Long employeeId, String workGroupCode) {
-        Employee employee = rosterService.changeWorkGroup(employeeId, workGroupCode);
-        return removeIneligibleRegistrations(employee);
-    }
-
-    private List<Activity> removeIneligibleRegistrations(Employee employee) {
-        List<Activity> removedActivities = new ArrayList<>();
+    @EventListener
+    public void removeIneligibleRegistrations(EmployeeWorkGroupChanged event) {
+        Employee employee = getEmployeeForUpdate(event.employeeId());
         List<ActivityRegistration> registrations = activityRegistrationRepository.findByEmployeeId(employee.getId()).stream()
                 .sorted(Comparator.comparing(ActivityRegistration::getActivityCode))
                 .toList();
@@ -64,10 +59,8 @@ public class ActivityRegistrationService {
             if (!activityRegistrationPolicy.evaluateRegistration(employee, activity).allowed()) {
                 activityRegistrationRepository.delete(registration);
                 applicationEventPublisher.publishEvent(new ActivityRegistrationDeleted(activity, employee.getId()));
-                removedActivities.add(activity);
             }
         }
-        return removedActivities;
     }
 
     private Employee getEmployeeForUpdate(Long employeeId) {

@@ -92,13 +92,13 @@ class ActivityRegistrationFeatureTest extends BusinessFeatureTestSupport {
         now("08:50");
         dailyAllocationService.allocateTodayIfDue();
         List<WorkQueryService.TaskView> confirmed = workQueryService.getDashboard(TODAY, employeeId).tasks();
-        activityRegistrationService.changeWorkGroup(employeeId, "RESTAURANT");
+        rosterService.changeWorkGroup(employeeId, "RESTAURANT");
         assertThat(activityRegistrationRepository.existsByActivityCodeAndEmployeeId(Activity.SHARING_SHOP, employeeId)).isFalse();
         assertThat(sharingShopTimePreferenceRepository.findByEmployeeId(employeeId)).isEmpty();
         assertThat(workQueryService.getDashboard(TODAY, employeeId).tasks()).isEqualTo(confirmed);
         assertThatThrownBy(() -> registerForActivity(Activity.SHARING_SHOP, "홍길동"))
                 .isInstanceOf(ParticipationDeniedException.class);
-        activityRegistrationService.changeWorkGroup(employeeId, "THIRD_FLOOR");
+        rosterService.changeWorkGroup(employeeId, "THIRD_FLOOR");
         assertThat(activityRegistrationRepository.existsByActivityCodeAndEmployeeId(Activity.SHARING_SHOP, employeeId)).isFalse();
     }
 
@@ -119,7 +119,7 @@ class ActivityRegistrationFeatureTest extends BusinessFeatureTestSupport {
             });
             Future<?> transfer = executorService.submit(() -> {
                 await(start);
-                activityRegistrationService.changeWorkGroup(employeeId, "RESTAURANT");
+                rosterService.changeWorkGroup(employeeId, "RESTAURANT");
             });
             registration.get(10, TimeUnit.SECONDS);
             transfer.get(10, TimeUnit.SECONDS);

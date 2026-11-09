@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -32,7 +31,7 @@ public class RegisteredActivityReader implements EmployeeActivityReader {
     public List<String> getActivityNames(Long employeeId) {
         return activityRegistrationRepository.findByEmployeeId(employeeId).stream()
                 .map(ActivityRegistration::getActivityCode)
-                .sorted(Comparator.comparing(Activity::getCode))
+                .sorted()
                 .map(Activity::getName)
                 .toList();
     }
