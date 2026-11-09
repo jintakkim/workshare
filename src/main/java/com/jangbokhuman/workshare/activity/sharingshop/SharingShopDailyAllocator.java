@@ -34,6 +34,7 @@ public class SharingShopDailyAllocator implements DailyActivityAllocator {
     private final SharingShopStaffing sharingShopStaffing;
     private final AssignmentGuard assignmentGuard;
     private final WorkTime workTime;
+    private final SharingShopExtraTaskService sharingShopExtraTaskService;
 
     @Override
     public Activity getActivity() {
@@ -42,6 +43,11 @@ public class SharingShopDailyAllocator implements DailyActivityAllocator {
 
     @Override
     public void allocate(LocalDate workDate) {
+        createShiftTasks(workDate);
+        sharingShopExtraTaskService.assignPendingTasks(workDate);
+    }
+
+    private void createShiftTasks(LocalDate workDate) {
         Activity activity = getActivity();
         long existingShiftCount = workTaskRepository.countByWorkDateAndActivityCodeAndCodeIn(
                 workDate,

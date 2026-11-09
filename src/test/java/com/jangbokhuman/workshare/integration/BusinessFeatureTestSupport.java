@@ -28,6 +28,7 @@ import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportExchangeSer
 import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportRequirementRepository;
 import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportScheduleService;
 import com.jangbokhuman.workshare.activity.sharingshop.SharingShopTimePreferenceService;
+import com.jangbokhuman.workshare.activity.sharingshop.SharingShopExtraTaskService;
 import com.jangbokhuman.workshare.activity.sharingshop.Preference;
 import com.jangbokhuman.workshare.activity.sharingshop.SharingShopTimePreferenceRepository;
 
@@ -80,6 +81,7 @@ abstract class BusinessFeatureTestSupport {
     @Autowired WorkTaskRepository workTaskRepository;
     @Autowired TaskAssignmentRepository taskAssignmentRepository;
     @Autowired WorkTaskService workTaskService;
+    @Autowired SharingShopExtraTaskService sharingShopExtraTaskService;
     @Autowired DailyAllocationService dailyAllocationService;
     @Autowired MockMvc mockMvc;
     @Autowired CafeteriaSupportRequirementRepository cafeteriaSupportRequirementRepository;
@@ -132,13 +134,17 @@ abstract class BusinessFeatureTestSupport {
     }
 
     protected void saveRequest(
-            String name, LocalDate date, Attendance attendance, Preference preference) {
+            String name,
+            LocalDate date,
+            Attendance attendance,
+            Preference preference
+    ) {
         leaveRequestService.save(employeeId(name), date, attendance);
         sharingShopTimePreferenceService.save(employeeId(name), preference);
     }
 
     protected Long addTask(LocalDate date, String name, WorkPeriod period, int count) {
-        return workTaskService.addTask(Activity.SHARING_SHOP.getCode(), date, name, period, count);
+        return sharingShopExtraTaskService.addTask(date, name, period, count);
     }
 
     protected void registerRestaurant(String name) {

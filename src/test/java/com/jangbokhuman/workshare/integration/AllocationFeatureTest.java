@@ -142,7 +142,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks())
                 .containsAll(afterOne)
                 .hasSize(4);
-        assertThatThrownBy(() -> workTaskService.removePendingTask(id)).hasMessageContaining("대기");
+        assertThatThrownBy(() -> sharingShopExtraTaskService.removePendingTask(id)).hasMessageContaining("대기");
         assertThatThrownBy(() -> saveRequest("홍길동", TODAY, Attendance.WORK, Preference.ANY))
                 .hasMessageContaining("마감");
     }
@@ -197,7 +197,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         register("홍길동");
         LocalDate date = TODAY.plusDays(1);
         Long cancelled = addTask(date, "취소할 일", WorkPeriod.MORNING, 1);
-        assertThat(workTaskService.removePendingTask(cancelled)).isEqualTo(date);
+        assertThat(sharingShopExtraTaskService.removePendingTask(cancelled)).isEqualTo(date);
         assertThat(workTaskRepository.existsById(cancelled)).isFalse();
         addTask(date, "휴일 전에 등록한 일", WorkPeriod.EVENING, 1);
         holidayService.addHoliday(date, "휴무");
@@ -376,7 +376,10 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
     @CsvSource({"AFTERNOON_HALF_DAY,MORNING,EVENING", "MORNING_HALF_DAY,EVENING,MORNING"})
     @DisplayName("기계실 반차자가 상주하고 종일 근무자가 겸임하면 상주자가 없는 시간대만 경고한다")
     void fullDayWorkerCoversBothShiftsSoHalfDayFacilityWorkerCanStay(
-            Attendance attendance, WorkPeriod staffedPeriod, WorkPeriod unstaffedPeriod) throws Exception {
+            Attendance attendance,
+            WorkPeriod staffedPeriod,
+            WorkPeriod unstaffedPeriod
+    ) throws Exception {
         rosterService.registerEmployee("홍길동", "staff-password", "FACILITY_SUPPORT");
         registerForActivity(Activity.SHARING_SHOP, "홍길동");
         register("김민수");
@@ -434,7 +437,10 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
     @CsvSource({"MORNING_HALF_DAY,EVENING,MORNING", "AFTERNOON_HALF_DAY,MORNING,EVENING"})
     @DisplayName("오전·오후 반차를 입력하면 선호와 관계없이 가능한 시간대의 기본·추가 업무만 배정한다")
     void bothHalfDayTypesRestrictEveryAllocationPath(
-            Attendance attendance, WorkPeriod available, WorkPeriod unavailable) throws Exception {
+            Attendance attendance,
+            WorkPeriod available,
+            WorkPeriod unavailable
+    ) throws Exception {
         register("홍길동");
         register("김민수");
         Long selfId = employeeId("홍길동");

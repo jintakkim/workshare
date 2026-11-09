@@ -1,9 +1,7 @@
 package com.jangbokhuman.workshare.activity.sharingshop;
 
 import com.jangbokhuman.workshare.activity.Duty;
-import com.jangbokhuman.workshare.activity.RandomTaskAllocationPolicy;
 import com.jangbokhuman.workshare.activity.TaskAllocation;
-import com.jangbokhuman.workshare.activity.TaskAllocationPolicy;
 import com.jangbokhuman.workshare.activity.TaskAssignment;
 import com.jangbokhuman.workshare.activity.TaskRequirement;
 import com.jangbokhuman.workshare.activity.WorkTask;

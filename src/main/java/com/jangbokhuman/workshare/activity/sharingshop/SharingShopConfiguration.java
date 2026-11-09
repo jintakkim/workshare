@@ -10,6 +10,11 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties(SharingShopSettings.class)
 public class SharingShopConfiguration {
     @Bean
+    TaskAllocationPolicy createTaskAllocationPolicy() {
+        return new RandomTaskAllocationPolicy();
+    }
+
+    @Bean
     AllocationPolicy createSharingShopAllocationPolicy() {
         return new PreferenceAllocationPolicy();
     }

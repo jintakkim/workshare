@@ -1,4 +1,8 @@
-package com.jangbokhuman.workshare.activity;
+package com.jangbokhuman.workshare.activity.sharingshop;
+
+import com.jangbokhuman.workshare.activity.TaskAllocation;
+import com.jangbokhuman.workshare.activity.TaskRequirement;
+import com.jangbokhuman.workshare.activity.Worker;
 
 import java.security.SecureRandom;
 import java.util.*;
