@@ -309,10 +309,25 @@ body:has(.admin-menu[open]) { overflow:hidden; }
 .holiday-editor h2 { margin-top:8px; }
 .sr-only { position:absolute; width:1px; height:1px; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
 .sharing-shell { overflow:hidden; }
+.sharing-shell>.pane-heading { flex-wrap:nowrap; gap:12px; }
+.sharing-shell>.pane-heading>div { min-width:0; }
 .sharing-preference { margin:0 0 28px; }
 .sharing-preference>summary { cursor:pointer; }
 .sharing-preference[open] .sharing-preference-arrow { transform:rotate(180deg); }
 .sharing-preference>.sharing-preference-unavailable { padding-bottom:16px; }
+.allocation-guide-trigger { flex-shrink:0; min-height:44px; white-space:nowrap; }
+.allocation-guide { width:min(520px, calc(100% - 28px)); max-height:calc(100dvh - 32px); padding:22px; border:1px solid var(--line); border-radius:18px; background:var(--paper); color:var(--ink); }
+.allocation-guide::backdrop { background:#25321eb3; }
+.allocation-guide-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:8px; }
+.allocation-guide-heading h2 { margin-top:4px; }
+.allocation-guide-heading .icon-button { width:44px; height:44px; background:transparent; }
+.allocation-guide-steps { display:grid; gap:8px; margin-top:16px; }
+.allocation-guide-steps .panel-disclosure { margin:0; }
+.allocation-guide-steps summary { justify-content:flex-start; gap:10px; padding:12px; min-height:48px; }
+.allocation-guide-steps summary>.allocation-guide-number { border-radius:6px; padding:3px 5px; background:#e4ebdb; font-size:12px; font-variant-numeric:tabular-nums; }
+.allocation-guide-arrow { margin-left:auto; }
+.allocation-guide-steps details[open] .allocation-guide-arrow { transform:rotate(180deg); }
+.allocation-guide-steps .panel-disclosure>p { padding:12px 14px; color:#526446; font-size:13px; word-break:keep-all; }
 .day-navigation { display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:6px; }
 .day-navigation .icon-button { width:44px; height:44px; border-radius:12px; background:#fffefa; }
 .day-navigation .button { min-width:78px; }

@@ -1,4 +1,7 @@
 (() => {
+    const guide = document.getElementById("allocation-guide");
+    document.querySelector("[data-allocation-guide]")?.addEventListener("click", () => guide.showModal());
+
     const deck = document.querySelector(".day-deck");
     if (!deck) return;
     const cards = [...deck.querySelectorAll(".day-card")];

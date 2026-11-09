@@ -99,7 +99,9 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                             .getResponse()
                             .getContentAsString();
             assertThat(html)
-                    .contains("class=\"day-deck\"", "data-today=\"2026-11-04\"", "/sharing-shop.js")
+                    .contains(
+                            "class=\"day-deck\"", "data-today=\"2026-11-04\"", "/sharing-shop.js",
+                            "선정 기준 확인", "id=\"allocation-guide\"", "기계실 상주 확인", "선호도 반영과 추첨")
                     .doesNotContain("class=\"calendar-grid\"", "하루를 함께 나누는 일", "내 휴가 입력");
             if (role.equals("STAFF")) {
                 assertThat(html).contains("<details class=\"panel-disclosure sharing-preference\">");

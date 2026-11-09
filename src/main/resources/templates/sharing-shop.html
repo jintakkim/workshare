@@ -1,7 +1,33 @@
 <!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#495d3f"><title>나눔가게 활동 · 장복인간</title><link rel="stylesheet" th:href="@{/style.css}"><script defer th:src="@{/admin.js}"></script><script defer th:src="@{/sharing-shop.js}"></script></head><body class="app-page admin-page"><th:block th:if="${management}"><header th:replace="~{admin :: adminHeader}"></header><dialog th:replace="~{admin :: adminMenu}"></dialog></th:block><th:block th:if="${!management}"><header th:replace="~{fragments/staff-navigation :: header}"></header><dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog></th:block><main class="admin-shell sharing-shell">
 <div class="pane-heading">
   <div><h1>나눔가게 활동</h1><p>옆으로 넘겨 날짜별 참여 현황을 확인하세요.</p></div>
+  <button type="button" class="button subtle allocation-guide-trigger" aria-haspopup="dialog" aria-controls="allocation-guide" data-allocation-guide>선정 기준 확인</button>
 </div>
+<dialog class="allocation-guide" id="allocation-guide" aria-labelledby="allocation-guide-title">
+  <div class="allocation-guide-heading">
+    <div><p class="eyebrow">나눔가게 자동 배정</p><h2 id="allocation-guide-title">선정 기준</h2></div>
+    <form method="dialog"><button type="submit" class="icon-button" aria-label="선정 기준 닫기" autofocus>×</button></form>
+  </div>
+  <p class="small muted">순서대로 기준을 적용해 오전·오후 담당자를 정해요.</p>
+  <div class="allocation-guide-steps">
+    <details class="panel-disclosure" name="allocation-guide-step" open>
+      <summary><span class="allocation-guide-number" aria-hidden="true">01</span><strong>배정 대상 확인</strong><span class="allocation-guide-arrow" aria-hidden="true">⌄</span></summary>
+      <p>나눔가게 담당 직원 중 해당 날짜에 근무하는 사람이 대상이에요. 연차·병가·식당지원이 있으면 빠지고, 반차는 근무할 수 있는 시간대에만 배정해요.</p>
+    </details>
+    <details class="panel-disclosure" name="allocation-guide-step">
+      <summary><span class="allocation-guide-number" aria-hidden="true">02</span><strong>기계실 상주 확인</strong><span class="allocation-guide-arrow" aria-hidden="true">⌄</span></summary>
+      <p>가능한 한 나눔가게 오전·오후를 모두 채우고, 각 시간대에 기계실 직원이 한 명 이상 남는 조합을 우선해요. 상주 인원이 부족하면 해당 시간대에 경고가 표시돼요.</p>
+    </details>
+    <details class="panel-disclosure" name="allocation-guide-step">
+      <summary><span class="allocation-guide-number" aria-hidden="true">03</span><strong>오전·오후 인원 배분</strong><span class="allocation-guide-arrow" aria-hidden="true">⌄</span></summary>
+      <p>겸임을 줄이면서 가능한 많은 직원에게 한 타임을 배정해요. 그다음 인원수에 맞는 배분 기준을 적용해요. 가능한 사람이 한 명뿐이면 두 시간대를 모두 맡을 수 있어요.</p>
+    </details>
+    <details class="panel-disclosure" name="allocation-guide-step">
+      <summary><span class="allocation-guide-number" aria-hidden="true">04</span><strong>선호도 반영과 추첨</strong><span class="allocation-guide-arrow" aria-hidden="true">⌄</span></summary>
+      <p>배분 점수가 같으면 선호 시간대를 더 많이 맞추는 조합을 골라요. 예를 들어 5명이면 오전 3명·오후 2명이 기본이고, 선호도에 따라 오전 2명·오후 3명이 될 수도 있어요. 우선순위가 같은 조합은 무작위로 결정해요.</p>
+    </details>
+  </div>
+</dialog>
 <div th:if="${success}" class="notice" role="status" th:text="${success}"></div>
 <div th:if="${error}" class="notice danger" role="alert" th:text="${error}"></div>
 <details th:if="${!admin}" class="panel-disclosure sharing-preference">
