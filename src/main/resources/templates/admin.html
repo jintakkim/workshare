@@ -19,7 +19,7 @@
     <a th:href="@{/admin(section='holidays')}" th:classappend="${section == 'holidays' ? 'active' : ''}" th:attr="aria-current=${section == 'holidays' ? 'page' : null}"><span>휴일<small>복지관이 쉬는 날</small></span><span aria-hidden="true">→</span></a>
     <a th:href="@{/admin/sharing-shop}" th:classappend="${section == 'sharing' ? 'active' : ''}" th:attr="aria-current=${section == 'sharing' ? 'page' : null}"><span>나눔가게 활동<small>오늘의 참여 현황과 오전·오후 배정</small></span><span aria-hidden="true">→</span></a>
     <a th:href="@{/admin(section='activities')}" th:classappend="${section == 'activities' ? 'active' : ''}" th:attr="aria-current=${section == 'activities' ? 'page' : null}"><span>활동<small>담당 활동과 세부 내용</small></span><span aria-hidden="true">→</span></a>
-    <a th:href="@{/admin/supports}" th:classappend="${section == 'supports' ? 'active' : ''}"><span>식당지원표<small>월별 식당지원 명단 입력</small></span><span aria-hidden="true">→</span></a>
+    <a th:href="@{/admin/cafeteria-support}" th:classappend="${section == 'cafeteria-support' ? 'active' : ''}"><span>식당지원표<small>월별 식당지원 명단 입력</small></span><span aria-hidden="true">→</span></a>
   </nav>
   <div class="menu-footer"><a class="button" th:href="@{/sharing-shop}">일반 화면 보기</a><form th:action="@{/logout}" method="post"><button class="text-button" type="submit">로그아웃</button></form></div>
 </dialog>

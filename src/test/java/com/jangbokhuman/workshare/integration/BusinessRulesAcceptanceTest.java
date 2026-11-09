@@ -152,7 +152,7 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
         MockHttpSession recipient = login("김민수", STAFF_PASSWORD);
         MockHttpSession outsider = login("이서연", STAFF_PASSWORD);
         mockMvc.perform(
-                        post("/supports/requests")
+                        post("/cafeteria-support/exchange-requests")
                                 .session(requester)
                                 .with(csrf())
                                 .param("sourceId", String.valueOf(source))
@@ -161,7 +161,7 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
         assertExcluded(requester, TODAY, "홍길동");
         assertExcluded(requester, next, "김민수");
         MvcResult incoming =
-                mockMvc.perform(get("/supports").session(recipient))
+                mockMvc.perform(get("/cafeteria-support").session(recipient))
                         .andExpect(status().isOk())
                         .andReturn();
         CafeteriaSupportExchangeService.Page inbox =
@@ -169,23 +169,23 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
         assertThat(inbox.incoming()).hasSize(1);
         Long requestId = inbox.incoming().getFirst().id();
         mockMvc.perform(
-                        post("/supports/requests/" + requestId + "/accept")
+                        post("/cafeteria-support/exchange-requests/" + requestId + "/accept")
                                 .session(outsider)
                                 .with(csrf()))
                 .andExpect(status().isForbidden());
         now("08:48:59.999999999");
         mockMvc.perform(
-                        post("/supports/requests/" + requestId + "/accept")
+                        post("/cafeteria-support/exchange-requests/" + requestId + "/accept")
                                 .session(recipient)
                                 .with(csrf()))
                 .andExpect(flash().attributeExists("success"));
         assertExcluded(requester, TODAY, "김민수");
         assertExcluded(requester, next, "홍길동");
-        mockMvc.perform(get("/supports").session(recipient))
+        mockMvc.perform(get("/cafeteria-support").session(recipient))
                 .andExpect(model().attributeExists("view"))
                 .andExpect(content().string(containsString("받은 요청이 없습니다.")));
         mockMvc.perform(
-                        post("/supports/requests/" + requestId + "/accept")
+                        post("/cafeteria-support/exchange-requests/" + requestId + "/accept")
                                 .session(recipient)
                                 .with(csrf()))
                 .andExpect(flash().attributeExists("error"));
@@ -304,7 +304,7 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
 
     private void requireCafeteriaWorkers(MockHttpSession admin, int count) throws Exception {
         mockMvc.perform(
-                        post("/admin/supports/requirements")
+                        post("/admin/cafeteria-support/requirements")
                                 .session(admin)
                                 .with(csrf())
                                 .param("requiredWorkers", Integer.toString(count)))
@@ -312,10 +312,12 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
     }
 
     private MockHttpServletRequestBuilder supportForm(
-            MockHttpSession admin, Map<LocalDate, List<Long>> changes) {
+            MockHttpSession admin,
+            Map<LocalDate, List<Long>> changes
+    ) {
         LocalDate first = changes.keySet().iterator().next();
         MockHttpServletRequestBuilder form =
-                post("/admin/supports/month")
+                post("/admin/cafeteria-support/month")
                         .session(admin)
                         .with(csrf())
                         .param("month", YearMonth.from(first).toString());

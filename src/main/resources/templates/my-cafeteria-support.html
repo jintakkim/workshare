@@ -1,9 +1,9 @@
 <!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>내 지원 일정 · 장복인간</title><link th:replace="~{fragments/site-layout :: icon}"><link rel="stylesheet" th:href="@{/style.css}"><script defer th:src="@{/admin.js}"></script><script defer th:src="@{/support-exchange.js}"></script></head><body class="app-page admin-page"><header th:replace="~{fragments/staff-navigation :: header}"></header><dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog><main th:replace="~{fragments/site-layout :: page('admin-shell', ~{::pageContent})}"><th:block th:fragment="pageContent"><div class="pane-heading"><div><p class="eyebrow">서로의 일정을 맞추는 시간</p><h1>내 지원 일정</h1><p>같은 지원 업무의 날짜를 서로 맞바꿀 수 있어요. 두 날짜 모두 당일 08:49 전까지 수락해야 합니다.</p></div></div><div th:if="${success}" class="notice" role="status" th:text="${success}"></div><div th:if="${error}" class="notice danger" role="alert" th:text="${error}"></div>
-<section class="card"><h2>받은 교환 요청</h2><p th:if="${view.incoming.isEmpty()}" class="small muted">받은 요청이 없습니다.</p><article class="exchange-card" th:each="request:${view.incoming}"><h3 th:text="${request.source.name+' 님의 '+#temporals.format(request.source.date,'M월 d일')+' ↔ 나의 '+#temporals.format(request.target.date,'M월 d일')}"></h3><p class="small muted" th:text="${request.source.reason+' · '+#temporals.format(request.expiresAt,'M월 d일 HH:mm')+' 마감'}"></p><div class="exchange-actions"><form th:action="@{/supports/requests/{id}/accept(id=${request.id})}" method="post"><button class="primary" type="submit">교환 수락</button></form><form th:action="@{/supports/requests/{id}/dismiss(id=${request.id})}" method="post"><button class="button" type="submit">거절</button></form></div></article></section>
+<section class="card"><h2>받은 교환 요청</h2><p th:if="${view.incoming.isEmpty()}" class="small muted">받은 요청이 없습니다.</p><article class="exchange-card" th:each="request:${view.incoming}"><h3 th:text="${request.source.name+' 님의 '+#temporals.format(request.source.date,'M월 d일')+' ↔ 나의 '+#temporals.format(request.target.date,'M월 d일')}"></h3><p class="small muted" th:text="${request.source.reason+' · '+#temporals.format(request.expiresAt,'M월 d일 HH:mm')+' 마감'}"></p><div class="exchange-actions"><form th:action="@{/cafeteria-support/exchange-requests/{id}/accept(id=${request.id})}" method="post"><button class="primary" type="submit">교환 수락</button></form><form th:action="@{/cafeteria-support/exchange-requests/{id}/dismiss(id=${request.id})}" method="post"><button class="button" type="submit">거절</button></form></div></article></section>
 <section class="card"><h2>내 지원 일정</h2><p class="small muted">오늘부터 3개월 뒤까지의 지원 일정입니다.</p><div class="quota-rule" th:each="slot:${view.mine}"><strong th:text="${#temporals.format(slot.date,'M월 d일 E요일')}"></strong><span th:text="${slot.reason+(!slot.editable?' · 마감':'')}"></span></div><p th:if="${view.mine.isEmpty()}" class="small muted">등록된 지원 일정이 없습니다.</p></section>
 <section class="card" id="support-exchange" th:if="${view.sourceId != null}">
   <h2>지원일 교환 요청</h2>
-  <form th:action="@{/supports} + '#support-exchange'" method="get" class="stack">
+  <form th:action="@{/cafeteria-support} + '#support-exchange'" method="get" class="stack">
     <label>바꿀 내 지원일
       <select name="sourceId">
         <option th:each="slot : ${view.mine}" th:if="${slot.editable}" th:value="${slot.id}"
@@ -15,7 +15,7 @@
   <hr class="form-divider">
   <p class="small muted" th:if="${view.candidates.isEmpty()}">교환 가능한 상대 일정이 없습니다.</p>
   <th:block th:unless="${view.candidates.isEmpty()}">
-    <form th:action="@{/supports/requests}" method="post" class="stack" data-exchange-form hidden>
+    <form th:action="@{/cafeteria-support/exchange-requests}" method="post" class="stack" data-exchange-form hidden>
       <input type="hidden" name="sourceId" th:value="${view.sourceId}">
       <input type="hidden" name="targetId">
       <button class="button support-picker-open" type="button" aria-haspopup="dialog" aria-controls="support-picker" data-open-support-picker>맞바꿀 상대 일정 선택</button>
@@ -41,7 +41,7 @@
       </ul>
     </dialog>
     <noscript>
-      <form th:action="@{/supports/requests}" method="post" class="stack">
+      <form th:action="@{/cafeteria-support/exchange-requests}" method="post" class="stack">
         <input type="hidden" name="sourceId" th:value="${view.sourceId}">
         <label>맞바꿀 상대 일정
           <select name="targetId" required>
@@ -54,5 +54,5 @@
   </th:block>
   <p class="detail-note">상대방이 수락할 때 두 지원일이 한 번에 변경됩니다. 휴가나 다른 지원과 겹치면 수락할 수 없습니다.</p>
 </section>
-<section class="card"><h2>보낸 교환 요청</h2><p th:if="${view.outgoing.isEmpty()}" class="small muted">보낸 요청이 없습니다.</p><article class="exchange-card" th:each="request:${view.outgoing}"><h3 th:text="${request.target.name+' 님 · 나의 '+#temporals.format(request.source.date,'M월 d일')+' ↔ '+#temporals.format(request.target.date,'M월 d일')}"></h3><p class="small muted" th:text="${#temporals.format(request.expiresAt,'M월 d일 HH:mm')+' 마감 · 수락 대기'}"></p><form th:action="@{/supports/requests/{id}/dismiss(id=${request.id})}" method="post"><button class="button" type="submit">요청 취소</button></form></article></section>
+<section class="card"><h2>보낸 교환 요청</h2><p th:if="${view.outgoing.isEmpty()}" class="small muted">보낸 요청이 없습니다.</p><article class="exchange-card" th:each="request:${view.outgoing}"><h3 th:text="${request.target.name+' 님 · 나의 '+#temporals.format(request.source.date,'M월 d일')+' ↔ '+#temporals.format(request.target.date,'M월 d일')}"></h3><p class="small muted" th:text="${#temporals.format(request.expiresAt,'M월 d일 HH:mm')+' 마감 · 수락 대기'}"></p><form th:action="@{/cafeteria-support/exchange-requests/{id}/dismiss(id=${request.id})}" method="post"><button class="button" type="submit">요청 취소</button></form></article></section>
 </th:block></main></body></html>

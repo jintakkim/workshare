@@ -138,7 +138,7 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         Long source = supportEntry(TODAY, "홍길동"),
                 target = supportEntry(TODAY.plusDays(1), "김민수");
         mockMvc.perform(
-                        post("/supports/requests")
+                        post("/cafeteria-support/exchange-requests")
                                 .with(testUser("이서연", "STAFF"))
                                 .with(csrf())
                                 .param("sourceId", String.valueOf(source))
@@ -151,7 +151,7 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         assertThat(cafeteriaSupportExchangeService.getExchangePage(employeeId("김민수"), null).incoming())
                 .hasSize(1);
         mockMvc.perform(
-                        post("/supports/requests/" + request + "/accept")
+                        post("/cafeteria-support/exchange-requests/" + request + "/accept")
                                 .with(testUser("이서연", "STAFF"))
                                 .with(csrf()))
                 .andExpect(status().isForbidden());
@@ -289,7 +289,7 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                 .containsExactly("김민수");
         Long source = supportEntry(TODAY, "홍길동"),
                 target = supportEntry(TODAY.plusDays(1), "김민수");
-        String html = mockMvc.perform(get("/supports").with(testUser("홍길동", "STAFF"))
+        String html = mockMvc.perform(get("/cafeteria-support").with(testUser("홍길동", "STAFF"))
                         .param("sourceId", source.toString()))
                 .andExpect(status().isOk())
                 .andReturn()
@@ -340,12 +340,12 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                 .containsExactlyInAnyOrder(employeeId("홍길동"), employeeId("김민수"));
         assertThat(activityRegistrationRepository.findEmployeeIdsByActivityCode(Activity.SHARING_SHOP)).isEmpty();
 
-        String adminRoster = mockMvc.perform(get("/admin/supports").with(testUser("admin", "ADMIN")))
+        String adminRoster = mockMvc.perform(get("/admin/cafeteria-support").with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(adminRoster).contains("홍길동", "김민수").doesNotContain("강수진");
 
-        mockMvc.perform(post("/admin/supports/month").with(testUser("admin", "ADMIN")).with(csrf())
+        mockMvc.perform(post("/admin/cafeteria-support/month").with(testUser("admin", "ADMIN")).with(csrf())
                         .param("month", YearMonth.from(TODAY).toString())
                         .param("editedDates", TODAY.toString(), tomorrow.toString())
                         .param("day_" + TODAY, employeeId("홍길동").toString())
@@ -375,16 +375,16 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         String staffHome = mockMvc.perform(get("/sharing-shop").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(staffHome).containsOnlyOnce("href=\"/supports/cafeteria\"")
-                .contains("href=\"/supports/cafeteria\"><span>식당지원표");
+        assertThat(staffHome).containsOnlyOnce("href=\"/cafeteria-support/schedule\"")
+                .contains("href=\"/cafeteria-support/schedule\"><span>식당지원표");
 
-        String november = mockMvc.perform(get("/supports/cafeteria").with(testUser("홍길동", "STAFF")))
+        String november = mockMvc.perform(get("/cafeteria-support/schedule").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(november).contains("2026년 11월", "홍길동", "김민수", "href=\"/supports\"", "내 일정·교환 요청")
-                .doesNotContain("이서연", "/admin/supports/month");
+        assertThat(november).contains("2026년 11월", "홍길동", "김민수", "href=\"/cafeteria-support\"", "내 일정·교환 요청")
+                .doesNotContain("이서연", "/admin/cafeteria-support/month");
 
-        String december = mockMvc.perform(get("/supports/cafeteria").param("month", "2026-12")
+        String december = mockMvc.perform(get("/cafeteria-support/schedule").param("month", "2026-12")
                         .with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
@@ -393,15 +393,15 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         String adminHome = mockMvc.perform(get("/sharing-shop").with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(adminHome).containsOnlyOnce("href=\"/supports/cafeteria\"")
-                .contains("href=\"/supports/cafeteria\"><span>식당지원표");
+        assertThat(adminHome).containsOnlyOnce("href=\"/cafeteria-support/schedule\"")
+                .contains("href=\"/cafeteria-support/schedule\"><span>식당지원표");
 
-        String adminNovember = mockMvc.perform(get("/supports/cafeteria").with(testUser("admin", "ADMIN")))
+        String adminNovember = mockMvc.perform(get("/cafeteria-support/schedule").with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(adminNovember).contains("2026년 11월", "홍길동", "김민수")
-                .doesNotContain("href=\"/supports\"", "내 일정·교환 요청", "/admin/supports/month");
-        mockMvc.perform(get("/supports/cafeteria")).andExpect(status().is3xxRedirection());
+                .doesNotContain("href=\"/cafeteria-support\"", "내 일정·교환 요청", "/admin/cafeteria-support/month");
+        mockMvc.perform(get("/cafeteria-support/schedule")).andExpect(status().is3xxRedirection());
     }
 
     @Test
@@ -421,7 +421,7 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                 .hasMessageContaining("휴가");
         assertThat(cafeteriaSupportAssignmentRepository.count()).isZero();
         mockMvc.perform(
-                        post("/admin/supports/month")
+                        post("/admin/cafeteria-support/month")
                                 .with(testUser("admin", "ADMIN"))
                                 .with(csrf())
                                 .param("month", "2026-11")
@@ -434,16 +434,25 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                                         "day_" + TODAY.plusDays(1),
                                         String.valueOf(employeeId("김민수"))))
                 .andExpect(status().is3xxRedirection());
-        mockMvc.perform(get("/admin/supports").with(testUser("홍길동", "STAFF")))
+        mockMvc.perform(get("/admin/cafeteria-support").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(get("/admin/supports").with(testUser("admin", "ADMIN"))).andExpect(status().isOk());
-        mockMvc.perform(get("/supports").with(testUser("洪", "ADMIN")))
+        mockMvc.perform(get("/admin/cafeteria-support").with(testUser("admin", "ADMIN"))).andExpect(status().isOk());
+        mockMvc.perform(post("/admin/cafeteria-support/month").with(testUser("admin", "ADMIN")).with(csrf())
+                        .param("month", "2026-11")
+                        .param("editedDates", "2026-13-40"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/admin/cafeteria-support/month").with(testUser("admin", "ADMIN")).with(csrf())
+                        .param("month", "2026-11")
+                        .param("editedDates", TODAY.toString())
+                        .param("day_" + TODAY, "not-a-number"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/cafeteria-support").with(testUser("洪", "ADMIN")))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(get("/supports").with(testUser("홍길동", "STAFF")))
+        mockMvc.perform(get("/cafeteria-support").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("지원일 교환 요청")));
         mockMvc.perform(
-                        post("/supports/requests")
+                        post("/cafeteria-support/exchange-requests")
                                 .with(testUser("홍길동", "STAFF"))
                                 .param("sourceId", "x")
                                 .param("targetId", "y"))

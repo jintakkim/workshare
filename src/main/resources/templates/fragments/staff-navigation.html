@@ -10,8 +10,8 @@
     <a th:href="@{/sharing-shop}" th:classappend="${section == 'sharing' ? 'active' : ''}" th:attr="aria-current=${section == 'sharing' ? 'page' : null}"><span>나눔가게 활동<small>날짜별 참여 현황과 오전·오후 배정</small></span><span aria-hidden="true">→</span></a>
     <a th:if="${!admin}" th:href="@{/my-leave}" th:classappend="${section == 'leave' ? 'active' : ''}" th:attr="aria-current=${section == 'leave' ? 'page' : null}"><span>내 휴가 일정<small>연차·병가·반차 등록</small></span><span aria-hidden="true">→</span></a>
     <a th:href="@{/leave-calendar}" th:classappend="${section == 'team-leave' ? 'active' : ''}" th:attr="aria-current=${section == 'team-leave' ? 'page' : null}"><span>전체 휴가 일정<small>날짜별 직원 휴가·반차 확인</small></span><span aria-hidden="true">→</span></a>
-    <a th:if="${!admin}" th:href="@{/supports}" th:classappend="${section == 'supports' ? 'active' : ''}"><span>내 지원 일정<small>식당지원 확인과 직원 간 지원일 교환</small></span><span aria-hidden="true">→</span></a>
-    <a th:href="@{/supports/cafeteria}" th:classappend="${section == 'cafeteria-support' ? 'active' : ''}" th:attr="aria-current=${section == 'cafeteria-support' ? 'page' : null}"><span>식당지원표<small>월별 식당지원 담당자 확인</small></span><span aria-hidden="true">→</span></a>
+    <a th:if="${!admin}" th:href="@{/cafeteria-support}" th:classappend="${section == 'my-cafeteria-support' ? 'active' : ''}"><span>내 지원 일정<small>식당지원 확인과 직원 간 지원일 교환</small></span><span aria-hidden="true">→</span></a>
+    <a th:href="@{/cafeteria-support/schedule}" th:classappend="${section == 'cafeteria-support' ? 'active' : ''}" th:attr="aria-current=${section == 'cafeteria-support' ? 'page' : null}"><span>식당지원표<small>월별 식당지원 담당자 확인</small></span><span aria-hidden="true">→</span></a>
     <a th:href="@{/employees}" th:classappend="${section == 'employees' ? 'active' : ''}" th:attr="aria-current=${section == 'employees' ? 'page' : null}"><span>직원 프로필<small>함께 일하는 사람과 담당 업무</small></span><span aria-hidden="true">→</span></a>
     <a th:if="${!admin}" th:href="@{/my-profile}"><span>내 프로필<small>내 정보 확인과 사진 등록</small></span><span aria-hidden="true">→</span></a>
   </nav>

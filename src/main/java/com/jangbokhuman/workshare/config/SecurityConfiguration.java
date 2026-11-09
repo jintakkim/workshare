@@ -57,14 +57,14 @@ public class SecurityConfiguration {
                                         .permitAll()
                                         .requestMatchers("/admin", "/admin/**")
                                         .hasRole("ADMIN")
-                                        .requestMatchers(HttpMethod.GET, "/supports/cafeteria", "/leave-calendar")
+                                        .requestMatchers(HttpMethod.GET, "/cafeteria-support/schedule", "/leave-calendar")
                                         .hasAnyRole("STAFF", "ADMIN")
                                         .requestMatchers(
                                                 "/leave-requests",
                                                 "/sharing-shop/time-preference",
                                                 "/my-profile",
-                                                "/supports",
-                                                "/supports/**")
+                                                "/cafeteria-support",
+                                                "/cafeteria-support/**")
                                         .hasRole("STAFF")
                                         .anyRequest()
                                         .authenticated())
