@@ -1,7 +1,6 @@
 package com.jangbokhuman.workshare.activity;
 
 import com.jangbokhuman.workshare.employee.Employee;
-import com.jangbokhuman.workshare.support.DailyExclusionReader;
 
 import lombok.RequiredArgsConstructor;
 
@@ -14,14 +13,19 @@ import java.time.LocalDate;
 @Component
 @Transactional(readOnly = true)
 public class DailyActivityParticipationPolicy {
-    private final DailyExclusionReader dailyExclusionReader;
+    private final ActivityExclusionReader activityExclusionReader;
     private final ActivityRegistrationRepository activityRegistrationRepository;
 
     public ParticipationDecision evaluateEligibility(Employee employee, Activity activity, LocalDate participationDate) {
+        boolean registered = activityRegistrationRepository.existsByActivityCodeAndEmployeeId(activity, employee.getId());
+        return evaluateEligibility(employee, participationDate, registered);
+    }
+
+    public ParticipationDecision evaluateEligibility(Employee employee, LocalDate participationDate, boolean registered) {
         if (!employee.isActiveOn(participationDate)) {
             return ParticipationDecision.deny("해당 날짜에 근무하거나 운영하는 대상이 아닙니다.");
         }
-        if (!activityRegistrationRepository.existsByActivityCodeAndEmployeeId(activity, employee.getId())) {
+        if (!registered) {
             return ParticipationDecision.deny("이 활동의 담당 직원으로 등록되어 있지 않습니다.");
         }
         return ParticipationDecision.allow();
@@ -32,8 +36,10 @@ public class DailyActivityParticipationPolicy {
         if (!eligibility.allowed()) {
             return eligibility;
         }
-        return dailyExclusionReader.getExclusionReason(activity.getSupportScopes(), participationDate, employee.getId())
-                .map(reason -> ParticipationDecision.deny(reason + "으로 해당 날짜 활동에서 제외됩니다."))
+        return activityExclusionReader.getExclusionsOn(activity, participationDate).stream()
+                .filter(exclusion -> exclusion.employeeId().equals(employee.getId()))
+                .findFirst()
+                .map(exclusion -> ParticipationDecision.deny(exclusion.reasonName() + "으로 해당 날짜 활동에서 제외됩니다."))
                 .orElse(eligibility);
     }
 

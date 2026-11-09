@@ -1,0 +1,59 @@
+CREATE TABLE cafeteria_support_requirement (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    effective_from DATE NOT NULL,
+    required_workers INTEGER NOT NULL,
+    CONSTRAINT uq_cafeteria_support_requirement UNIQUE (effective_from)
+);
+
+CREATE TABLE cafeteria_support_assignment (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    work_date DATE NOT NULL,
+    employee_id BIGINT NOT NULL,
+    CONSTRAINT uq_cafeteria_support_assignment UNIQUE (work_date, employee_id),
+    CONSTRAINT fk_cafeteria_support_employee FOREIGN KEY (employee_id) REFERENCES employee (id)
+);
+
+CREATE TABLE cafeteria_support_exchange_request (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    source_id BIGINT NOT NULL,
+    target_id BIGINT NOT NULL,
+    requester_id BIGINT NOT NULL,
+    recipient_id BIGINT NOT NULL,
+    expires_at DATETIME(6) NOT NULL,
+    CONSTRAINT uq_cafeteria_support_exchange UNIQUE (source_id, target_id),
+    CONSTRAINT fk_cafeteria_exchange_source FOREIGN KEY (source_id) REFERENCES cafeteria_support_assignment (id) ON DELETE CASCADE,
+    CONSTRAINT fk_cafeteria_exchange_target FOREIGN KEY (target_id) REFERENCES cafeteria_support_assignment (id) ON DELETE CASCADE,
+    CONSTRAINT fk_cafeteria_exchange_requester FOREIGN KEY (requester_id) REFERENCES employee (id),
+    CONSTRAINT fk_cafeteria_exchange_recipient FOREIGN KEY (recipient_id) REFERENCES employee (id)
+);
+
+CREATE INDEX ix_cafeteria_exchange_expiry ON cafeteria_support_exchange_request (expires_at);
+
+INSERT INTO cafeteria_support_requirement (effective_from, required_workers)
+SELECT requirement.effective_from, requirement.required_workers
+FROM exclusion_requirement requirement
+JOIN exclusion_reason reason ON reason.id = requirement.reason_id
+WHERE reason.name = '식당지원';
+
+INSERT INTO cafeteria_support_assignment (id, work_date, employee_id)
+SELECT entry.id, entry.work_date, entry.employee_id
+FROM daily_exclusion entry
+JOIN exclusion_reason reason ON reason.id = entry.reason_id
+WHERE reason.name = '식당지원';
+
+INSERT INTO cafeteria_support_exchange_request (source_id, target_id, requester_id, recipient_id, expires_at)
+SELECT request.source_id, request.target_id, request.requester_id, request.recipient_id, request.expires_at
+FROM support_exchange_request request
+WHERE request.source_id IN (SELECT id FROM cafeteria_support_assignment)
+    AND request.target_id IN (SELECT id FROM cafeteria_support_assignment);
+
+INSERT INTO activity_registration (activity_code, employee_id)
+SELECT 'CAFETERIA_SUPPORT', employee.id
+FROM employee
+WHERE employee.work_group <> 'RESTAURANT'
+    AND employee.excluded_by_admin = FALSE;
+
+DROP TABLE support_exchange_request;
+DROP TABLE daily_exclusion;
+DROP TABLE exclusion_requirement;
+DROP TABLE exclusion_reason;

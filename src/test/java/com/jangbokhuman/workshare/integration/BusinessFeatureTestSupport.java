@@ -1,5 +1,6 @@
 package com.jangbokhuman.workshare.integration;
 
+import com.jangbokhuman.workshare.activity.DailyAllocationService;
 import com.jangbokhuman.workshare.activity.Activity;
 import com.jangbokhuman.workshare.activity.ActivityManagementService;
 import com.jangbokhuman.workshare.activity.ActivityRegistrationRepository;
@@ -17,19 +18,15 @@ import com.jangbokhuman.workshare.calendar.WorkPeriod;
 import com.jangbokhuman.workshare.employee.Employee;
 import com.jangbokhuman.workshare.employee.EmployeePhotoRepository;
 import com.jangbokhuman.workshare.employee.EmployeeRepository;
-import com.jangbokhuman.workshare.employee.ResponsibilityCatalogService;
-import com.jangbokhuman.workshare.employee.ResponsibilityOption;
-import com.jangbokhuman.workshare.employee.ResponsibilityOptionRepository;
 import com.jangbokhuman.workshare.employee.RosterService;
-import com.jangbokhuman.workshare.leave.Attendance;
-import com.jangbokhuman.workshare.leave.LeaveRequestRepository;
-import com.jangbokhuman.workshare.leave.LeaveRequestService;
-import com.jangbokhuman.workshare.support.DailyExclusionRepository;
-import com.jangbokhuman.workshare.support.ExclusionManagementService;
-import com.jangbokhuman.workshare.support.ExclusionReasonRepository;
-import com.jangbokhuman.workshare.support.ExclusionRequirementRepository;
-import com.jangbokhuman.workshare.support.SupportExchangeRequestRepository;
-import com.jangbokhuman.workshare.support.SupportExchangeService;
+import com.jangbokhuman.workshare.attendance.Attendance;
+import com.jangbokhuman.workshare.attendance.LeaveRequestRepository;
+import com.jangbokhuman.workshare.attendance.LeaveRequestService;
+import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportAssignmentRepository;
+import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportExchangeRequestRepository;
+import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportExchangeService;
+import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportRequirementRepository;
+import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportScheduleService;
 import com.jangbokhuman.workshare.activity.sharingshop.SharingShopTimePreferenceService;
 import com.jangbokhuman.workshare.activity.sharingshop.Preference;
 import com.jangbokhuman.workshare.activity.sharingshop.SharingShopTimePreferenceRepository;
@@ -56,7 +53,8 @@ import java.util.concurrent.atomic.AtomicReference;
 @SpringBootTest(
         properties = {
             "spring.datasource.url=jdbc:h2:mem:workshare_test;DB_CLOSE_DELAY=-1",
-            "app.admin-password=test-admin-password-2026"
+            "app.admin-password=test-admin-password-2026",
+            "app.remember-me-key=test-remember-me-key-0123456789abcdef"
         })
 @org.springframework.test.context.ActiveProfiles("test")
 @AutoConfigureMockMvc
@@ -71,8 +69,6 @@ abstract class BusinessFeatureTestSupport {
     @Autowired TestClock testClock;
     @Autowired EmployeeRepository employeeRepository;
     @Autowired EmployeePhotoRepository employeePhotoRepository;
-    @Autowired ResponsibilityOptionRepository responsibilityOptionRepository;
-    @Autowired ResponsibilityCatalogService responsibilityCatalogService;
     @Autowired LeaveRequestRepository leaveRequestRepository;
     @Autowired SharingShopTimePreferenceRepository sharingShopTimePreferenceRepository;
     @Autowired ActivityManagementService activityManagementService;
@@ -84,13 +80,13 @@ abstract class BusinessFeatureTestSupport {
     @Autowired WorkTaskRepository workTaskRepository;
     @Autowired TaskAssignmentRepository taskAssignmentRepository;
     @Autowired WorkTaskService workTaskService;
+    @Autowired DailyAllocationService dailyAllocationService;
     @Autowired MockMvc mockMvc;
-    @Autowired ExclusionReasonRepository exclusionReasonRepository;
-    @Autowired ExclusionRequirementRepository exclusionRequirementRepository;
-    @Autowired DailyExclusionRepository dailyExclusionRepository;
-    @Autowired SupportExchangeRequestRepository supportExchangeRequestRepository;
-    @Autowired ExclusionManagementService exclusionManagementService;
-    @Autowired SupportExchangeService supportExchangeService;
+    @Autowired CafeteriaSupportRequirementRepository cafeteriaSupportRequirementRepository;
+    @Autowired CafeteriaSupportAssignmentRepository cafeteriaSupportAssignmentRepository;
+    @Autowired CafeteriaSupportExchangeRequestRepository cafeteriaSupportExchangeRequestRepository;
+    @Autowired CafeteriaSupportScheduleService cafeteriaSupportScheduleService;
+    @Autowired CafeteriaSupportExchangeService cafeteriaSupportExchangeService;
 
     // Prevent wall-clock background triggers; feature scenarios invoke the real allocation entry
     // point explicitly.
@@ -101,12 +97,11 @@ abstract class BusinessFeatureTestSupport {
 
     @BeforeEach
     void reset() {
-        allocationScheduler = new AllocationScheduler(workTaskService);
+        allocationScheduler = new AllocationScheduler(dailyAllocationService);
         testClock.set(TODAY.atTime(8, 30));
-        supportExchangeRequestRepository.deleteAll();
-        dailyExclusionRepository.deleteAll();
-        exclusionRequirementRepository.deleteAll();
-        exclusionReasonRepository.deleteAll();
+        cafeteriaSupportExchangeRequestRepository.deleteAll();
+        cafeteriaSupportAssignmentRepository.deleteAll();
+        cafeteriaSupportRequirementRepository.deleteAll();
         activityRegistrationRepository.deleteAll();
         taskAssignmentRepository.deleteAllInBatch();
         workTaskRepository.deleteAll();
@@ -115,9 +110,6 @@ abstract class BusinessFeatureTestSupport {
         holidayRepository.deleteAll();
         employeePhotoRepository.deleteAll();
         employeeRepository.deleteAll();
-        responsibilityOptionRepository.deleteAll();
-        for (String title : List.of("나눔가계 운영", "물품 정리", "행사 준비"))
-            responsibilityOptionRepository.save(new ResponsibilityOption(title));
     }
 
     void register(String name) {
@@ -165,16 +157,19 @@ abstract class BusinessFeatureTestSupport {
         return employeeRepository.findByName(name).orElseThrow().getId();
     }
 
-    protected void supportOn(Long reason, LocalDate date, String... names) {
-        exclusionManagementService.saveMonth(
-                reason,
+    protected void requireCafeteriaWorkers(int count) {
+        cafeteriaSupportScheduleService.changeRequiredWorkers(count);
+    }
+
+    protected void supportOn(LocalDate date, String... names) {
+        cafeteriaSupportScheduleService.saveMonth(
                 YearMonth.from(date),
                 Map.of(date, Arrays.stream(names).map(this::employeeId).toList()));
     }
 
-    protected Long supportEntry(Long reason, LocalDate date, String name) {
-        return dailyExclusionRepository
-                .findByReasonIdAndWorkDateBetweenOrderByWorkDateAsc(reason, date, date)
+    protected Long supportEntry(LocalDate date, String name) {
+        return cafeteriaSupportAssignmentRepository
+                .findByWorkDate(date)
                 .stream()
                 .filter(a -> a.getEmployeeId().equals(employeeId(name)))
                 .findFirst()

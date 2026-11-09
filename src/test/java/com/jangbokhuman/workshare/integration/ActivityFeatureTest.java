@@ -31,15 +31,15 @@ class ActivityFeatureTest extends BusinessFeatureTestSupport {
         assertThatThrownBy(() -> sharingShopTimePreferenceService.save(employeeId, Preference.EVENING))
                 .isInstanceOf(ParticipationDeniedException.class);
         now("08:50");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         assertThat(workQueryService.getDashboard(TODAY, employeeId).tasks())
                 .allSatisfy(task -> assertThat(task.assignees()).isEmpty());
     }
 
     @Test
-    @DisplayName("등록 가능한 직군도 별도 가입 전에는 참여하지 않는다")
+    @DisplayName("자동 가입 대상이 아닌 직군은 관리자가 가입시키기 전에는 참여하지 않는다")
     void eligibleWorkersMustRegisterBeforeParticipating() {
-        rosterService.registerEmployee("서지우", "staff-password", "FACILITY_SUPPORT");
+        rosterService.registerEmployee("서지우", "staff-password", "THIRD_FLOOR");
         Long employeeId = employeeId("서지우");
         assertThat(workQueryService.getDashboard(TODAY, employeeId).participant()).isFalse();
         assertThatThrownBy(() -> sharingShopTimePreferenceService.save(employeeId, Preference.MORNING))
@@ -55,9 +55,9 @@ class ActivityFeatureTest extends BusinessFeatureTestSupport {
         register("홍길동");
         Long employeeId = employeeId("홍길동");
         now("08:50");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         List<WorkQueryService.TaskView> before = workQueryService.getDashboard(TODAY, employeeId).tasks();
-        String activityName = Activity.SHARING_SHOP.getName();
+        String activityName = Activity.SHARING_SHOP.getName() + ", " + Activity.CAFETERIA_SUPPORT.getName();
         mockMvc.perform(get("/admin/employees/{id}", employeeId).with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
@@ -70,7 +70,7 @@ class ActivityFeatureTest extends BusinessFeatureTestSupport {
         assertThat(employeeRepository.findById(employeeId).orElseThrow().getWorkGroup()).isEqualTo(WorkGroupType.RESTAURANT);
         assertThat(workQueryService.getDashboard(TODAY, employeeId).participant()).isFalse();
         assertThat(workQueryService.getDashboard(TODAY, employeeId).tasks()).isEqualTo(before);
-        rosterService.changeWorkGroup(employeeId, "GENERAL");
+        activityRegistrationService.changeWorkGroup(employeeId, "GENERAL");
         assertThat(workQueryService.getDashboard(TODAY, employeeId).participant()).isFalse();
         assertThat(workQueryService.getDashboard(TODAY, employeeId).tasks()).isEqualTo(before);
     }
@@ -113,11 +113,11 @@ class ActivityFeatureTest extends BusinessFeatureTestSupport {
     void administratorsUpdateRegistrationsImmediatelyWithoutChangingConfirmedAssignments() throws Exception {
         register("홍길동");
         register("김민수");
-        rosterService.registerEmployee("이서연", "staff-password", "GENERAL");
+        rosterService.registerEmployee("이서연", "staff-password", "THIRD_FLOOR");
         Long employeeId = employeeId("홍길동");
         Long newEmployeeId = employeeId("이서연");
         now("08:50");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         List<WorkQueryService.TaskView> before = workQueryService.getDashboard(TODAY, employeeId).tasks();
         mockMvc.perform(get("/admin/activities/SHARING_SHOP").with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())
@@ -146,7 +146,7 @@ class ActivityFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("나눔가게 활동")));
         assertThat(activityManagementService.getDetails("SHARING_SHOP").candidates()).isEmpty();
-        assertThat(activityManagementService.getCards()).singleElement()
-                .satisfies(card -> assertThat(card.members()).isZero());
+        assertThat(activityManagementService.getCards()).hasSize(Activity.values().length)
+                .allSatisfy(card -> assertThat(card.members()).isZero());
     }
 }

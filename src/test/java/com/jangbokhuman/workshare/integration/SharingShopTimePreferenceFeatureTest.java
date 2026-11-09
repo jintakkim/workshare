@@ -33,7 +33,7 @@ class SharingShopTimePreferenceFeatureTest extends BusinessFeatureTestSupport {
                         .orElseThrow()
                         .getId();
         now("08:50");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         List<WorkQueryService.TaskView> confirmed =
                 workQueryService.getDashboard(TODAY, employeeId).tasks();
         assertThat(task(confirmed, "EVENING").assignees())
@@ -53,7 +53,7 @@ class SharingShopTimePreferenceFeatureTest extends BusinessFeatureTestSupport {
 
         LocalDate tomorrow = TODAY.plusDays(1);
         testClock.set(tomorrow.atTime(8, 50));
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         assertThat(
                         task(workQueryService.getDashboard(tomorrow, employeeId).tasks(), "MORNING")
                                 .assignees())
@@ -66,8 +66,8 @@ class SharingShopTimePreferenceFeatureTest extends BusinessFeatureTestSupport {
     void timePreferenceIsIndependentOfDailyHolidaysAndRestaurantSupport() {
         register("홍길동");
         Long employeeId = employeeId("홍길동");
-        Long reasonId = exclusionManagementService.addReason(Activity.SHARING_SHOP.getCode(), "식당지원", 1);
-        supportOn(reasonId, TODAY, "홍길동");
+        requireCafeteriaWorkers(1);
+        supportOn(TODAY, "홍길동");
         holidayService.addHoliday(TODAY, "복지관 휴무");
         now("09:00");
         sharingShopTimePreferenceService.save(employeeId, Preference.MORNING);

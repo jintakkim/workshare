@@ -5,7 +5,7 @@ import com.jangbokhuman.workshare.activity.ActivityRegistration;
 import com.jangbokhuman.workshare.activity.ParticipationDeniedException;
 import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
 import com.jangbokhuman.workshare.employee.WorkGroupType;
-import com.jangbokhuman.workshare.leave.Attendance;
+import com.jangbokhuman.workshare.attendance.Attendance;
 import com.jangbokhuman.workshare.activity.sharingshop.Preference;
 
 import static org.assertj.core.api.Assertions.*;
@@ -20,19 +20,28 @@ import java.util.concurrent.*;
 @DisplayName("활동·직원별 가입과 당일 배정의 분리")
 class ActivityRegistrationFeatureTest extends BusinessFeatureTestSupport {
     @Test
-    @DisplayName("직원 등록만으로 가입되지 않으며 가입 후 연차를 써도 활동 가입은 유지한다")
-    void employeeAccountsRequireExplicitRegistrationAndDailyLeaveDoesNotCancelIt() {
-        rosterService.registerEmployee("홍길동", "staff-password", "GENERAL");
+    @DisplayName("직군별 자동 가입 대상만 등록할 때 가입하며 가입 후 연차를 써도 활동 가입은 유지한다")
+    void employeeRegistrationJoinsOnlyAutoRegisteredActivitiesAndDailyLeaveDoesNotCancelIt() {
+        rosterService.registerEmployee("김민수", "staff-password", "GENERAL");
+        rosterService.registerEmployee("박지훈", "staff-password", "FACILITY_SUPPORT");
+        registerRestaurant("강수진");
+        assertThat(activityRegistrationRepository.findEmployeeIdsByActivityCode(Activity.SHARING_SHOP))
+                .containsExactlyInAnyOrder(employeeId("김민수"), employeeId("박지훈"));
+        assertThat(activityRegistrationRepository.findEmployeeIdsByActivityCode(Activity.CAFETERIA_SUPPORT))
+                .containsExactlyInAnyOrder(employeeId("김민수"), employeeId("박지훈"));
+        rosterService.registerEmployee("홍길동", "staff-password", "THIRD_FLOOR");
         Long employeeId = employeeId("홍길동");
         assertThat(activityRegistrationRepository.existsByActivityCodeAndEmployeeId(Activity.SHARING_SHOP, employeeId)).isFalse();
+        assertThat(activityRegistrationRepository.existsByActivityCodeAndEmployeeId(Activity.CAFETERIA_SUPPORT, employeeId)).isTrue();
         assertThat(sharingShopTimePreferenceService.getTimePreferenceSettings(employeeId).canChange()).isFalse();
         registerForActivity(Activity.SHARING_SHOP, "홍길동");
         leaveRequestService.save(employeeId, TODAY, Attendance.VACATION);
         now("08:50");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         assertThat(activityRegistrationRepository.existsByActivityCodeAndEmployeeId(Activity.SHARING_SHOP, employeeId)).isTrue();
         assertThat(sharingShopTimePreferenceService.getTimePreferenceSettings(employeeId).canChange()).isTrue();
-        assertThat(workQueryService.getDashboard(TODAY, employeeId).tasks()).allSatisfy(task -> assertThat(task.assignees()).isEmpty());
+        assertThat(workQueryService.getDashboard(TODAY, employeeId).tasks())
+                .allSatisfy(task -> assertThat(task.assignees()).extracting(WorkQueryService.AssigneeView::employeeId).doesNotContain(employeeId));
     }
 
     @Test
@@ -43,13 +52,13 @@ class ActivityRegistrationFeatureTest extends BusinessFeatureTestSupport {
         Long registrationId = activityRegistrationRepository.findByActivityCodeAndEmployeeId(Activity.SHARING_SHOP, employeeId).orElseThrow().getId();
         activityRegistrationService.addRegistration(Activity.SHARING_SHOP.getCode(), employeeId);
         activityRegistrationService.addRegistration(Activity.SHARING_SHOP.getCode(), employeeId);
-        assertThat(activityRegistrationRepository.count()).isEqualTo(1);
+        assertThat(activityRegistrationRepository.findEmployeeIdsByActivityCode(Activity.SHARING_SHOP)).hasSize(1);
         assertThat(activityRegistrationRepository.findByActivityCodeAndEmployeeId(Activity.SHARING_SHOP, employeeId).orElseThrow().getId()).isEqualTo(registrationId);
         assertThatThrownBy(() -> activityRegistrationRepository.saveAndFlush(new ActivityRegistration(
                 Activity.SHARING_SHOP,
                 employeeRepository.findById(employeeId).orElseThrow())))
                 .isInstanceOf(DataIntegrityViolationException.class);
-        assertThat(activityRegistrationRepository.count()).isEqualTo(1);
+        assertThat(activityRegistrationRepository.findEmployeeIdsByActivityCode(Activity.SHARING_SHOP)).hasSize(1);
     }
 
     @Test
@@ -60,7 +69,7 @@ class ActivityRegistrationFeatureTest extends BusinessFeatureTestSupport {
         Long employeeId = employeeId("홍길동");
         sharingShopTimePreferenceService.save(employeeId, Preference.EVENING);
         now("08:50");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         List<WorkQueryService.TaskView> confirmed = workQueryService.getDashboard(TODAY, employeeId).tasks();
         now("09:00");
         activityRegistrationService.deleteRegistration(Activity.SHARING_SHOP.getCode(), employeeId);
@@ -81,15 +90,15 @@ class ActivityRegistrationFeatureTest extends BusinessFeatureTestSupport {
         registerForActivity(Activity.SHARING_SHOP, "홍길동");
         sharingShopTimePreferenceService.save(employeeId, Preference.MORNING);
         now("08:50");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         List<WorkQueryService.TaskView> confirmed = workQueryService.getDashboard(TODAY, employeeId).tasks();
-        rosterService.changeWorkGroup(employeeId, "RESTAURANT");
+        activityRegistrationService.changeWorkGroup(employeeId, "RESTAURANT");
         assertThat(activityRegistrationRepository.existsByActivityCodeAndEmployeeId(Activity.SHARING_SHOP, employeeId)).isFalse();
         assertThat(sharingShopTimePreferenceRepository.findByEmployeeId(employeeId)).isEmpty();
         assertThat(workQueryService.getDashboard(TODAY, employeeId).tasks()).isEqualTo(confirmed);
         assertThatThrownBy(() -> registerForActivity(Activity.SHARING_SHOP, "홍길동"))
                 .isInstanceOf(ParticipationDeniedException.class);
-        rosterService.changeWorkGroup(employeeId, "THIRD_FLOOR");
+        activityRegistrationService.changeWorkGroup(employeeId, "THIRD_FLOOR");
         assertThat(activityRegistrationRepository.existsByActivityCodeAndEmployeeId(Activity.SHARING_SHOP, employeeId)).isFalse();
     }
 
@@ -110,7 +119,7 @@ class ActivityRegistrationFeatureTest extends BusinessFeatureTestSupport {
             });
             Future<?> transfer = executorService.submit(() -> {
                 await(start);
-                rosterService.changeWorkGroup(employeeId, "RESTAURANT");
+                activityRegistrationService.changeWorkGroup(employeeId, "RESTAURANT");
             });
             registration.get(10, TimeUnit.SECONDS);
             transfer.get(10, TimeUnit.SECONDS);

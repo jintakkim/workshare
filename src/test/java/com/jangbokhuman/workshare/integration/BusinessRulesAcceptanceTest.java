@@ -12,10 +12,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
 import com.jangbokhuman.workshare.calendar.WorkPeriod;
-import com.jangbokhuman.workshare.support.SupportExchangeService;
-import com.jangbokhuman.workshare.leave.Attendance;
+import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportExchangeService;
+import com.jangbokhuman.workshare.attendance.Attendance;
 import com.jangbokhuman.workshare.activity.Activity;
-import com.jangbokhuman.workshare.support.ExclusionReason;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -91,8 +90,8 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
         MockHttpSession admin = login("admin", "test-admin-password-2026");
         for (String name : STAFF_NAMES) createEmployee(admin, name, "GENERAL");
         createEmployee(admin, "강수진", "RESTAURANT");
-        Long reason = createSupportReason(admin, 2);
-        saveSupport(admin, reason, Map.of(TODAY, List.of(employeeId("홍길동"), employeeId("김민수"))));
+        requireCafeteriaWorkers(admin, 2);
+        saveSupport(admin, Map.of(TODAY, List.of(employeeId("홍길동"), employeeId("김민수"))));
         saveLeave(login("이서연", STAFF_PASSWORD), TODAY, Attendance.VACATION);
         saveLeave(login("박지훈", STAFF_PASSWORD), TODAY, Attendance.AFTERNOON_HALF_DAY);
         for (String name : List.of("최유진", "정하늘")) {
@@ -142,14 +141,13 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
     void aRealRecipientAcceptsTheExchangeAndBothDailyCardsReflectIt() throws Exception {
         MockHttpSession admin = login("admin", "test-admin-password-2026");
         for (String name : List.of("홍길동", "김민수", "이서연")) createEmployee(admin, name, "GENERAL");
-        Long reason = createSupportReason(admin, 1);
+        requireCafeteriaWorkers(admin, 1);
         LocalDate next = TODAY.plusDays(1);
         saveSupport(
                 admin,
-                reason,
                 Map.of(TODAY, List.of(employeeId("홍길동")), next, List.of(employeeId("김민수"))));
-        Long source = supportEntry(reason, TODAY, "홍길동");
-        Long target = supportEntry(reason, next, "김민수");
+        Long source = supportEntry(TODAY, "홍길동");
+        Long target = supportEntry(next, "김민수");
         MockHttpSession requester = login("홍길동", STAFF_PASSWORD);
         MockHttpSession recipient = login("김민수", STAFF_PASSWORD);
         MockHttpSession outsider = login("이서연", STAFF_PASSWORD);
@@ -166,8 +164,8 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
                 mockMvc.perform(get("/supports").session(recipient))
                         .andExpect(status().isOk())
                         .andReturn();
-        SupportExchangeService.Page inbox =
-                (SupportExchangeService.Page) incoming.getModelAndView().getModel().get("view");
+        CafeteriaSupportExchangeService.Page inbox =
+                (CafeteriaSupportExchangeService.Page) incoming.getModelAndView().getModel().get("view");
         assertThat(inbox.incoming()).hasSize(1);
         Long requestId = inbox.incoming().getFirst().id();
         mockMvc.perform(
@@ -201,12 +199,12 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
         MockHttpSession admin = login("admin", "test-admin-password-2026");
         createEmployee(admin, "홍길동", "GENERAL");
         createEmployee(admin, "김민수", "GENERAL");
-        Long reason = createSupportReason(admin, 1);
-        saveSupport(admin, reason, Map.of(TODAY, List.of(employeeId("홍길동"))));
+        requireCafeteriaWorkers(admin, 1);
+        saveSupport(admin, Map.of(TODAY, List.of(employeeId("홍길동"))));
         MockHttpSession worker = login("홍길동", STAFF_PASSWORD);
         now("08:48:59.999999999");
         saveLeave(worker, TODAY, Attendance.VACATION);
-        saveSupport(admin, reason, Map.of(TODAY, List.of(employeeId("김민수"))));
+        saveSupport(admin, Map.of(TODAY, List.of(employeeId("김민수"))));
         now("08:49:00");
         mockMvc.perform(
                         post("/leave-requests")
@@ -223,7 +221,7 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
                                 .param("activityCode", Activity.SHARING_SHOP.getCode())
                                 .param("timePreference", "EVENING"))
                 .andExpect(flash().attributeExists("success"));
-        mockMvc.perform(supportForm(admin, reason, Map.of(TODAY, List.of())))
+        mockMvc.perform(supportForm(admin, Map.of(TODAY, List.of())))
                 .andExpect(flash().attributeExists("error"));
         mockMvc.perform(get(dayUrl(TODAY)).session(worker))
                 .andExpect(jsonPath("$.excluded[*].name").value(containsInAnyOrder("김민수")))
@@ -304,28 +302,22 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
         }
     }
 
-    private Long createSupportReason(MockHttpSession admin, int count) throws Exception {
+    private void requireCafeteriaWorkers(MockHttpSession admin, int count) throws Exception {
         mockMvc.perform(
-                        post("/admin/supports/reasons")
+                        post("/admin/supports/requirements")
                                 .session(admin)
                                 .with(csrf())
-                                .param("name", "식당지원")
                                 .param("requiredWorkers", Integer.toString(count)))
                 .andExpect(flash().attributeExists("success"));
-        return exclusionReasonRepository
-                .findByName("식당지원")
-                .map(ExclusionReason::getId)
-                .orElseThrow();
     }
 
     private MockHttpServletRequestBuilder supportForm(
-            MockHttpSession admin, Long reason, Map<LocalDate, List<Long>> changes) {
+            MockHttpSession admin, Map<LocalDate, List<Long>> changes) {
         LocalDate first = changes.keySet().iterator().next();
         MockHttpServletRequestBuilder form =
                 post("/admin/supports/month")
                         .session(admin)
                         .with(csrf())
-                        .param("reasonId", String.valueOf(reason))
                         .param("month", YearMonth.from(first).toString());
         for (Map.Entry<LocalDate, List<Long>> change : changes.entrySet()) {
             form.param("editedDates", change.getKey().toString());
@@ -337,9 +329,9 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
         return form;
     }
 
-    private void saveSupport(MockHttpSession admin, Long reason, Map<LocalDate, List<Long>> changes)
+    private void saveSupport(MockHttpSession admin, Map<LocalDate, List<Long>> changes)
             throws Exception {
-        mockMvc.perform(supportForm(admin, reason, changes))
+        mockMvc.perform(supportForm(admin, changes))
                 .andExpect(flash().attributeExists("success"));
     }
 

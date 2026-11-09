@@ -1,7 +1,8 @@
 package com.jangbokhuman.workshare.integration;
 
+import com.jangbokhuman.workshare.common.BusinessException;
 import com.jangbokhuman.workshare.activity.Activity;
-import com.jangbokhuman.workshare.leave.Attendance;
+import com.jangbokhuman.workshare.attendance.Attendance;
 import com.jangbokhuman.workshare.activity.sharingshop.Preference;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -125,36 +126,36 @@ class ConcurrencyFeatureTest extends BusinessFeatureTestSupport {
         register("홍길동");
         register("김민수");
         register("이서연");
-        Long reasonId = exclusionManagementService.addReason(Activity.SHARING_SHOP.getCode(), "식당지원", 1);
-        supportOn(reasonId, TODAY, "홍길동");
-        supportOn(reasonId, TODAY.plusDays(1), "김민수");
-        supportOn(reasonId, TODAY.plusDays(2), "이서연");
-        Long sourceId = supportEntry(reasonId, TODAY, "홍길동");
-        supportExchangeService.request(
-                employeeId("홍길동"), sourceId, supportEntry(reasonId, TODAY.plusDays(1), "김민수"));
-        supportExchangeService.request(
-                employeeId("홍길동"), sourceId, supportEntry(reasonId, TODAY.plusDays(2), "이서연"));
+        requireCafeteriaWorkers(1);
+        supportOn(TODAY, "홍길동");
+        supportOn(TODAY.plusDays(1), "김민수");
+        supportOn(TODAY.plusDays(2), "이서연");
+        Long sourceId = supportEntry(TODAY, "홍길동");
+        cafeteriaSupportExchangeService.request(
+                employeeId("홍길동"), sourceId, supportEntry(TODAY.plusDays(1), "김민수"));
+        cafeteriaSupportExchangeService.request(
+                employeeId("홍길동"), sourceId, supportEntry(TODAY.plusDays(2), "이서연"));
         Long firstId =
-                supportExchangeRequestRepository.findAll().stream()
+                cafeteriaSupportExchangeRequestRepository.findAll().stream()
                         .filter(request -> request.getRecipientId().equals(employeeId("김민수")))
                         .findFirst()
                         .orElseThrow()
                         .getId();
         Long secondId =
-                supportExchangeRequestRepository.findAll().stream()
+                cafeteriaSupportExchangeRequestRepository.findAll().stream()
                         .filter(request -> request.getRecipientId().equals(employeeId("이서연")))
                         .findFirst()
                         .orElseThrow()
                         .getId();
         List<Boolean> outcomes =
                 simultaneousAttempts(
-                        () -> supportExchangeService.accept(employeeId("김민수"), firstId),
-                        () -> supportExchangeService.accept(employeeId("이서연"), secondId));
+                        () -> cafeteriaSupportExchangeService.accept(employeeId("김민수"), firstId),
+                        () -> cafeteriaSupportExchangeService.accept(employeeId("이서연"), secondId));
         assertThat(outcomes).containsExactlyInAnyOrder(true, false);
-        assertThat(dailyExclusionRepository.count()).isEqualTo(3);
-        assertThat(dailyExclusionRepository.findById(sourceId).orElseThrow().getEmployeeId())
+        assertThat(cafeteriaSupportAssignmentRepository.count()).isEqualTo(3);
+        assertThat(cafeteriaSupportAssignmentRepository.findById(sourceId).orElseThrow().getEmployeeId())
                 .isIn(employeeId("김민수"), employeeId("이서연"));
-        assertThat(supportExchangeRequestRepository.count()).isZero();
+        assertThat(cafeteriaSupportExchangeRequestRepository.count()).isZero();
     }
 
     private void parallelWrites(int count, java.util.function.IntConsumer operation)
@@ -217,7 +218,7 @@ class ConcurrencyFeatureTest extends BusinessFeatureTestSupport {
         try {
             operation.run();
             return true;
-        } catch (IllegalArgumentException rejected) {
+        } catch (BusinessException rejected) {
             return false;
         }
     }

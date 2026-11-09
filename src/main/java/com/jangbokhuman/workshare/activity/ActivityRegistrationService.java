@@ -1,7 +1,10 @@
 package com.jangbokhuman.workshare.activity;
 
+import com.jangbokhuman.workshare.common.BusinessException;
+import com.jangbokhuman.workshare.common.ErrorCode;
 import com.jangbokhuman.workshare.employee.Employee;
 import com.jangbokhuman.workshare.employee.EmployeeRepository;
+import com.jangbokhuman.workshare.employee.RosterService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -10,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -20,6 +24,7 @@ public class ActivityRegistrationService {
     private final EmployeeRepository employeeRepository;
     private final ActivityRegistrationPolicy activityRegistrationPolicy;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final RosterService rosterService;
 
     public void addRegistration(String activityCode, Long employeeId) {
         Activity activity = Activity.getByCode(activityCode);
@@ -44,9 +49,17 @@ public class ActivityRegistrationService {
                 });
     }
 
-    public List<Activity> removeIneligibleRegistrations(Employee employee) {
+    public List<Activity> changeWorkGroup(Long employeeId, String workGroupCode) {
+        Employee employee = rosterService.changeWorkGroup(employeeId, workGroupCode);
+        return removeIneligibleRegistrations(employee);
+    }
+
+    private List<Activity> removeIneligibleRegistrations(Employee employee) {
         List<Activity> removedActivities = new ArrayList<>();
-        for (ActivityRegistration registration : activityRegistrationRepository.findByEmployeeId(employee.getId())) {
+        List<ActivityRegistration> registrations = activityRegistrationRepository.findByEmployeeId(employee.getId()).stream()
+                .sorted(Comparator.comparing(ActivityRegistration::getActivityCode))
+                .toList();
+        for (ActivityRegistration registration : registrations) {
             Activity activity = registration.getActivityCode();
             if (!activityRegistrationPolicy.evaluateRegistration(employee, activity).allowed()) {
                 activityRegistrationRepository.delete(registration);
@@ -59,6 +72,6 @@ public class ActivityRegistrationService {
 
     private Employee getEmployeeForUpdate(Long employeeId) {
         return employeeRepository.findByIdForUpdate(employeeId)
-                .orElseThrow(() -> new IllegalArgumentException("직원을 확인해주세요."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "직원을 확인해주세요."));
     }
 }

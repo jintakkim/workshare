@@ -1,16 +1,15 @@
 package com.jangbokhuman.workshare.activity.sharingshop;
 
 import com.jangbokhuman.workshare.activity.Activity;
+import com.jangbokhuman.workshare.activity.ActivityExclusionReader;
 import com.jangbokhuman.workshare.activity.Worker;
 import com.jangbokhuman.workshare.calendar.WorkPeriod;
 import com.jangbokhuman.workshare.employee.Employee;
 import com.jangbokhuman.workshare.employee.EmployeeRepository;
 import com.jangbokhuman.workshare.employee.WorkGroupType;
-import com.jangbokhuman.workshare.leave.Attendance;
-import com.jangbokhuman.workshare.leave.LeaveRequest;
-import com.jangbokhuman.workshare.leave.LeaveRequestRepository;
-import com.jangbokhuman.workshare.support.DailyExclusion;
-import com.jangbokhuman.workshare.support.DailyExclusionReader;
+import com.jangbokhuman.workshare.attendance.Attendance;
+import com.jangbokhuman.workshare.attendance.LeaveRequest;
+import com.jangbokhuman.workshare.attendance.LeaveRequestRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -29,7 +28,7 @@ import java.util.stream.Collectors;
 public class SharingShopStaffing {
     private final EmployeeRepository employeeRepository;
     private final LeaveRequestRepository leaveRequestRepository;
-    private final DailyExclusionReader dailyExclusionReader;
+    private final ActivityExclusionReader activityExclusionReader;
     private final SharingShopTimePreferenceRepository sharingShopTimePreferenceRepository;
     private final ShiftQuotaService shiftQuotaService;
 
@@ -59,8 +58,8 @@ public class SharingShopStaffing {
         if (facilityIds.isEmpty()) {
             return new FacilityCoverage(0, 0);
         }
-        Set<Long> awayIds = dailyExclusionReader.getExclusionsOn(Activity.SHARING_SHOP.getSupportScopes(), workDate).stream()
-                .map(DailyExclusion::getEmployeeId)
+        Set<Long> awayIds = activityExclusionReader.getExclusionsOn(Activity.SHARING_SHOP, workDate).stream()
+                .map(ActivityExclusionReader.ActivityExclusion::employeeId)
                 .collect(Collectors.toSet());
         Map<Long, Attendance> attendanceById = leaveRequestRepository.findByWorkDate(workDate).stream()
                 .collect(Collectors.toMap(LeaveRequest::getEmployeeId, LeaveRequest::getAttendance));

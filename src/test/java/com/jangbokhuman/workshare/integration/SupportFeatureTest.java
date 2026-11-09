@@ -1,13 +1,13 @@
 package com.jangbokhuman.workshare.integration;
 
+import com.jangbokhuman.workshare.common.BusinessException;
 import com.jangbokhuman.workshare.activity.Activity;
+import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportExchangeCleanupScheduler;
+import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportExchangeService;
 import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
 import com.jangbokhuman.workshare.activity.Worker;
 import com.jangbokhuman.workshare.calendar.WorkPeriod;
-import com.jangbokhuman.workshare.leave.Attendance;
-import com.jangbokhuman.workshare.support.ExclusionReason;
-import com.jangbokhuman.workshare.support.SupportExchangeCleanupScheduler;
-import com.jangbokhuman.workshare.support.SupportExchangeService;
+import com.jangbokhuman.workshare.attendance.Attendance;
 import com.jangbokhuman.workshare.activity.sharingshop.Preference;
 
 import static org.assertj.core.api.Assertions.*;
@@ -37,8 +37,8 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         for (String name : List.of("홍길동", "김민수", "이서연", "박지훈", "최유진")) register(name);
         sharingShopTimePreferenceService.save(employeeId("박지훈"), Preference.EVENING);
         sharingShopTimePreferenceService.save(employeeId("최유진"), Preference.EVENING);
-        Long reason = exclusionManagementService.addReason(Activity.SHARING_SHOP.getCode(), "식당지원", 2);
-        supportOn(reason, TODAY, "홍길동", "김민수");
+        requireCafeteriaWorkers(2);
+        supportOn(TODAY, "홍길동", "김민수");
         assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).workers())
                 .extracting(Worker::name)
                 .containsExactlyInAnyOrder("이서연", "박지훈", "최유진");
@@ -52,7 +52,7 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(jsonPath("$.eveningSlots").value(2));
         addTask(TODAY, "오전 추가 업무", WorkPeriod.MORNING, 1);
         now("08:50");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         List<WorkQueryService.TaskView> tasks =
                 workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks();
         assertThat(task(tasks, "MORNING").assignees())
@@ -70,29 +70,21 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
     }
 
     @Test
-    @DisplayName("제외 사유별 지원은 활동 가입을 유지하고 당일 지원 중복을 막는다")
-    void exclusionReasonsPreserveActivityMembershipAndPreventDoubleBooking() {
+    @DisplayName("식당지원은 나눔가게 가입을 유지하고 당일 휴가와 겹치지 않는다")
+    void cafeteriaSupportPreservesSharingShopMembershipAndRejectsLeaveConflicts() {
         register("홍길동");
         register("김민수");
         register("이서연");
-        Long food = exclusionManagementService.addReason(Activity.SHARING_SHOP.getCode(), "식당지원", 1);
-        Long outside = exclusionManagementService.addReason(Activity.SHARING_SHOP.getCode(), "외부 업무", 1);
-        supportOn(food, TODAY, "홍길동");
-        supportOn(outside, TODAY, "김민수");
+        requireCafeteriaWorkers(1);
+        supportOn(TODAY, "홍길동");
         assertThat(workQueryService.getDashboard(TODAY, employeeId("이서연")).workers())
                 .extracting(Worker::name)
-                .containsExactly("이서연");
+                .containsExactlyInAnyOrder("김민수", "이서연");
         assertThat(activityRegistrationRepository.findEmployeeIdsByActivityCode(Activity.SHARING_SHOP)).hasSize(3);
-        assertThatThrownBy(() -> supportOn(outside, TODAY, "홍길동")).hasMessageContaining("다른 지원");
-        assertThat(dailyExclusionRepository.count()).isEqualTo(2);
+        assertThat(cafeteriaSupportAssignmentRepository.count()).isEqualTo(1);
         leaveRequestService.save(employeeId("이서연"), TODAY, Attendance.VACATION);
-        assertThatThrownBy(() -> supportOn(food, TODAY, "이서연")).hasMessageContaining("휴가");
-        assertThatThrownBy(
-                        () ->
-                                exclusionManagementService.addReason(
-                                        Activity.SHARING_SHOP.getCode(), "식당지원", 1))
-                .hasMessageContaining("이미 등록");
-        assertThatThrownBy(() -> exclusionManagementService.changeRequired(food, -1))
+        assertThatThrownBy(() -> supportOn(TODAY, "이서연")).hasMessageContaining("휴가");
+        assertThatThrownBy(() -> cafeteriaSupportScheduleService.changeRequiredWorkers(-1))
                 .hasMessageContaining("0명");
     }
 
@@ -101,20 +93,20 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
     void supportAndLeaveCloseAtEightFortyNine() {
         register("홍길동");
         register("김민수");
-        Long reason = exclusionManagementService.addReason(Activity.SHARING_SHOP.getCode(), "식당지원", 1);
+        requireCafeteriaWorkers(1);
         now("08:48:59.999999999");
-        supportOn(reason, TODAY, "홍길동");
+        supportOn(TODAY, "홍길동");
         now("08:49:00");
         assertThatThrownBy(
                         () ->
                                 leaveRequestService.save(
                                         employeeId("홍길동"), TODAY, Attendance.VACATION))
                 .hasMessageContaining("마감");
-        assertThatThrownBy(() -> supportOn(reason, TODAY, "김민수")).hasMessageContaining("08:49");
-        exclusionManagementService.changeRequired(reason, 2);
+        assertThatThrownBy(() -> supportOn(TODAY, "김민수")).hasMessageContaining("08:49");
+        cafeteriaSupportScheduleService.changeRequiredWorkers(2);
         assertThat(
-                        exclusionManagementService
-                                .getSupportMonth(reason, YearMonth.from(TODAY))
+                        cafeteriaSupportScheduleService
+                                .getMonth(YearMonth.from(TODAY))
                                 .days()
                                 .stream()
                                 .filter(d -> d.date().equals(TODAY))
@@ -123,8 +115,8 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                                 .required())
                 .isEqualTo(1);
         assertThat(
-                        exclusionManagementService
-                                .getSupportMonth(reason, YearMonth.from(TODAY))
+                        cafeteriaSupportScheduleService
+                                .getMonth(YearMonth.from(TODAY))
                                 .days()
                                 .stream()
                                 .filter(d -> d.date().equals(TODAY.plusDays(1)))
@@ -140,11 +132,11 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         register("홍길동");
         register("김민수");
         register("이서연");
-        Long reason = exclusionManagementService.addReason(Activity.SHARING_SHOP.getCode(), "식당지원", 1);
-        supportOn(reason, TODAY, "홍길동");
-        supportOn(reason, TODAY.plusDays(1), "김민수");
-        Long source = supportEntry(reason, TODAY, "홍길동"),
-                target = supportEntry(reason, TODAY.plusDays(1), "김민수");
+        requireCafeteriaWorkers(1);
+        supportOn(TODAY, "홍길동");
+        supportOn(TODAY.plusDays(1), "김민수");
+        Long source = supportEntry(TODAY, "홍길동"),
+                target = supportEntry(TODAY.plusDays(1), "김민수");
         mockMvc.perform(
                         post("/supports/requests")
                                 .with(testUser("이서연", "STAFF"))
@@ -152,11 +144,11 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                                 .param("sourceId", String.valueOf(source))
                                 .param("targetId", String.valueOf(target)))
                 .andExpect(status().isForbidden());
-        supportExchangeService.request(employeeId("홍길동"), source, target);
-        assertThat(dailyExclusionRepository.findById(source).orElseThrow().getEmployeeId())
+        cafeteriaSupportExchangeService.request(employeeId("홍길동"), source, target);
+        assertThat(cafeteriaSupportAssignmentRepository.findById(source).orElseThrow().getEmployeeId())
                 .isEqualTo(employeeId("홍길동"));
-        Long request = supportExchangeRequestRepository.findAll().getFirst().getId();
-        assertThat(supportExchangeService.getExchangePage(employeeId("김민수"), null).incoming())
+        Long request = cafeteriaSupportExchangeRequestRepository.findAll().getFirst().getId();
+        assertThat(cafeteriaSupportExchangeService.getExchangePage(employeeId("김민수"), null).incoming())
                 .hasSize(1);
         mockMvc.perform(
                         post("/supports/requests/" + request + "/accept")
@@ -164,12 +156,12 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                                 .with(csrf()))
                 .andExpect(status().isForbidden());
         now("08:48:59");
-        supportExchangeService.accept(employeeId("김민수"), request);
-        assertThat(dailyExclusionRepository.findById(source).orElseThrow().getEmployeeId())
+        cafeteriaSupportExchangeService.accept(employeeId("김민수"), request);
+        assertThat(cafeteriaSupportAssignmentRepository.findById(source).orElseThrow().getEmployeeId())
                 .isEqualTo(employeeId("김민수"));
-        assertThat(dailyExclusionRepository.findById(target).orElseThrow().getEmployeeId())
+        assertThat(cafeteriaSupportAssignmentRepository.findById(target).orElseThrow().getEmployeeId())
                 .isEqualTo(employeeId("홍길동"));
-        assertThat(supportExchangeRequestRepository.count()).isZero();
+        assertThat(cafeteriaSupportExchangeRequestRepository.count()).isZero();
         assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).workers())
                 .extracting(Worker::name)
                 .contains("홍길동")
@@ -185,27 +177,27 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
     void expiredExchangesCannotBeAcceptedAndDailyCleanupRetainsFutureRequests() {
         register("홍길동");
         register("김민수");
-        Long reason = exclusionManagementService.addReason(Activity.SHARING_SHOP.getCode(), "식당지원", 1);
-        supportOn(reason, TODAY, "홍길동");
-        supportOn(reason, TODAY.plusDays(1), "김민수");
-        supportOn(reason, TODAY.plusDays(2), "홍길동");
-        supportExchangeService.request(
+        requireCafeteriaWorkers(1);
+        supportOn(TODAY, "홍길동");
+        supportOn(TODAY.plusDays(1), "김민수");
+        supportOn(TODAY.plusDays(2), "홍길동");
+        cafeteriaSupportExchangeService.request(
                 employeeId("홍길동"),
-                supportEntry(reason, TODAY, "홍길동"),
-                supportEntry(reason, TODAY.plusDays(1), "김민수"));
-        Long expired = supportExchangeRequestRepository.findAll().getFirst().getId();
-        supportExchangeService.request(
+                supportEntry(TODAY, "홍길동"),
+                supportEntry(TODAY.plusDays(1), "김민수"));
+        Long expired = cafeteriaSupportExchangeRequestRepository.findAll().getFirst().getId();
+        cafeteriaSupportExchangeService.request(
                 employeeId("홍길동"),
-                supportEntry(reason, TODAY.plusDays(2), "홍길동"),
-                supportEntry(reason, TODAY.plusDays(1), "김민수"));
+                supportEntry(TODAY.plusDays(2), "홍길동"),
+                supportEntry(TODAY.plusDays(1), "김민수"));
         now("08:49:00");
-        assertThatThrownBy(() -> supportExchangeService.accept(employeeId("김민수"), expired))
+        assertThatThrownBy(() -> cafeteriaSupportExchangeService.accept(employeeId("김민수"), expired))
                 .hasMessageContaining("만료");
-        assertThat(supportExchangeService.getExchangePage(employeeId("김민수"), null).incoming())
+        assertThat(cafeteriaSupportExchangeService.getExchangePage(employeeId("김민수"), null).incoming())
                 .hasSize(1);
-        new SupportExchangeCleanupScheduler(supportExchangeService).clean();
-        assertThat(supportExchangeRequestRepository.count()).isEqualTo(1);
-        assertThat(dailyExclusionRepository.count()).isEqualTo(3);
+        new CafeteriaSupportExchangeCleanupScheduler(cafeteriaSupportExchangeService).clean();
+        assertThat(cafeteriaSupportExchangeRequestRepository.count()).isEqualTo(1);
+        assertThat(cafeteriaSupportAssignmentRepository.count()).isEqualTo(3);
     }
 
     @Test
@@ -215,36 +207,36 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         register("홍길동");
         register("김민수");
         register("이서연");
-        Long reason = exclusionManagementService.addReason(Activity.SHARING_SHOP.getCode(), "식당지원", 1);
-        supportOn(reason, TODAY, "홍길동");
-        supportOn(reason, TODAY.plusDays(1), "김민수");
-        Long source = supportEntry(reason, TODAY, "홍길동"),
-                target = supportEntry(reason, TODAY.plusDays(1), "김민수");
-        supportExchangeService.request(employeeId("홍길동"), source, target);
-        supportOn(reason, TODAY, "이서연");
-        assertThat(supportExchangeRequestRepository.count()).isZero();
-        source = supportEntry(reason, TODAY, "이서연");
-        supportExchangeService.request(employeeId("이서연"), source, target);
-        Long request = supportExchangeRequestRepository.findAll().getFirst().getId();
+        requireCafeteriaWorkers(1);
+        supportOn(TODAY, "홍길동");
+        supportOn(TODAY.plusDays(1), "김민수");
+        Long source = supportEntry(TODAY, "홍길동"),
+                target = supportEntry(TODAY.plusDays(1), "김민수");
+        cafeteriaSupportExchangeService.request(employeeId("홍길동"), source, target);
+        supportOn(TODAY, "이서연");
+        assertThat(cafeteriaSupportExchangeRequestRepository.count()).isZero();
+        source = supportEntry(TODAY, "이서연");
+        cafeteriaSupportExchangeService.request(employeeId("이서연"), source, target);
+        Long request = cafeteriaSupportExchangeRequestRepository.findAll().getFirst().getId();
         try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
             List<Future<Boolean>> results =
                     pool.invokeAll(
                             List.<Callable<Boolean>>of(
                                     () -> {
                                         try {
-                                            supportExchangeService.accept(
+                                            cafeteriaSupportExchangeService.accept(
                                                     employeeId("김민수"), request);
                                             return true;
-                                        } catch (IllegalArgumentException e) {
+                                        } catch (BusinessException e) {
                                             return false;
                                         }
                                     },
                                     () -> {
                                         try {
-                                            supportExchangeService.accept(
+                                            cafeteriaSupportExchangeService.accept(
                                                     employeeId("김민수"), request);
                                             return true;
-                                        } catch (IllegalArgumentException e) {
+                                        } catch (BusinessException e) {
                                             return false;
                                         }
                                     }));
@@ -252,8 +244,8 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
             for (Future<Boolean> result : results) if (result.get()) successes++;
             assertThat(successes).isEqualTo(1);
         }
-        assertThat(dailyExclusionRepository.count()).isEqualTo(2);
-        assertThat(supportExchangeRequestRepository.count()).isZero();
+        assertThat(cafeteriaSupportAssignmentRepository.count()).isEqualTo(2);
+        assertThat(cafeteriaSupportExchangeRequestRepository.count()).isZero();
     }
 
     @Test
@@ -261,25 +253,24 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
     void exchangeAcceptanceRechecksNewLeaveAndOtherSupportConflictsAndCanBeRejected() {
         register("홍길동");
         register("김민수");
-        Long food = exclusionManagementService.addReason(Activity.SHARING_SHOP.getCode(), "식당지원", 1),
-                outside = exclusionManagementService.addReason(Activity.SHARING_SHOP.getCode(), "외부 업무", 1);
-        supportOn(food, TODAY, "홍길동");
-        supportOn(food, TODAY.plusDays(1), "김민수");
-        Long source = supportEntry(food, TODAY, "홍길동"),
-                target = supportEntry(food, TODAY.plusDays(1), "김민수");
-        supportExchangeService.request(employeeId("홍길동"), source, target);
-        Long request = supportExchangeRequestRepository.findAll().getFirst().getId();
+        requireCafeteriaWorkers(1);
+        supportOn(TODAY, "홍길동");
+        supportOn(TODAY.plusDays(1), "김민수");
+        Long source = supportEntry(TODAY, "홍길동"),
+                target = supportEntry(TODAY.plusDays(1), "김민수");
+        cafeteriaSupportExchangeService.request(employeeId("홍길동"), source, target);
+        Long request = cafeteriaSupportExchangeRequestRepository.findAll().getFirst().getId();
         leaveRequestService.save(employeeId("김민수"), TODAY, Attendance.VACATION);
-        assertThatThrownBy(() -> supportExchangeService.accept(employeeId("김민수"), request))
+        assertThatThrownBy(() -> cafeteriaSupportExchangeService.accept(employeeId("김민수"), request))
                 .hasMessageContaining("휴가");
-        assertThat(dailyExclusionRepository.findById(source).orElseThrow().getEmployeeId())
+        assertThat(cafeteriaSupportAssignmentRepository.findById(source).orElseThrow().getEmployeeId())
                 .isEqualTo(employeeId("홍길동"));
         leaveRequestService.save(employeeId("김민수"), TODAY, Attendance.WORK);
-        supportOn(outside, TODAY, "김민수");
-        assertThatThrownBy(() -> supportExchangeService.accept(employeeId("김민수"), request))
+        supportOn(TODAY, "홍길동", "김민수");
+        assertThatThrownBy(() -> cafeteriaSupportExchangeService.accept(employeeId("김민수"), request))
                 .hasMessageContaining("다른 지원");
-        supportExchangeService.dismiss(employeeId("김민수"), request);
-        assertThat(supportExchangeRequestRepository.count()).isZero();
+        cafeteriaSupportExchangeService.dismiss(employeeId("김민수"), request);
+        assertThat(cafeteriaSupportExchangeRequestRepository.count()).isZero();
     }
 
     @Test
@@ -288,16 +279,16 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         register("홍길동");
         register("김민수");
         register("이서연");
-        Long reason = exclusionManagementService.addReason(Activity.SHARING_SHOP.getCode(), "식당지원", 2);
-        supportOn(reason, TODAY, "홍길동", "이서연");
-        supportOn(reason, TODAY.plusDays(1), "김민수", "이서연");
-        SupportExchangeService.Page page =
-                supportExchangeService.getExchangePage(employeeId("홍길동"), null);
+        requireCafeteriaWorkers(2);
+        supportOn(TODAY, "홍길동", "이서연");
+        supportOn(TODAY.plusDays(1), "김민수", "이서연");
+        CafeteriaSupportExchangeService.Page page =
+                cafeteriaSupportExchangeService.getExchangePage(employeeId("홍길동"), null);
         assertThat(page.candidates())
-                .extracting(SupportExchangeService.Slot::name)
+                .extracting(CafeteriaSupportExchangeService.Slot::name)
                 .containsExactly("김민수");
-        Long source = supportEntry(reason, TODAY, "홍길동"),
-                target = supportEntry(reason, TODAY.plusDays(1), "김민수");
+        Long source = supportEntry(TODAY, "홍길동"),
+                target = supportEntry(TODAY.plusDays(1), "김민수");
         String html = mockMvc.perform(get("/supports").with(testUser("홍길동", "STAFF"))
                         .param("sourceId", source.toString()))
                 .andExpect(status().isOk())
@@ -310,47 +301,65 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         for (Attendance attendance :
                 List.of(Attendance.MORNING_HALF_DAY, Attendance.AFTERNOON_HALF_DAY)) {
             leaveRequestService.save(employeeId("김민수"), TODAY, attendance);
-            assertThat(supportExchangeService.getExchangePage(employeeId("홍길동"), null).candidates())
+            assertThat(cafeteriaSupportExchangeService.getExchangePage(employeeId("홍길동"), null).candidates())
                     .isEmpty();
             assertThatThrownBy(
-                            () -> supportExchangeService.request(employeeId("홍길동"), source, target))
+                            () -> cafeteriaSupportExchangeService.request(employeeId("홍길동"), source, target))
                     .hasMessageContaining("휴가");
         }
-        assertThat(supportExchangeRequestRepository.count()).isZero();
+        assertThat(cafeteriaSupportExchangeRequestRepository.count()).isZero();
     }
 
     @Test
-    @DisplayName("나눔가게 미가입 직원도 식당지원표에 등록하고 지원일을 맞교환한다")
+    @DisplayName("지원 교환 화면은 오늘부터 달력 기준 3개월 뒤까지 조회한다")
+    void exchangePageIncludesOnlyThreeCalendarMonths() {
+        register("홍길동");
+        register("김민수");
+        LocalDate today = LocalDate.of(2027, 2, 4);
+        LocalDate lastDay = LocalDate.of(2027, 5, 4);
+        testClock.set(today.atTime(8, 30));
+        requireCafeteriaWorkers(2);
+        supportOn(today, "홍길동");
+        supportOn(lastDay, "김민수");
+        supportOn(lastDay.plusDays(1), "홍길동", "김민수");
+
+        CafeteriaSupportExchangeService.Page page = cafeteriaSupportExchangeService.getExchangePage(employeeId("홍길동"), null);
+
+        assertThat(page.mine()).extracting(CafeteriaSupportExchangeService.Slot::date).containsExactly(today);
+        assertThat(page.candidates()).extracting(CafeteriaSupportExchangeService.Slot::date).containsExactly(lastDay);
+    }
+
+    @Test
+    @DisplayName("식당 외 직군은 가입할 때 식당지원에 자동 가입하고 나눔가게 미가입이어도 지원일을 맞교환한다")
     void cafeteriaSupportDoesNotRequireSharingShopMembership() throws Exception {
         rosterService.registerEmployee("홍길동", "staff-password", "THIRD_FLOOR");
         rosterService.registerEmployee("김민수", "staff-password", "DEVELOPMENT_SUPPORT");
         registerRestaurant("강수진");
-        Long reason = exclusionReasonRepository.save(new ExclusionReason(Activity.SHARING_SHOP.getCode(), "식당지원")).getId();
         LocalDate tomorrow = TODAY.plusDays(1);
+        assertThat(activityRegistrationRepository.findEmployeeIdsByActivityCode(Activity.CAFETERIA_SUPPORT))
+                .containsExactlyInAnyOrder(employeeId("홍길동"), employeeId("김민수"));
+        assertThat(activityRegistrationRepository.findEmployeeIdsByActivityCode(Activity.SHARING_SHOP)).isEmpty();
 
-        String adminRoster = mockMvc.perform(get("/admin/supports").with(testUser("admin", "ADMIN"))
-                        .param("reasonId", reason.toString()))
+        String adminRoster = mockMvc.perform(get("/admin/supports").with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(adminRoster).contains("홍길동", "김민수").doesNotContain("강수진");
 
         mockMvc.perform(post("/admin/supports/month").with(testUser("admin", "ADMIN")).with(csrf())
-                        .param("reasonId", reason.toString())
                         .param("month", YearMonth.from(TODAY).toString())
                         .param("editedDates", TODAY.toString(), tomorrow.toString())
                         .param("day_" + TODAY, employeeId("홍길동").toString())
                         .param("day_" + tomorrow, employeeId("김민수").toString()))
                 .andExpect(flash().attributeExists("success"));
 
-        Long source = supportEntry(reason, TODAY, "홍길동");
-        Long target = supportEntry(reason, tomorrow, "김민수");
-        supportExchangeService.request(employeeId("홍길동"), source, target);
-        Long requestId = supportExchangeRequestRepository.findAll().getFirst().getId();
-        supportExchangeService.accept(employeeId("김민수"), requestId);
+        Long source = supportEntry(TODAY, "홍길동");
+        Long target = supportEntry(tomorrow, "김민수");
+        cafeteriaSupportExchangeService.request(employeeId("홍길동"), source, target);
+        Long requestId = cafeteriaSupportExchangeRequestRepository.findAll().getFirst().getId();
+        cafeteriaSupportExchangeService.accept(employeeId("김민수"), requestId);
 
-        assertThat(supportEntry(reason, TODAY, "김민수")).isEqualTo(source);
-        assertThat(supportEntry(reason, tomorrow, "홍길동")).isEqualTo(target);
-        assertThat(activityRegistrationRepository.count()).isZero();
+        assertThat(supportEntry(TODAY, "김민수")).isEqualTo(source);
+        assertThat(supportEntry(tomorrow, "홍길동")).isEqualTo(target);
     }
 
     @Test
@@ -359,11 +368,9 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         register("홍길동");
         register("김민수");
         register("이서연");
-        Long cafeteria = exclusionManagementService.addReason(Activity.SHARING_SHOP.getCode(), "식당지원", 1);
-        Long outside = exclusionManagementService.addReason(Activity.SHARING_SHOP.getCode(), "외부 업무", 1);
-        supportOn(cafeteria, TODAY, "홍길동", "김민수");
-        supportOn(outside, TODAY, "이서연");
-        supportOn(cafeteria, LocalDate.of(2026, 12, 1), "이서연");
+        requireCafeteriaWorkers(1);
+        supportOn(TODAY, "홍길동", "김민수");
+        supportOn(LocalDate.of(2026, 12, 1), "이서연");
 
         String staffHome = mockMvc.perform(get("/sharing-shop").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
@@ -402,22 +409,21 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
     void monthlySupportSaveIsTransactionalAndSupportPagesAreRoleProtected() throws Exception {
         register("홍길동");
         register("김민수");
-        Long reason = exclusionManagementService.addReason(Activity.SHARING_SHOP.getCode(), "식당지원", 1);
+        requireCafeteriaWorkers(1);
         LinkedHashMap<LocalDate, List<Long>> changes = new LinkedHashMap<LocalDate, List<Long>>();
         leaveRequestService.save(employeeId("홍길동"), TODAY.plusDays(1), Attendance.VACATION);
         changes.put(TODAY, List.of(employeeId("홍길동")));
         changes.put(TODAY.plusDays(1), List.of(employeeId("홍길동"), employeeId("김민수")));
         assertThatThrownBy(
                         () ->
-                                exclusionManagementService.saveMonth(
-                                        reason, YearMonth.from(TODAY), changes))
+                                cafeteriaSupportScheduleService.saveMonth(
+                                        YearMonth.from(TODAY), changes))
                 .hasMessageContaining("휴가");
-        assertThat(dailyExclusionRepository.count()).isZero();
+        assertThat(cafeteriaSupportAssignmentRepository.count()).isZero();
         mockMvc.perform(
                         post("/admin/supports/month")
                                 .with(testUser("admin", "ADMIN"))
                                 .with(csrf())
-                                .param("reasonId", String.valueOf(reason))
                                 .param("month", "2026-11")
                                 .param(
                                         "editedDates",

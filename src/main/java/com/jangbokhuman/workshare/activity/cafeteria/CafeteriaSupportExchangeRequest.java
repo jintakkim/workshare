@@ -1,4 +1,4 @@
-package com.jangbokhuman.workshare.support;
+package com.jangbokhuman.workshare.activity.cafeteria;
 
 import jakarta.persistence.*;
 
@@ -12,7 +12,7 @@ import java.time.Instant;
 @Entity
 @Getter
 @Table(uniqueConstraints = @UniqueConstraint(columnNames = {"source_id", "target_id"}))
-public class SupportExchangeRequest {
+public class CafeteriaSupportExchangeRequest {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -32,12 +32,11 @@ public class SupportExchangeRequest {
     @Column(nullable = false)
     private Instant expiresAt;
 
-    public SupportExchangeRequest(
-            Long source, Long target, Long requester, Long recipient, Instant expiresAt) {
-        sourceId = source;
-        targetId = target;
-        requesterId = requester;
-        recipientId = recipient;
+    public CafeteriaSupportExchangeRequest(Long sourceId, Long targetId, Long requesterId, Long recipientId, Instant expiresAt) {
+        this.sourceId = sourceId;
+        this.targetId = targetId;
+        this.requesterId = requesterId;
+        this.recipientId = recipientId;
         this.expiresAt = expiresAt;
     }
 }

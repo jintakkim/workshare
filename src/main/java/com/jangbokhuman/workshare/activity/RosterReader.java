@@ -1,10 +1,9 @@
 package com.jangbokhuman.workshare.activity;
 
 import com.jangbokhuman.workshare.employee.Employee;
-import com.jangbokhuman.workshare.leave.Attendance;
-import com.jangbokhuman.workshare.leave.LeaveRequest;
-import com.jangbokhuman.workshare.leave.LeaveRequestRepository;
-import com.jangbokhuman.workshare.support.DailyExclusionReader;
+import com.jangbokhuman.workshare.attendance.Attendance;
+import com.jangbokhuman.workshare.attendance.LeaveRequest;
+import com.jangbokhuman.workshare.attendance.LeaveRequestRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,7 +21,7 @@ import java.util.stream.Collectors;
 public class RosterReader {
     private final ActivityRegistrationRepository activityRegistrationRepository;
     private final LeaveRequestRepository leaveRequestRepository;
-    private final DailyExclusionReader dailyExclusionReader;
+    private final ActivityExclusionReader activityExclusionReader;
 
     public List<Worker> getWorkersOn(Activity activity, LocalDate date) {
         return getRosterOn(activity, date).workers();
@@ -48,11 +47,11 @@ public class RosterReader {
                                 })
                         .toList();
         HashMap<Long, String> reasons = new HashMap<Long, String>();
-        dailyExclusionReader
-                .getExclusionsOn(activity.getSupportScopes(), date)
-                .forEach(a -> reasons.put(a.getEmployeeId(), a.getReason().getName()));
+        activityExclusionReader
+                .getExclusionsOn(activity, date)
+                .forEach(a -> reasons.put(a.employeeId(), a.reasonName()));
         ArrayList<String> warnings =
-                new ArrayList<>(dailyExclusionReader.getWarnings(activity.getSupportScopes(), date));
+                new ArrayList<>(activityExclusionReader.getWarnings(activity, date));
         result.stream()
                 .filter(w -> reasons.containsKey(w.id()) && !w.attendance().isFullDayAvailable())
                 .forEach(
