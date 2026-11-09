@@ -1,6 +1,7 @@
 package com.jangbokhuman.workshare.attendance;
 
 import com.jangbokhuman.workshare.calendar.BusinessCalendar;
+import com.jangbokhuman.workshare.calendar.CalendarMonth;
 import com.jangbokhuman.workshare.calendar.Holiday;
 import com.jangbokhuman.workshare.calendar.HolidayRepository;
 import com.jangbokhuman.workshare.calendar.WorkTime;
@@ -12,9 +13,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.*;
-import java.time.temporal.TemporalAdjusters;
-import java.util.*;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -28,45 +33,71 @@ public class TeamLeaveCalendarService {
     private final WorkTime workTime;
 
     public Month getCalendar(LocalDate selectedDate) {
+        CalendarMonth calendarMonth = CalendarMonth.of(selectedDate);
         LocalDate today = workTime.getToday();
-        YearMonth month = YearMonth.from(selectedDate);
-        LocalDate start = month.atDay(1).with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY));
-        LocalDate end = month.atEndOfMonth().with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
-
-        Set<LocalDate> holidays = holidayRepository.findByDateBetweenOrderByDate(start, end).stream()
-                .map(Holiday::getDate)
-                .collect(Collectors.toSet());
-        List<LeaveRequest> leaveRequests = leaveRequestRepository.findByWorkDateBetweenAndAttendanceNot(
-                start, end, Attendance.WORK);
-        List<Long> employeeIds = leaveRequests.stream().map(LeaveRequest::getEmployeeId).distinct().toList();
-        Map<Long, Employee> employees = employeeRepository.findAllById(employeeIds).stream()
-                .collect(Collectors.toMap(Employee::getId, Function.identity()));
-        Map<LocalDate, List<StaffLeave>> leavesByDate = new HashMap<>();
-        for (LeaveRequest leaveRequest : leaveRequests) {
-            Employee employee = employees.get(leaveRequest.getEmployeeId());
-            LocalDate date = leaveRequest.getWorkDate();
-            if (employee != null && employee.isActiveOn(date)) {
-                leavesByDate.computeIfAbsent(date, ignored -> new ArrayList<>())
-                        .add(new StaffLeave(employee.getName(), leaveRequest.getAttendance()));
-            }
-        }
-
-        List<Day> days = start.datesUntil(end.plusDays(1))
+        Set<LocalDate> holidays = findHolidays(calendarMonth);
+        Map<LocalDate, List<StaffLeave>> leavesByDate = findActiveLeavesByDate(calendarMonth);
+        List<Day> days = calendarMonth.getGridDates().stream()
                 .map(date -> new Day(
                         date,
-                        YearMonth.from(date).equals(month),
+                        calendarMonth.contains(date),
                         date.equals(selectedDate),
                         date.equals(today),
                         BusinessCalendar.isWeekend(date) || holidays.contains(date),
                         leavesByDate.getOrDefault(date, List.of()).size())
                 )
                 .toList();
-        List<StaffLeave> selectedLeaves = leavesByDate.getOrDefault(selectedDate, List.of()).stream()
+        return new Month(
+                selectedDate,
+                calendarMonth.month(),
+                days,
+                getSortedLeaves(leavesByDate, selectedDate),
+                calendarMonth.getPreviousMonthStart(),
+                calendarMonth.getNextMonthStart()
+        );
+    }
+
+    private Set<LocalDate> findHolidays(CalendarMonth calendarMonth) {
+        return holidayRepository.findByDateBetweenOrderByDate(calendarMonth.getGridStart(), calendarMonth.getGridEnd()).stream()
+                .map(Holiday::getDate)
+                .collect(Collectors.toSet());
+    }
+
+    private Map<LocalDate, List<StaffLeave>> findActiveLeavesByDate(CalendarMonth calendarMonth) {
+        List<LeaveRequest> leaveRequests = leaveRequestRepository.findByWorkDateBetweenAndAttendanceNot(
+                calendarMonth.getGridStart(),
+                calendarMonth.getGridEnd(),
+                Attendance.WORK
+        );
+        Map<Long, Employee> employeesById = findEmployees(leaveRequests);
+        return leaveRequests.stream()
+                .filter(leaveRequest -> isActiveOnLeaveDate(employeesById.get(leaveRequest.getEmployeeId()), leaveRequest))
+                .collect(Collectors.groupingBy(
+                        LeaveRequest::getWorkDate,
+                        Collectors.mapping(
+                                leaveRequest -> new StaffLeave(employeesById.get(leaveRequest.getEmployeeId()).getName(), leaveRequest.getAttendance()),
+                                Collectors.toCollection(ArrayList::new)
+                        )
+                ));
+    }
+
+    private Map<Long, Employee> findEmployees(List<LeaveRequest> leaveRequests) {
+        List<Long> employeeIds = leaveRequests.stream()
+                .map(LeaveRequest::getEmployeeId)
+                .distinct()
+                .toList();
+        return employeeRepository.findAllById(employeeIds).stream()
+                .collect(Collectors.toMap(Employee::getId, Function.identity()));
+    }
+
+    private boolean isActiveOnLeaveDate(Employee employee, LeaveRequest leaveRequest) {
+        return employee != null && employee.isActiveOn(leaveRequest.getWorkDate());
+    }
+
+    private List<StaffLeave> getSortedLeaves(Map<LocalDate, List<StaffLeave>> leavesByDate, LocalDate date) {
+        return leavesByDate.getOrDefault(date, List.of()).stream()
                 .sorted(Comparator.comparing(StaffLeave::employeeName))
                 .toList();
-        return new Month(
-                selectedDate, month, days, selectedLeaves, month.minusMonths(1).atDay(1), month.plusMonths(1).atDay(1)
-        );
     }
 
     public record Day(LocalDate date, boolean inMonth, boolean selected, boolean today, boolean off, int leaveCount) {}
