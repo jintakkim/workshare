@@ -1,5 +1,8 @@
 package com.jangbokhuman.workshare.employee;
 
+import com.jangbokhuman.workshare.common.BusinessException;
+import com.jangbokhuman.workshare.common.ErrorCode;
+
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -19,6 +22,6 @@ public enum WorkGroupType {
         return Arrays.stream(values())
                 .filter(workGroup -> workGroup.name().equals(code))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("직군을 선택하세요."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT, "직군을 선택하세요."));
     }
 }

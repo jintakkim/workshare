@@ -1,5 +1,7 @@
 package com.jangbokhuman.workshare.employee;
 
+import com.jangbokhuman.workshare.common.BusinessException;
+import com.jangbokhuman.workshare.common.ErrorCode;
 import com.jangbokhuman.workshare.calendar.WorkTime;
 
 import lombok.RequiredArgsConstructor;
@@ -20,62 +22,72 @@ import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 
 @Service
-@Transactional
 @RequiredArgsConstructor
 public class EmployeeProfileService {
+    private static final int MAX_THUMBNAIL_SIDE = 512;
+    private static final String PHOTO_FORMAT_MESSAGE = "JPG, PNG 또는 HEIC(HEIF) 사진을 선택해주세요.";
+
     private final EmployeeRepository employeeRepository;
     private final EmployeePhotoRepository employeePhotoRepository;
-    private final ResponsibilityCatalogService responsibilityCatalogService;
     private final WorkTime workTime;
+    private final HeifThumbnailConverter heifThumbnailConverter;
 
+    @Transactional
     public void changeServicePeriod(Long employeeId, LocalDate serviceStartDate, LocalDate extendedServiceEndDate) {
         Employee employee = employeeRepository.findByIdForUpdate(employeeId)
-                .orElseThrow(() -> new IllegalArgumentException("직원이 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "직원이 없습니다."));
         employee.changeServicePeriod(serviceStartDate, extendedServiceEndDate, workTime.getToday());
     }
 
-    public void changeResponsibilities(Long employeeId, List<String> titles) {
-        List<String> selected = responsibilityCatalogService.requireChoices(titles);
-        Employee employee =
-                employeeRepository
-                        .findByIdForUpdate(employeeId)
-                        .orElseThrow(() -> new IllegalArgumentException("직원이 없습니다."));
-        employee.changeResponsibilities(selected);
+    public void savePhoto(Long employeeId, MultipartFile file) {
+        if (!employeeRepository.existsById(employeeId)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "직원이 없습니다.");
+        }
+        if (file.isEmpty() || file.getSize() > 2 * 1024 * 1024) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "사진은 2MB 이하의 JPG, PNG 또는 HEIC(HEIF) 파일로 선택해주세요.");
+        }
+        byte[] jpeg = createJpegThumbnail(file);
+        employeePhotoRepository.save(new EmployeePhoto(employeeId, jpeg));
     }
 
-    public void savePhoto(Long employeeId, MultipartFile file) {
-        if (!employeeRepository.existsById(employeeId))
-            throw new IllegalArgumentException("직원이 없습니다.");
-        if (file.isEmpty() || file.getSize() > 2 * 1024 * 1024)
-            throw new IllegalArgumentException("사진은 2MB 이하의 JPG 또는 PNG 파일로 선택해주세요.");
-        try (InputStream source = file.getInputStream();
-                ImageInputStream input = ImageIO.createImageInputStream(source)) {
-            byte[] jpeg = createThumbnail(input);
-            employeePhotoRepository.save(new EmployeePhoto(employeeId, jpeg));
+    private byte[] createJpegThumbnail(MultipartFile file) {
+        try {
+            byte[] photo = file.getBytes();
+            if (heifThumbnailConverter.supports(photo)) {
+                photo = heifThumbnailConverter.convert(photo, MAX_THUMBNAIL_SIDE);
+            }
+            try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(photo))) {
+                return createThumbnail(input);
+            }
         } catch (IOException error) {
-            throw new IllegalArgumentException("사진을 읽을 수 없습니다. 다른 JPG 또는 PNG 파일을 선택해주세요.", error);
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "사진을 읽을 수 없습니다. 다른 JPG, PNG 또는 HEIC(HEIF) 파일을 선택해주세요.", error);
         }
     }
 
     private byte[] createThumbnail(ImageInputStream input) throws IOException {
-        if (input == null) throw new IllegalArgumentException("JPG 또는 PNG 사진을 선택해주세요.");
+        if (input == null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, PHOTO_FORMAT_MESSAGE);
+        }
         Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
-        if (!readers.hasNext()) throw new IllegalArgumentException("JPG 또는 PNG 사진을 선택해주세요.");
+        if (!readers.hasNext()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, PHOTO_FORMAT_MESSAGE);
+        }
         ImageReader reader = readers.next();
         try {
             if (!List.of("JPEG", "PNG")
                     .contains(reader.getFormatName().toUpperCase(java.util.Locale.ROOT))) {
-                throw new IllegalArgumentException("JPG 또는 PNG 사진을 선택해주세요.");
+                throw new BusinessException(ErrorCode.INVALID_INPUT, PHOTO_FORMAT_MESSAGE);
             }
             reader.setInput(input);
-            int width = reader.getWidth(0), height = reader.getHeight(0);
-            if (width < 1 || height < 1 || (long) width * height > 25_000_000)
-                throw new IllegalArgumentException("사진 해상도가 너무 큽니다. 크기를 줄여 다시 선택해주세요.");
-            double scale = Math.min(1.0, 512.0 / Math.max(width, height));
-            int targetWidth = Math.max(1, (int) (width * scale)),
-                    targetHeight = Math.max(1, (int) (height * scale));
-            BufferedImage image =
-                    new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
+            int width = reader.getWidth(0);
+            int height = reader.getHeight(0);
+            if (width < 1 || height < 1 || (long) width * height > 25_000_000) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT, "사진 해상도가 너무 큽니다. 크기를 줄여 다시 선택해주세요.");
+            }
+            double scale = Math.min(1.0, (double) MAX_THUMBNAIL_SIDE / Math.max(width, height));
+            int targetWidth = Math.max(1, (int) (width * scale));
+            int targetHeight = Math.max(1, (int) (height * scale));
+            BufferedImage image = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
             Graphics2D graphics = image.createGraphics();
             try {
                 graphics.setColor(new Color(255, 254, 250));

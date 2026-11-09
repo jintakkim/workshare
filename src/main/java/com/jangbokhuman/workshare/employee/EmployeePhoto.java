@@ -10,7 +10,8 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 public class EmployeePhoto {
-    @Id private Long employeeId;
+    @Id
+    private Long employeeId;
 
     @Getter(AccessLevel.NONE)
     @Lob

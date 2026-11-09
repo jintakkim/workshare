@@ -13,7 +13,6 @@ import java.time.LocalDate;
 @Getter
 public class Holiday {
     @Id
-    @Column(name = "work_date")
     private LocalDate date;
 
     @Column(nullable = false, length = 60)

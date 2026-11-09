@@ -256,7 +256,6 @@ body:has(.admin-menu[open]) { overflow:hidden; }
 .stack textarea::placeholder { color:#a0a691; font-size:12px; }
 .profile-duty-list { margin-top:22px; }
 .profile-duty-list>span { font-size:13px; padding:8px 12px; }
-.responsibility-form { border-top:1px solid #e8ecdf; padding-top:22px; }
 .profile-directory-link { display:inline-block; margin-top:13px; font-size:12px; color:#6e805e; min-height:32px; }
 @media(max-width:900px) { .employee-card-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:760px) {
@@ -297,9 +296,6 @@ body:has(.admin-menu[open]) { overflow:hidden; }
 .password-toggle .eye-closed { display:none; }
 .password-toggle[aria-pressed=true] .eye-open { display:none; }
 .password-toggle[aria-pressed=true] .eye-closed { display:block; }
-.duty-catalog { margin-top:20px; }
-.duty-catalog-content { padding:20px; }
-.duty-catalog-content .stack { margin-top:16px; }
 .activity-album { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:22px; }
 .activity-album-card { min-width:0; border:1px solid #dce3d2; border-radius:20px; overflow:hidden; background:#fffefa; }
 .album-cover { position:relative; height:180px; background:linear-gradient(130deg,#e0e9d5,#edf2e5); color:#96aa81; display:grid; place-items:center; }

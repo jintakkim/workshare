@@ -1,5 +1,8 @@
 package com.jangbokhuman.workshare.calendar;
 
+import com.jangbokhuman.workshare.common.BusinessException;
+import com.jangbokhuman.workshare.common.ErrorCode;
+
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
@@ -19,7 +22,7 @@ public class HolidayService {
     public void addHoliday(LocalDate date, String name) {
         workScheduleDeadlineValidator.validateChangeDeadline(date);
         String reason = name == null ? "" : name.strip();
-        if (reason.length() > 60) throw new IllegalArgumentException("휴일 사유는 60자 이내로 입력해주세요.");
+        if (reason.length() > 60) throw new BusinessException(ErrorCode.INVALID_INPUT, "휴일 사유는 60자 이내로 입력해주세요.");
         holidayRepository.save(new Holiday(date, reason));
     }
 
