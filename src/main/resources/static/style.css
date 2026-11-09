@@ -71,6 +71,18 @@
 .support-footer { flex-wrap:wrap; align-items:center; gap:8px 16px; color:#526446; font-size:12px; word-break:keep-all; }
 .support-footer .app-wordmark { font-size:20px; letter-spacing:-.5px; }
 .support-footer a { text-decoration:underline; text-underline-offset:2px; }
+[data-exchange-form][hidden] { display:none; }
+.support-picker { width:min(440px,calc(100% - 24px)); max-height:80dvh; padding:20px; border:1px solid var(--line); border-radius:16px; background:var(--paper); color:var(--ink); }
+.support-picker::backdrop { background:#263821a8; }
+.support-picker .menu-heading { margin-bottom:16px; }
+.support-picker-filters { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; margin-bottom:12px; }
+.support-picker-filters input { min-width:0; font-size:16px; }
+.support-picker-list { list-style:none; padding:0; margin:8px 0 0; max-height:35dvh; overflow:auto; }
+.support-picker-option { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-height:48px; padding:10px 8px; border:0; border-bottom:1px solid var(--line); background:transparent; text-align:left; color:var(--ink); }
+.support-picker-option:hover { background:var(--bg); }
+.support-picker-option span { color:#526446; font-size:13px; }
+.support-picker-open { min-height:44px; }
+#support-exchange { scroll-margin-top:16px; }
 .sharing-shell>.support-footer { margin-top:0; }
 .team-leave-list { list-style:none; margin:0; padding:0; }
 .team-leave-list>li { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 0; border-top:1px solid var(--line); font-size:14px; }

@@ -284,7 +284,7 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
 
     @Test
     @DisplayName("두 직원 모두 맡을 수 있는 날짜만 교환 후보로 보여준다")
-    void exchangeChoicesOnlyShowDatesBothEmployeesCanActuallyTake() {
+    void exchangeChoicesOnlyShowDatesBothEmployeesCanActuallyTake() throws Exception {
         register("홍길동");
         register("김민수");
         register("이서연");
@@ -298,6 +298,15 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                 .containsExactly("김민수");
         Long source = supportEntry(reason, TODAY, "홍길동"),
                 target = supportEntry(reason, TODAY.plusDays(1), "김민수");
+        String html = mockMvc.perform(get("/supports").with(testUser("홍길동", "STAFF"))
+                        .param("sourceId", source.toString()))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertThat(html).contains("id=\"support-picker\"", "/support-exchange.js",
+                "data-support-candidate=\"김민수\"", "data-date=\"2026-11-05\"")
+                .doesNotContain("data-support-candidate=\"이서연\"");
         for (Attendance attendance :
                 List.of(Attendance.MORNING_HALF_DAY, Attendance.AFTERNOON_HALF_DAY)) {
             leaveRequestService.save(employeeId("김민수"), TODAY, attendance);
