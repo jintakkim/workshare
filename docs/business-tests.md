@@ -13,7 +13,7 @@
 
 ## 현재 실행 결과
 
-**기본 총 124회 통과: 기능·통합 94회 + 보조 검증 30회.** MySQL 선택 실행 테스트는 이 숫자에 포함하지 않는다.
+**기본 총 125회 통과: 기능·통합 95회 + 보조 검증 30회.** MySQL 선택 실행 테스트는 이 숫자에 포함하지 않는다.
 
 | 구분 | 테스트 파일 | 실행 횟수 |
 | --- | --- | --- |
@@ -28,7 +28,7 @@
 | 로그인·권한·본인 확인 | [SecurityFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/SecurityFeatureTest.java) | 9 |
 | enum 활동·가입·참여 제한 | [ActivityFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/ActivityFeatureTest.java) | 7 |
 | 활동 전용 배정기와 공통 추가 업무 분리 | [ActivityAllocatorFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/ActivityAllocatorFeatureTest.java) | 1 |
-| 메뉴·휴일 달력·결과 공개 | [NavigationFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/NavigationFeatureTest.java) | 4 |
+| 메뉴·전체 휴가 일정·휴일 달력·결과 공개 | [NavigationFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/NavigationFeatureTest.java) | 5 |
 | 출근 상태별 오전·오후 배정과 근무 시간 | [AttendanceTest](../src/test/java/com/jangbokhuman/workshare/leave/AttendanceTest.java) | 5 |
 | 인원 배분·선호도 정책 | [PreferenceAllocationPolicyTest](../src/test/java/com/jangbokhuman/workshare/activity/sharingshop/PreferenceAllocationPolicyTest.java) | 19 |
 | 추가 업무 시간대·배정 제약 | [RandomTaskAllocationPolicyTest](../src/test/java/com/jangbokhuman/workshare/activity/sharingshop/RandomTaskAllocationPolicyTest.java) | 3 |
@@ -189,6 +189,8 @@
 
 [NavigationFeatureTest.java](../src/test/java/com/jangbokhuman/workshare/integration/NavigationFeatureTest.java)
 
+- 로그인한 직원과 관리자가 선택한 날짜의 직원별 휴가 종류를 조회한다. `teamLeaveCalendarShowsOnlyLeaveForTheSelectedDate`
+
 - 관리자 메뉴는 선택한 기능만 보여주고 직원이 없어도 열 수 있다: `adminMenuRendersOnlyTheSelectedFeatureIncludingEmptyEmployeeState`
 - 직원 햄버거 메뉴에서 날짜 카드·본인 휴가·프로필로 이동한다: `staffMenuOpensSharingCardsAndOwnLeaveCalendarAcrossStaffPages`
 - 08:50:10 전에는 예정 인원만 보여주고 이후 저장된 배정 결과를 공개한다: `sharingApiPreviewsCountsAndRevealsPersistedAssignmentsAtEightFiftyTen`
@@ -239,9 +241,9 @@
 - 새 전체 흐름 테스트는 `/login`으로 인증해 받은 세션을 사용한다. `user(...)`로 인증을 대신 주입하거나 업무 서비스·저장소의 반환값을 모킹하지 않는다. 나머지 기능 테스트 일부는 권한 분기를 위해 인증 사용자 주입 기능을 사용한다.
 - 배경 스케줄러가 실제 시각에 임의로 실행되지 않도록 해당 진입 빈은 공통 환경에서 모킹한다. 전체 흐름 테스트는 실제 `AllocationScheduler` 객체의 진입 메서드를 호출해 실제 배정 서비스와 DB 저장을 검증한다.
 - 마감 검증은 한국 시간의 고정 날짜와 조절 가능한 `Clock`으로 진행한다. 매번 실제 오전까지 기다리지는 않는다. 만료 요청 정리는 실제 정리 메서드를 실행해 삭제 결과를 확인한다.
-- 기본 실행 DB는 기본 모드의 테스트 전용 H2다. 실제 MySQL의 JPA 저장·잠금 차이는 별도 `MySqlIntegrationIT`와 `MySqlLockingIT` 선택 실행 대상으로 구분한다. 기본 124회에 실제 MySQL 테스트가 포함된 것처럼 계산하지 않는다.
+- 기본 실행 DB는 기본 모드의 테스트 전용 H2다. 실제 MySQL의 JPA 저장·잠금 차이는 별도 `MySqlIntegrationIT`와 `MySqlLockingIT` 선택 실행 대상으로 구분한다. 기본 125회에 실제 MySQL 테스트가 포함된 것처럼 계산하지 않는다.
 - HTML 메뉴와 카드 구조, REST 결과 공개 조건은 확인하지만 브라우저의 JavaScript 카운트다운·가로 스와이프·모바일 배치까지 자동 실행하는 테스트는 아니다.
 - 30일 자동 로그인은 아직 구현하지 않은 논의 항목이므로 제공 기능이나 통과한 기능 테스트로 포함하지 않는다.
 
 
-개발 단계의 DB 초기화 정책에 따라 데이터 보존용 이관 테스트 4회는 제거했다. 현재 업무 규칙 기능·통합 94회를 실행하며, 운영 MySQL과 테스트 H2 모두 현재 초기 스키마로 검증한다.
+개발 단계의 DB 초기화 정책에 따라 데이터 보존용 이관 테스트 4회는 제거했다. 현재 업무 규칙 기능·통합 95회를 실행하며, 운영 MySQL과 테스트 H2 모두 현재 초기 스키마로 검증한다.

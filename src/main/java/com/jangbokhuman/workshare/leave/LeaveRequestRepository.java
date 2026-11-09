@@ -11,6 +11,8 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
 
     List<LeaveRequest> findByWorkDate(LocalDate date);
 
+    List<LeaveRequest> findByWorkDateBetweenAndAttendanceNot(LocalDate from, LocalDate to, Attendance attendance);
+
     List<LeaveRequest> findByEmployeeIdAndWorkDateBetween(
             Long employeeId, LocalDate from, LocalDate to);
 }

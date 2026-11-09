@@ -66,7 +66,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
         register("김민수");
         Long id = employeeRepository.findByName("홍길동").orElseThrow().getId();
         for (String page :
-                List.of("/", "/my-leave", "/sharing-shop", "/supports", "/supports/cafeteria", "/employees", "/employees/" + id)) {
+                List.of("/", "/my-leave", "/sharing-shop", "/leave-calendar", "/supports", "/supports/cafeteria", "/employees", "/employees/" + id)) {
             String html =
                     mockMvc.perform(get(page).with(testUser("홍길동", "STAFF")))
                             .andExpect(status().isOk())
@@ -80,12 +80,13 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                             "id=\"staff-menu\"",
                             "href=\"/sharing-shop\"",
                             "href=\"/my-leave\"",
+                            "href=\"/leave-calendar\"",
                             "href=\"/supports/cafeteria\"",
                             "href=\"/my-profile\"",
                             "class=\"support-footer\"",
                             "href=\"mailto:support@jangbokhuman.app\"",
                             "href=\"/favicon.svg\"",
-                            "내 휴가 일정")
+                            "내 휴가 일정<small>연차·병가·반차 등록</small>")
                     .doesNotContain(
                             "href=\"/admin", "name=\"workGroupCode\"", "name=\"responsibilities\"");
             if (page.equals("/") || page.equals("/my-leave")) {
@@ -126,6 +127,43 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
         mockMvc.perform(get("/favicon.svg"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("image/svg+xml"));
+    }
+
+    @Test
+    @DisplayName("전체 휴가 일정은 로그인한 직원과 관리자에게 날짜별 휴가 종류를 보여준다")
+    void teamLeaveCalendarShowsOnlyLeaveForTheSelectedDate() throws Exception {
+        register("홍길동");
+        Map<String, Attendance> leaves = Map.of(
+                "김민수", Attendance.VACATION,
+                "이서연", Attendance.SICK_LEAVE,
+                "박지훈", Attendance.MORNING_HALF_DAY,
+                "정하늘", Attendance.AFTERNOON_HALF_DAY
+        );
+        for (Map.Entry<String, Attendance> leave : leaves.entrySet()) {
+            rosterService.registerEmployee(leave.getKey(), "staff-password", "THIRD_FLOOR");
+            leaveRequestService.save(employeeId(leave.getKey()), TODAY, leave.getValue());
+        }
+        leaveRequestService.save(employeeId("홍길동"), TODAY, Attendance.WORK);
+        leaveRequestService.save(employeeId("홍길동"), TODAY.plusDays(1), Attendance.VACATION);
+
+        String today = mockMvc.perform(get("/leave-calendar").with(testUser("홍길동", "STAFF")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(today).contains("전체 휴가 일정", "11월 4일 휴가 일정", "2026년 11월 4일 · 휴가 4명")
+                .doesNotContain("홍길동", "정상 출근", "action=\"/leave-requests\"");
+        leaves.forEach((name, attendance) -> assertThat(today)
+                .containsPattern("<strong>" + name + "</strong>\\s*<span class=\"badge (leave|half)\">" + attendance.getLabel() + "</span>"));
+
+        String tomorrow = mockMvc.perform(get("/leave-calendar").with(testUser("admin", "ADMIN"))
+                        .param("date", TODAY.plusDays(1).toString()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(tomorrow).contains("11월 5일 휴가 일정", "<strong>홍길동</strong>")
+                .doesNotContain("김민수", "이서연", "박지훈", "정하늘");
+        mockMvc.perform(get("/leave-calendar").with(testUser("홍길동", "STAFF")).param("date", "2026-12-01"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("등록된 휴가나 반차가 없어요.")));
+        mockMvc.perform(get("/leave-calendar")).andExpect(status().is3xxRedirection());
     }
 
     @Test

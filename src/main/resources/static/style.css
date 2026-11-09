@@ -72,6 +72,9 @@
 .support-footer .app-wordmark { font-size:20px; letter-spacing:-.5px; }
 .support-footer a { text-decoration:underline; text-underline-offset:2px; }
 .sharing-shell>.support-footer { margin-top:0; }
+.team-leave-list { list-style:none; margin:0; padding:0; }
+.team-leave-list>li { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 0; border-top:1px solid var(--line); font-size:14px; }
+#team-leave-details { scroll-margin-top:100px; }
 /* Phone-first interaction sizes and a direct jump from the calendar to its request forms. */
 @media(max-width:760px) {
   .shell { padding: 24px 16px 0; }

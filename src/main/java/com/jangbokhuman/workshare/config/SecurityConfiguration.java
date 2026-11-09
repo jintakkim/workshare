@@ -95,7 +95,7 @@ public class SecurityConfiguration {
                                         .permitAll()
                                         .requestMatchers("/admin", "/admin/**")
                                         .hasRole("ADMIN")
-                                        .requestMatchers(HttpMethod.GET, "/supports/cafeteria")
+                                        .requestMatchers(HttpMethod.GET, "/supports/cafeteria", "/leave-calendar")
                                         .hasAnyRole("STAFF", "ADMIN")
                                         .requestMatchers(
                                                 "/leave-requests",

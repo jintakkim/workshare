@@ -249,6 +249,7 @@
 | 로그인 | `/login` |
 | 일반 나눔가게 날짜 카드 | `/sharing-shop` |
 | 본인 휴가 달력 | `/my-leave` |
+| 전체 휴가 일정 조회 (직원·관리자) | `/leave-calendar` |
 | 본인 지원 일정·교환 요청함 | `/supports` |
 | 월별 식당지원표 조회 (직원·관리자) | `/supports/cafeteria` |
 | 직원 프로필 | `/employees`, `/employees/{id}` |

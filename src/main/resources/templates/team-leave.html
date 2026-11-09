@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>전체 휴가 일정 · 장복인간</title>
+  <link th:replace="~{fragments/site-layout :: icon}"><link rel="stylesheet" th:href="@{/style.css}">
+  <script defer th:src="@{/admin.js}"></script>
+</head>
+<body class="app-page admin-page">
+<header th:replace="~{fragments/staff-navigation :: header}"></header>
+<dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog>
+<main th:replace="~{fragments/site-layout :: page('shell', ~{::pageContent})}"><th:block th:fragment="pageContent">
+  <section class="intro">
+    <div>
+      <h1>전체 휴가 일정</h1>
+      <p class="muted">날짜를 선택하면 그날의 직원별 연차·병가·반차를 볼 수 있어요.</p>
+    </div>
+  </section>
+  <div class="workspace">
+    <section class="card calendar-card" aria-label="월별 휴가 달력">
+      <div class="section-heading">
+        <h2 th:text="${view.month.year + '년 ' + view.month.monthValue + '월'}"></h2>
+        <nav class="month-nav" aria-label="월 이동">
+          <a class="icon-button" th:href="@{/leave-calendar(date=${view.previousMonth})}" aria-label="이전 달">‹</a>
+          <a class="button subtle" th:href="@{/leave-calendar}">오늘</a>
+          <a class="icon-button" th:href="@{/leave-calendar(date=${view.nextMonth})}" aria-label="다음 달">›</a>
+        </nav>
+      </div>
+      <div class="calendar-week" aria-hidden="true"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+      <div class="calendar-grid">
+        <a th:each="day : ${view.days}" class="calendar-day"
+           th:classappend="${(!day.inMonth ? ' outside' : '') + (day.selected ? ' selected' : '') + (day.off ? ' off' : '') + (day.today ? ' today' : '')}"
+           th:href="@{/leave-calendar(date=${day.date})} + '#team-leave-details'"
+           th:attr="aria-label=${#temporals.format(day.date, 'yyyy년 M월 d일') + ' · 휴가 ' + day.leaveCount + '명'},aria-current=${day.selected ? 'date' : null}">
+          <span class="date-number" th:text="${day.date.dayOfMonth}"></span>
+          <span class="calendar-badge leave" th:if="${day.leaveCount > 0}" th:text="${day.leaveCount + '명'}"></span>
+        </a>
+      </div>
+    </section>
+    <aside class="day-panel" id="team-leave-details" aria-labelledby="team-leave-date">
+      <section class="card">
+        <div class="section-heading">
+          <h2 id="team-leave-date" th:text="${#temporals.format(view.selectedDate, 'M월 d일') + ' 휴가 일정'}"></h2>
+          <span class="badge leave" th:text="${view.selectedLeaves.size() + '명'}"></span>
+        </div>
+        <p class="small muted" th:if="${view.selectedLeaves.isEmpty()}">등록된 휴가나 반차가 없어요.</p>
+        <ul class="team-leave-list" th:unless="${view.selectedLeaves.isEmpty()}">
+          <li th:each="leave : ${view.selectedLeaves}">
+            <strong th:text="${leave.employeeName}"></strong>
+            <span class="badge" th:classappend="${leave.attendance.halfDay ? 'half' : 'leave'}" th:text="${leave.attendance.label}"></span>
+          </li>
+        </ul>
+      </section>
+    </aside>
+  </div>
+</th:block></main>
+</body>
+</html>

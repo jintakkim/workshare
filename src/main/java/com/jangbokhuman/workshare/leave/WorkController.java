@@ -19,6 +19,7 @@ import java.time.LocalDate;
 @RequiredArgsConstructor
 public class WorkController {
     private final LeaveRequestService leaveRequestService;
+    private final TeamLeaveCalendarService teamLeaveCalendarService;
     private final WorkQueryService workQueryService;
     private final WorkTime workTime;
 
@@ -47,6 +48,20 @@ public class WorkController {
         model.addAttribute("attendances", Attendance.values());
         model.addAttribute("section", "leave");
         return "index";
+    }
+
+    @GetMapping("/leave-calendar")
+    public String showTeamLeaveCalendar(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @AuthenticationPrincipal AuthenticatedUser authentication,
+            Model model
+    ) {
+        model.addAttribute("view", teamLeaveCalendarService.getCalendar(date == null ? workTime.getToday() : date));
+        boolean admin = authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
+        model.addAttribute("admin", admin);
+        model.addAttribute("section", "team-leave");
+        return "team-leave";
     }
 
     @PostMapping("/leave-requests")
