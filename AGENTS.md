@@ -10,6 +10,7 @@
 - 자동 생성 대리키는 `Long` + `GenerationType.IDENTITY`로 작성하고 자연키는 유지한다.
 - 직군은 `WorkGroupType` enum으로 관리한다. 엔티티에는 `@Enumerated(EnumType.STRING)`으로 저장하고 직군 비교에도 enum을 사용한다. 별도 직군 마스터 엔티티·테이블·Repository는 두지 않는다. 직원에는 현재 직군 `Employee.workGroup` 하나만 저장한다. 직군 변경은 현재 값을 즉시 덮어쓰며 직군 변경 이력이나 날짜별 직군 조회를 추가하지 않는다. 확정된 업무 배정 결과는 유지한다.
 - 저장은 엔티티 조회·생성 후 도메인 메서드로 변경하고 Spring Data JPA Repository의 `save()`를 사용한다. 네이티브 upsert와 `EntityManager.persist()` 직접 호출을 추가하지 않는다. 조회한 엔티티의 변경 감지와 필요한 JPQL·JPA 행 잠금은 활용한다.
+- 트랜잭션 격리 수준은 DB 기본값을 쓴다. `Isolation`을 따로 지정하지 않고, 동시 변경은 필요한 행 잠금과 DB 고유 제약으로 조정한다.
 - 등록 전에 중복을 확인할 때는 Repository의 `existsBy...`를 사용한다. 동시 저장의 최종 중복은 DB 고유 제약으로 막는다. DB 예외 메시지 문자열을 읽어 업무 오류를 판별하지 않는다.
 - Repository의 `@Query`는 텍스트 블록으로 작성하고 쿼리 키워드는 대문자로 표기하며 절마다 줄을 나눈다. 쿼리의 이름 있는 파라미터와 메서드 파라미터의 이름을 맞춰 `@Param`을 생략한다.
 - 코드 파일 수정은 변경 작업 카드가 보이도록 `apply_patch`로 진행한다. Python 스크립트로 코드 파일을 수정하지 않는다.
@@ -34,7 +35,7 @@
 - 공통 가입 서비스는 가입 삭제 이벤트를 발행한다. 활동별 연관 데이터 정리는 해당 활동 패키지의 동기 리스너에서 같은 트랜잭션으로 처리한다.
 - 나눔가게 선호도 변경 권한은 활동 가입 여부와 현재 비활성 여부로 판단한다. 근무 시작 전 담당 직원도 변경할 수 있다. 날짜별 참여 자격 정책인 `DailyActivityParticipationPolicy`와 선호도 변경 권한을 분리한다. 검사 날짜를 근무 시작일로 보정하지 않는다.
 - 업무 규칙에 없는 임의의 연도 범위 제한을 추가하지 않는다. 날짜 검증은 필수 입력, 마감, 근무 기간 등 실제 업무 조건에 따른다.
-- 운영 DB에 보존할 데이터가 있다. 스키마 변경은 MySQL(`db/mysql`)과 테스트 H2(`db/migration`)에 같은 번호의 새 Flyway 버전을 추가하고 필요한 기존 데이터를 이관한다. 이미 커밋하거나 적용한 버전 파일은 수정하지 않는다. 다른 프로젝트 DB는 대상이 아니다.
+- Flyway `V1__initial_schema.sql`(MySQL `db/mysql`, 테스트 H2 `db/migration`)이 첫 운영 배포 스키마다. 운영 DB에 적용된 뒤의 스키마 변경은 두 위치에 같은 번호의 새 버전을 추가하고, 필요한 기존 데이터는 그 버전에서 이관한다. 적용된 버전 파일은 수정하지 않는다. 다른 프로젝트 DB는 대상이 아니다.
 - 패키지 사이 순환 의존을 만들지 않는다. 의존 방향은 `config` → `calendar` → `employee` → `attendance` → `activity` → `activity.cafeteria` → `activity.sharingshop` → `web` 순서로 아래 영역만 참조한다. 아래 영역이 위 영역의 정보가 필요하면 아래 영역에 인터페이스를 두고 위 영역이 구현한다. `PackageDependencyTest`가 순환을 검사한다.
 - 사용자에게 보여줄 업무 규칙 위반은 `common.BusinessException`으로 던진다. 예외에는 `common.ErrorCode` 분류(입력 오류·없음·중복·마감·불허·충돌)를 함께 지정하고, 분류별로 처리 방식이 달라지면 하위 예외로 나눈다. 오류 화면 복귀 경로는 각 컨트롤러의 `@ExceptionHandler`에서 정한다. DB 제약 위반처럼 업무 규칙으로 판별하지 않은 예외는 원인을 짐작해 안내하지 않고 공통 오류 화면(`error.html`, 500)으로 처리한다. 날짜·숫자 형식이 틀린 요청은 업무 오류가 아니므로 `@RequestParam` 타입 바인딩이나 `ResponseStatusException(BAD_REQUEST)`로 400을 응답한다. 코드 오류나 불변식 위반에는 `IllegalArgumentException`·`IllegalStateException`을 사용한다.
 - 주석은 코드만으로 의도가 드러나지 않는 곳에만 짧게 단다. Javadoc `{@link}`·`{@code}` 같은 태그 주석을 달지 않는다.

@@ -1,19 +1,10 @@
 # 업무 규칙 기능 테스트
 
-기준일: 2026-11-07. [업무 규칙](business-rules.md)을 실제 입력과 결과로 검증한다. 테스트 숫자는 JUnit 실행 횟수이며, 서로 다른 기능 개수와 같지 않다.
-
-## 기존 83회의 의미
-
-- 기능·통합 시나리오 60회: 로그인·휴가·배정·직군·지원표·맞교환·화면 응답 등을 실제 Spring 서비스와 DB로 검증했다.
-- 배분 로직 17회: 인원수별 반복 케이스와 휴가·반차·선호도 조합을 검증했다.
-- 참여 제한 3회: 식당 직군 차단과 참여 정책을 검증했다.
-- DB 이관 3회: 기존 데이터와 배정 기록이 보존되는지 검증했다.
-
-기존의 큰 `WorkShareApplicationTest`는 업무별 기능 테스트 7개 클래스로 나누었다. 기존 60개 시나리오는 유지하고 한글 `@DisplayName`을 붙였다. 여기에 실제 로그인 세션으로 진행하는 전체 기능 흐름 10회와, 전역 락 제거 후 동시 저장·대상 행 잠금을 검증하는 기능 7회를 추가했다. 로그인 세션의 직원 ID를 기준으로 휴가·선호도·프로필 대상을 결정하고 조작한 대상 ID를 무시하는 실제 로그인 시나리오도 추가했다.
+기준일: 2026-11-09. [업무 규칙](business-rules.md)을 실제 입력과 결과로 검증한다. 테스트 숫자는 JUnit 실행 횟수이며, 서로 다른 기능 개수와 같지 않다.
 
 ## 현재 실행 결과
 
-기본 테스트는 기능·통합 98회와 보조 검증 30회다. 로컬에서 `heif-thumbnailer`가 없으면 HEIC 업로드 테스트 한 개를 건너뛴다. MySQL 선택 실행 테스트는 별도로 실행한다.
+기본 테스트는 기능·통합 96회, 배분 정책·참여 제한·출근 시간대 27회, 패키지 순환 의존 검사 3회로 총 126회다. 로컬에서 `heif-thumbnailer`가 없으면 HEIC 업로드 테스트 한 개를 건너뛴다.
 
 | 구분 | 테스트 파일 | 실행 횟수 |
 | --- | --- | --- |
@@ -22,17 +13,18 @@
 | 활동·직원별 가입과 당일 배정 분리 | [ActivityRegistrationFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/ActivityRegistrationFeatureTest.java) | 5 |
 | 직원별 나눔가게 시간대 선호도 | [SharingShopTimePreferenceFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/SharingShopTimePreferenceFeatureTest.java) | 4 |
 | 휴가·근무일·마감 | [LeaveFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/LeaveFeatureTest.java) | 7 |
-| 배정·설정·확정 기록 | [AllocationFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/AllocationFeatureTest.java) | 20 |
+| 배정·설정·확정 기록 | [AllocationFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/AllocationFeatureTest.java) | 12 |
 | 직원·직군·프로필 | [EmployeeFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/EmployeeFeatureTest.java) | 15 |
-| 지원표·맞교환 | [SupportFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/SupportFeatureTest.java) | 11 |
+| 지원표·맞교환 | [SupportFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/SupportFeatureTest.java) | 12 |
+| 식당지원 명단 정리·휴가 겹침 경고 | [CafeteriaSupportRosterCleanupFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/CafeteriaSupportRosterCleanupFeatureTest.java) | 4 |
 | 로그인·권한·본인 확인 | [SecurityFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/SecurityFeatureTest.java) | 9 |
 | enum 활동·가입·참여 제한 | [ActivityFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/ActivityFeatureTest.java) | 7 |
-| 활동 전용 배정기와 공통 추가 업무 분리 | [ActivityAllocatorFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/ActivityAllocatorFeatureTest.java) | 1 |
+| 활동 전용 배정기가 없는 활동의 업무 미생성 | [ActivityAllocatorFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/ActivityAllocatorFeatureTest.java) | 1 |
 | 메뉴·전체 휴가 일정·휴일 달력·결과 공개·공통 오류 화면 | [NavigationFeatureTest](../src/test/java/com/jangbokhuman/workshare/integration/NavigationFeatureTest.java) | 6 |
 | 출근 상태별 오전·오후 배정과 근무 시간 | [AttendanceTest](../src/test/java/com/jangbokhuman/workshare/attendance/AttendanceTest.java) | 5 |
-| 인원 배분·선호도 정책 | [PreferenceAllocationPolicyTest](../src/test/java/com/jangbokhuman/workshare/activity/sharingshop/PreferenceAllocationPolicyTest.java) | 19 |
-| 추가 업무 시간대·배정 제약 | [RandomTaskAllocationPolicyTest](../src/test/java/com/jangbokhuman/workshare/activity/sharingshop/RandomTaskAllocationPolicyTest.java) | 3 |
+| 인원 배분·선호도 정책 | [PreferenceShiftAllocationPolicyTest](../src/test/java/com/jangbokhuman/workshare/activity/sharingshop/PreferenceShiftAllocationPolicyTest.java) | 19 |
 | 활동 가입 자격 정책 | [ActivityRegistrationPolicyTest](../src/test/java/com/jangbokhuman/workshare/activity/ActivityRegistrationPolicyTest.java) | 3 |
+| 패키지 순환 의존 | [PackageDependencyTest](../src/test/java/com/jangbokhuman/workshare/architecture/PackageDependencyTest.java) | 3 |
 
 ## 전체 기능 흐름 테스트
 
@@ -41,7 +33,7 @@
 | 주어진 상황 | 사용자 동작·실행 | 확인하는 결과 | 실행 횟수 |
 | --- | --- | --- | --- |
 | 정상 출근자 0~5명, 휴가·선호도 미입력 | 관리자 직원 등록 → 실제 로그인 → 08:49:10 배정 → 08:50 REST 조회 | YAML 설정과 기본 비율, 1명 겸임, 별도 상주 인원 미제외, 재실행 시 동일 결과 | 6 |
-| 일반 직원 6명 + 식당 직원 1명, 식당지원 2명, 연차 1명, 반차 1명 | YAML에서 3명 기준 1/2 설정 → 관리자가 지원표 입력 → 직원이 휴가·오후 선호 신청 → 배정 → 서비스에서 추가 업무 등록 | 실제 가능 인원 3명, 반차자 오전 1명, 오후 선호자 2명, 지원·연차·식당 직군 제외, 추가 업무 후 기존 배정 보존 | 1 |
+| 일반 직원 6명 + 식당 직원 1명, 식당지원 2명, 연차 1명, 반차 1명 | YAML에서 3명 기준 1/2 설정 → 관리자가 지원표 입력 → 직원이 휴가·오후 선호 신청 → 배정 | 실제 가능 인원 3명, 반차자 오전 1명, 오후 선호자 2명, 지원·연차·식당 직군 제외 | 1 |
 | 홍길동 오늘 지원, 김민수 내일 지원 | 홍길동이 요청 → 제3자 수락 시도 → 김민수가 로그인해 08:49 직전 수락 | 수락 전 명단 유지, 제3자 403, 두 날짜의 지원자·활동 제외 인원 동시 변경, 재수락 불가 | 1 |
 | 당일 지원표와 휴가가 있는 직원 | 08:49 직전 휴가와 지원표 저장 → 08:49에 변경 시도 | 휴가와 지원표는 08:49부터 거절, 나눔가게 시간대 선호도는 계속 변경 가능, 실패 요청이 기존 기록을 바꾸지 않음 | 1 |
 | 내일 연차를 미리 신청한 직원 | 관리자가 사유 없는 휴일 등록 → 직원 신청 시도 → 관리자 휴일 해제 → 직원 연차 취소 → 주말 배정 실행 | 휴일 신청 차단·OFF 표시, 기존 연차 보존, 정상 출근으로 취소, 주말에는 배정 없음 | 1 |
@@ -56,7 +48,7 @@
 | 0~5명 기본 배분·1명 겸임·정원 제한 없음·설정 배분·오전·오후 반차의 시간대 제한·선호도 추첨 | `AllocationFeatureTest`, `BusinessRulesAcceptanceTest`, 배분 정책 테스트 |
 | 월별 식당지원표·필요 인원 변경·지원 중복·지원 당일 08:49 마감 | `SupportFeatureTest`, `BusinessRulesAcceptanceTest` |
 | 본인 요청·상대 수락·두 날짜 동시 교환·만료·관리자 수정·동시 수락·휴가 충돌·정리 | `SupportFeatureTest`, `BusinessRulesAcceptanceTest` |
-| 여러 업무 추가·추가 업무만 배정·확정 결과 보존·중복 추첨 금지 | `AllocationFeatureTest`, `BusinessRulesAcceptanceTest` |
+| 확정 결과 보존·중복 추첨 금지 | `AllocationFeatureTest`, `BusinessRulesAcceptanceTest` |
 | 관리자 URL 직접 접근·직원 403·일반 화면 관리자 메뉴 미노출 | `SecurityFeatureTest` |
 | 햄버거 메뉴·날짜 카드 HTML·08:50 REST 결과 공개·준비 중·휴일 | `NavigationFeatureTest` |
 
@@ -99,19 +91,11 @@
 
 [AllocationFeatureTest.java](../src/test/java/com/jangbokhuman/workshare/integration/AllocationFeatureTest.java)
 
-- 08:49:10 전에는 배정하지 않고 재시도해도 확정 배정을 유지한다: `dueTimeRecoveryAndRepeatedCallsKeepPersistedResultsIncludingAdditionalTasks`
+- 08:49:10 전에는 배정하지 않고 재시도해도 확정 배정을 유지한다: `dueTimeRecoveryAndRepeatedCallsKeepPersistedResults`
 - 자동 배정 서비스를 동시에 호출해도 한 세트만 저장되며, 충돌한 호출은 롤백될 수 있다: `concurrentAllocationCallsProduceOnlyOneSavedPlan`
 - 기본 소집일은 계정 등록일이고 마감 후 관리자 인원 제외는 다음 날 적용한다: `registrationDefaultsToTodayAndRetirementAfterCutoffTakesEffectTomorrow`
-- 같은 날 추가 업무가 늘어나도 이전 업무 배정을 보존한다: `severalLaterTasksKeepAllEarlierAssignmentsAndEachOthersResults`
-- 미래 업무 등록이 휴가 입력을 막지 않고 해당 근무일에 배정된다: `futureTasksDoNotLockLeaveInputAndAreAllocatedIndividuallyOnTheirDay`
-- 08:49 이후 추가한 업무는 추첨을 기다리며 휴가 마감은 연장하지 않는다: `betweenCutoffAndDrawNewWorkWaitsButDoesNotChangeTheLeaveDeadline`
-- 대기 중 추가 업무는 취소할 수 있고 휴일에는 배정하지 않는다: `pendingTaskCanBeCancelledAndHolidaysPausePendingWork`
-- 업무 입력 조건을 검사하고 가능한 직원이 없으면 부족을 표시한다: `taskValidationAndNoEligibleStaffAreHandledExplicitly`
-- 동시에 추가 업무를 등록해도 오전·오후를 다시 추첨하지 않는다: `concurrentAdditionalWorkDoesNotTriggerAnotherShiftDraw`
-- 관리자 웹에서 추가 업무를 등록·취소하는 경로를 제공하지 않는다: `adminCannotManageAdditionalWorkThroughTheWeb`
-- 식당 직군을 먼저 제외한 인원으로 기본·추가 업무를 배정한다: `shiftQuotasAndAllAdditionalWorkExcludeRestaurantStaffBeforeCounting`
-- 추가 업무 필요 인원을 10명으로 제한하지 않으며 부족 인원을 표시한다: `extraTasksCanRequestMoreThanTenWorkersAndReportTheShortfall`
-- 오전·오후 반차를 입력하면 선호와 관계없이 가능한 시간대의 기본·추가 업무만 배정한다(2회): `bothHalfDayTypesRestrictEveryAllocationPath`
+- 식당 직군을 먼저 제외한 인원으로 오전·오후 업무를 배정한다: `shiftQuotasExcludeRestaurantStaffBeforeCounting`
+- 오전·오후 반차를 입력하면 선호와 관계없이 가능한 시간대의 업무만 배정한다(2회): `bothHalfDayTypesRestrictEveryAllocationPath`
 - 반차자가 많으면 YAML 목표 비율을 조정해 모든 직원을 배정한다: `customQuotaAdjustsToKeepAllHalfDayWorkersAssigned`
 - 기계실 상주 가능 여부를 오전·오후별로 확인하고, 상주가 불가능해도 나눔가게에 배정한 뒤 해당 시간대에 경고를 표시한다(2회). `facilityStaffCoverBothShiftsAndWarnIfNobodyCanStay`
 - 유일한 기계실 반차자가 상주하면 다른 직군의 종일 근무자가 겸임하고, 기계실 출근자가 없는 반대 시간대만 경고한다(2회). `fullDayWorkerCoversBothShiftsSoHalfDayFacilityWorkerCanStay`
@@ -141,7 +125,7 @@
 
 - 기존 식당지원 사유로도 나눔가게 미가입 직원을 등록하고 지원일을 교환한다. `cafeteriaSupportDoesNotRequireSharingShopMembership`
 
-- 식당지원자를 기본 업무와 추가 업무의 자동 배정에서 제외한다: `scheduledSupportIsExcludedFromAutomaticShiftAndExtraTaskAssignments`
+- 식당지원자를 오전·오후 업무의 자동 배정에서 제외한다: `scheduledSupportIsExcludedFromAutomaticShiftAssignments`
 - 식당지원은 나눔가게 가입을 유지하고 당일 휴가와 겹치지 않는다: `cafeteriaSupportPreservesSharingShopMembershipAndRejectsLeaveConflicts`
 - 휴가와 지원표는 08:49에 함께 마감한다: `supportAndLeaveCloseAtEightFortyNine`
 - 상대방 수락 전에는 표를 유지하고 수락하면 두 지원일을 함께 교환한다: `supportExchangeRequiresRecipientConsentAndSwapsBothDatesAtomically`
@@ -151,6 +135,13 @@
 - 두 직원 모두 맡을 수 있는 날짜만 교환 후보로 보여준다: `exchangeChoicesOnlyShowDatesBothEmployeesCanActuallyTake`
 - 월별 지원표는 한 번에 저장·롤백하고 관리자와 직원 접근 권한을 구분한다: `monthlySupportSaveIsTransactionalAndSupportPagesAreRoleProtected`
 - 직원과 관리자는 일반 화면에서 월별 식당지원표를 조회한다. 직원은 맞교환 화면으로 이동할 수 있고, 날짜별 실제 지원 인원은 기준과 다를 수 있다. `staffAndAdministratorsCanReadTheMonthlyCafeteriaSchedule`
+
+[CafeteriaSupportRosterCleanupFeatureTest.java](../src/test/java/com/jangbokhuman/workshare/integration/CafeteriaSupportRosterCleanupFeatureTest.java)
+
+- 식당 직군으로 바뀌면 변경 가능한 식당지원 일정을 지운다: `changingToRestaurantRemovesChangeableSupportAssignments`
+- 마감 전 제외하면 당일부터 식당지원 일정을 지운다: `retiringBeforeCutoffRemovesSupportFromToday`
+- 마감 후 제외하면 마감된 당일 식당지원은 유지하고 다음 날부터 지운다: `retiringAfterCutoffKeepsClosedSupport`
+- 나눔가게에 가입하지 않은 식당지원자의 휴가 겹침도 경고한다: `warnsLeaveConflictOfCafeteriaOnlySupporter`
 
 ### 로그인·권한·본인 확인
 
@@ -183,7 +174,7 @@
 
 [ActivityAllocatorFeatureTest.java](../src/test/java/com/jangbokhuman/workshare/integration/ActivityAllocatorFeatureTest.java)
 
-- 전용 배정기가 없는 활동은 오전·오후 업무를 만들지 않고 대기 업무도 추첨하지 않는다. 추가 업무 추첨은 나눔가게에만 있다.
+- 전용 배정기가 없는 활동은 업무를 만들거나 배정하지 않는다.
 
 ### 메뉴·휴일 달력·결과 공개
 

@@ -139,7 +139,6 @@
 - 자동 가입은 직원 계정 등록 때만 한다. 식당에서 다른 직군으로 돌아와도 나눔가게·식당지원에 자동 재가입하거나 이전 선호도를 복구하지 않는다.
 - 활동 참여 불가와 일반 화면 조회 권한은 별개다. 식당 직군도 로그인·본인 휴가 입력·일반 화면 조회는 가능하다.
 - 기계실은 오전·오후 각각 상주 한 명이 필요하다. 실제 출근자가 한 명 이상 남는 조합을 우선하며, 불가능하면 나눔가게에 배정하고 해당 시간대에 기계실 인원 부족을 경고한다. 기계실 등록 인원이 0명인 경우에도 경고한다.
-- 기본 업무와 추가 업무의 자동 배정은 같은 제외 조건을 적용한다.
 
 예: 나눔가게 담당자 5명 중 식당지원 2명이면 배분 기준 인원은 **3명**이다. 식당지원 2명을 뺀 뒤 상주 담당을 다시 한 명 빼지 않는다.
 
@@ -192,7 +191,8 @@
 - 식당지원표에는 식당지원 활동에 가입했고 해당 날짜에 근무하는 직원을 등록한다. 식당 직군은 식당지원에 가입할 수 없다.
 - 나눔가게는 당일 식당지원 담당자를 오전·오후 배정 후보에서 제외한다.
 - 같은 직원을 같은 날짜에 두 번 등록할 수 없다. 종일 지원이므로 연차·병가·반차가 없는 직원만 등록한다.
-- 나중에 휴가를 입력해 기존 지원과 충돌하면 경고한다. 지원표 수정이나 교환으로 조정하며, 기존 휴가를 임의로 취소하지 않는다.
+- 나중에 휴가를 입력해 기존 지원과 충돌하면 경고한다. 나눔가게에 가입하지 않은 지원자도 경고 대상이다. 지원표 수정이나 교환으로 조정하며, 기존 휴가를 임의로 취소하지 않는다.
+- 식당지원 탈퇴(직군 변경으로 인한 자동 탈퇴 포함)·복무 기간 변경·인원 제외 시 아직 변경할 수 있는 지원 일정 중 더 이상 맡을 수 없는 날짜와 관련 교환 요청을 지운다. 마감된 지원 일정은 유지한다.
 - 실제 지원 인원이 기준과 다르면 안내를 표시하고 입력한 명단을 저장한다.
 - **지원표가 비어 있으면 특정 직원을 임의로 제외하지 않는다.** 실제 등록된 지원자만 제외하고 미입력 경고를 표시한다.
 - 필요 인원 설정만 바꿔도 기존 지원 명단을 자동 증감하지 않는다. 관리자가 명단을 함께 확인한다.
@@ -231,12 +231,8 @@
 
 ## 10. 업무 배정과 기록 보존
 
-- 한 날짜에 오전·오후 기본 업무와 여러 추가 업무가 존재할 수 있다. 날짜 하나가 업무 하나를 의미하지 않는다.
-- 오전·오후 기본 업무는 함께 추첨한다. 추가 업무는 업무별 시간대·필요 인원에 따라 별도로 배정한다.
-- 한 사람이 여러 업무를 맡을 수 있다. 현재 추가 업무 사이의 시간 겹침을 자동으로 금지하는 규칙은 없다.
-- 미래 추가 업무는 당일 08:49:10에 배정한다. 당일 08:49:10부터 추가한 업무는 가능한 직원 중 즉시 배정한다.
-- 추가 업무의 취소 처리는 **배정 대기 상태**에만 적용한다.
-- 확정된 업무를 재추첨·취소하지 않는다. 직원·명부·설정 변경과 새 업무 추가로 기존 결과를 덮어쓰지 않는다.
+- 나눔가게는 날짜마다 오전·오후 업무 두 개를 함께 추첨한다. 관리자가 별도 업무를 추가하는 기능은 두지 않는다.
+- 확정된 업무를 재추첨·취소하지 않는다. 직원·명부·설정 변경으로 기존 결과를 덮어쓰지 않는다.
 - 배정 당시 직원 ID·이름·출근 상태는 업무의 배정 기록으로 보관한다. 시간대 선호도는 나눔가게의 직원별 설정으로 관리한다.
 - 매일 08:49:10과 앱 기동 시에만 자동 배정을 확인한다. 기동 시각이 08:49:10 이후이면 당일 누락 배정을 처리하고 이미 확정된 업무는 유지한다.
 - 기동 중 자동 배정에서 예외가 발생하면 앱 기동을 실패 처리한다.
@@ -277,15 +273,15 @@
 - 명부·날짜별 제외·필요 인원·배분 기준·교환 동의를 서로 다른 책임으로 분리한다.
 - 다른 업무 지원이 새로 생기면 활동으로 추가하고, 그 담당자를 뺄 활동은 `Activity.getExcludingActivities()`에 선언한다.
 - 직원 이름 중복은 DB 고유 제약으로 처리한다. 직원 등록에 정원 검사나 이를 위한 전역 락을 넣지 않는다.
-- 앱 전체의 전역 락이나 활동 잠금용 테이블은 사용하지 않는다. 휴가·선호도는 JPA 조회·변경·`save()`를 사용한다. 가입·직군·선호도 변경은 직원 행, 식당지원표·교환은 지원 일정·요청 행, 대기 업무 배정·취소는 업무 행을 잠근다. 자동 업무 생성은 활동·날짜·코드 고유 제약으로 중복 저장을 막는다. 구체적인 범위는 [동시 저장과 잠금 기준](concurrency.md)을 따른다.
+- 앱 전체의 전역 락이나 활동 잠금용 테이블은 사용하지 않는다. 휴가·선호도는 JPA 조회·변경·`save()`를 사용한다. 가입·직군·선호도 변경은 직원 행, 식당지원표·교환은 지원 일정·요청 행을 잠근다. 업무는 생성과 함께 배정을 확정하므로 업무 행은 잠그지 않는다. 자동 업무 생성은 활동·날짜·코드 고유 제약으로 중복 저장을 막는다. 구체적인 범위는 [동시 저장과 잠금 기준](concurrency.md)을 따른다.
 - 활동 종류·가입·공통 업무는 `activity`에, 나눔가게 오전·오후 배정과 시간대 선호도는 `activity.sharingshop`에, 식당지원 명단·필요 인원·맞교환은 `activity.cafeteria`에 둔다. 나눔가게의 오전·오후 생성은 `SharingShopDailyAllocator`에서 처리한다. 새 활동의 자동 업무는 해당 활동의 `DailyActivityAllocator` 구현으로 추가한다.
 - 날짜와 시각 판단은 주입한 `Clock`을 사용한다. 로거는 `@Slf4j`를 사용한다.
 - Java 소스와 테스트에서는 `var`를 사용하지 않는다. 지역 변수·반복문·try 자원 선언 모두 명시적인 타입을 작성한다.
 - 엔티티의 단순 getter는 Lombok `@Getter`로 생성한다. 컬렉션·이미지의 방어적 복사가 필요한 조회 동작은 별도 메서드로 유지한다.
 - 자동 생성 대리키는 `Long`과 `@GeneratedValue(strategy = GenerationType.IDENTITY)`를 사용한다. 휴일 날짜와 직원 사진의 공유 직원 키는 별도 자동 생성하지 않는다. 직군과 활동 종류는 enum으로 저장한다.
-- 운영 DB에 보존할 데이터가 있으므로 스키마 변경은 새 Flyway 버전으로 추가하고 기존 데이터를 이관한다. 이미 적용된 버전 파일은 수정하지 않는다. MySQL과 H2 테스트 스키마를 같은 버전으로 함께 추가한다.
+- `V1__initial_schema.sql`이 첫 운영 배포 스키마다. 운영 반영 뒤의 스키마 변경은 새 Flyway 버전으로 추가하고 기존 데이터를 이관한다. 적용된 버전 파일은 수정하지 않는다. MySQL과 H2 테스트 스키마를 같은 버전으로 함께 추가한다.
 - 단순 주입 생성자는 Lombok `@RequiredArgsConstructor`를 사용한다. JPA 기본 생성자는 `@NoArgsConstructor(access = AccessLevel.PROTECTED)`로 작성하며, 검증·초기화·값 복사가 있는 생성자는 명시적으로 유지한다.
-- 주입 필드는 타입과 역할을 명확하게 이름에 담는다. 예를 들어 `LeaveRequestRepository leaveRequestRepository`, `WorkQueryService workQueryService`, `WorkTime workTime`으로 작성하고 `requests`, `queries`, `time` 같은 축약 주입 필드명은 사용하지 않는다. 테스트의 주입 필드도 같은 원칙을 적용한다.
+- 주입 필드는 타입과 역할을 명확하게 이름에 담는다. 예를 들어 `LeaveRequestRepository leaveRequestRepository`, `LeaveCalendarService leaveCalendarService`, `WorkTime workTime`으로 작성하고 `requests`, `queries`, `time` 같은 축약 주입 필드명은 사용하지 않는다. 테스트의 주입 필드도 같은 원칙을 적용한다.
 
 | 책임 | 주요 객체·코드 |
 | --- | --- |
@@ -294,10 +290,10 @@
 | 가입 저장·등록 자격 | [ActivityRegistrationService](../src/main/java/com/jangbokhuman/workshare/activity/ActivityRegistrationService.java), [ActivityRegistrationPolicy](../src/main/java/com/jangbokhuman/workshare/activity/ActivityRegistrationPolicy.java) |
 | 당일 참여 자격 | [DailyActivityParticipationPolicy](../src/main/java/com/jangbokhuman/workshare/activity/DailyActivityParticipationPolicy.java) |
 | 날짜별 가능 인원 조회 | [RosterReader](../src/main/java/com/jangbokhuman/workshare/activity/sharingshop/RosterReader.java) |
-| 월별 식당지원표·필요 인원 | [CafeteriaSupportScheduleService](../src/main/java/com/jangbokhuman/workshare/activity/cafeteria/CafeteriaSupportScheduleService.java): `CafeteriaSupportAssignment`, `CafeteriaSupportRequirement` |
+| 월별 식당지원표·필요 인원 | [CafeteriaSupportScheduleService](../src/main/java/com/jangbokhuman/workshare/activity/cafeteria/CafeteriaSupportScheduleService.java), [CafeteriaSupportAvailabilityChecker](../src/main/java/com/jangbokhuman/workshare/activity/cafeteria/CafeteriaSupportAvailabilityChecker.java): `CafeteriaSupportAssignment`, `CafeteriaSupportRequirement` |
 | 직군별 자동 가입 | [CafeteriaSupportAutoRegistration](../src/main/java/com/jangbokhuman/workshare/activity/cafeteria/CafeteriaSupportAutoRegistration.java), [SharingShopAutoRegistration](../src/main/java/com/jangbokhuman/workshare/activity/sharingshop/SharingShopAutoRegistration.java) |
 | 인원수별 배분 기준 | [ShiftQuotaService](../src/main/java/com/jangbokhuman/workshare/activity/sharingshop/ShiftQuotaService.java)가 `SharingShopSettings.sharingShopQuotas`에서 선택 |
-| 선호도 추첨 | [PreferenceAllocationPolicy](../src/main/java/com/jangbokhuman/workshare/activity/sharingshop/PreferenceAllocationPolicy.java) |
+| 선호도 추첨 | [PreferenceShiftAllocationPolicy](../src/main/java/com/jangbokhuman/workshare/activity/sharingshop/PreferenceShiftAllocationPolicy.java) |
 | 두 지원일의 교환·동의 | [CafeteriaSupportExchangeService](../src/main/java/com/jangbokhuman/workshare/activity/cafeteria/CafeteriaSupportExchangeService.java): `CafeteriaSupportExchangeRequest` |
 | 만료 요청 정리 | [CafeteriaSupportExchangeCleanupScheduler](../src/main/java/com/jangbokhuman/workshare/activity/cafeteria/CafeteriaSupportExchangeCleanupScheduler.java) |
 | 여러 업무와 확정 기록 | [WorkTask](../src/main/java/com/jangbokhuman/workshare/activity/WorkTask.java) |
