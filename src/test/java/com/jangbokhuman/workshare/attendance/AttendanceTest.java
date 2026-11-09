@@ -1,4 +1,4 @@
-package com.jangbokhuman.workshare.leave;
+package com.jangbokhuman.workshare.attendance;
 
 import com.jangbokhuman.workshare.activity.Worker;
 import com.jangbokhuman.workshare.calendar.WorkPeriod;
@@ -22,9 +22,9 @@ class AttendanceTest {
     void attendanceDeterminesTheAvailableShiftAndFullDaySupport(
             Attendance attendance, boolean morning, boolean evening) {
         Worker worker = new Worker(1L, "직원", attendance);
-        assertThat(WorkPeriod.MORNING.isEligible(worker)).isEqualTo(morning);
-        assertThat(WorkPeriod.EVENING.isEligible(worker)).isEqualTo(evening);
-        assertThat(WorkPeriod.UNSPECIFIED.isEligible(worker)).isFalse();
+        assertThat(worker.canWork(WorkPeriod.MORNING)).isEqualTo(morning);
+        assertThat(worker.canWork(WorkPeriod.EVENING)).isEqualTo(evening);
+        assertThat(worker.canWork(WorkPeriod.UNSPECIFIED)).isFalse();
         assertThat(attendance.isAbsent()).isEqualTo(!morning && !evening);
         assertThat(attendance.isFullDayAvailable()).isEqualTo(morning && evening);
         assertThat(attendance.isHalfDay()).isEqualTo(morning != evening);

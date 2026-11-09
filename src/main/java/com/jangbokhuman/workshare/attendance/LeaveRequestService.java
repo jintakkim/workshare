@@ -1,5 +1,7 @@
-package com.jangbokhuman.workshare.leave;
+package com.jangbokhuman.workshare.attendance;
 
+import com.jangbokhuman.workshare.common.BusinessException;
+import com.jangbokhuman.workshare.common.ErrorCode;
 import com.jangbokhuman.workshare.calendar.WorkTime;
 import com.jangbokhuman.workshare.employee.Employee;
 import com.jangbokhuman.workshare.employee.EmployeeRepository;
@@ -22,10 +24,10 @@ public class LeaveRequestService {
 
     public void save(Long employeeId, LocalDate date, Attendance attendance) {
         Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new IllegalArgumentException("등록된 직원이 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "등록된 직원이 없습니다."));
         leaveRequestValidator.validateLeaveRequest(employee, date);
         if (attendance == null) {
-            throw new IllegalArgumentException("근무 상태를 선택하세요.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "근무 상태를 선택하세요.");
         }
         LeaveRequest leaveRequest = leaveRequestRepository.findByEmployeeIdAndWorkDate(employee.getId(), date)
                 .orElseGet(() -> new LeaveRequest(employee.getId(), date));

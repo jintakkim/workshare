@@ -1,4 +1,4 @@
-package com.jangbokhuman.workshare.leave;
+package com.jangbokhuman.workshare.attendance;
 
 import com.jangbokhuman.workshare.calendar.WorkPeriod;
 

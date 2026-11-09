@@ -1,9 +1,10 @@
 package com.jangbokhuman.workshare.integration;
 
+import com.jangbokhuman.workshare.common.BusinessException;
 import com.jangbokhuman.workshare.activity.Activity;
 import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
 import com.jangbokhuman.workshare.calendar.WorkPeriod;
-import com.jangbokhuman.workshare.leave.Attendance;
+import com.jangbokhuman.workshare.attendance.Attendance;
 import com.jangbokhuman.workshare.activity.sharingshop.Preference;
 
 import static org.assertj.core.api.Assertions.*;
@@ -29,7 +30,7 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
         saveRequest("홍길동", TODAY, Attendance.VACATION, Preference.EVENING);
         now("08:49:00");
         assertThatThrownBy(() -> saveRequest("홍길동", TODAY, Attendance.WORK, Preference.ANY))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("마감");
         saveRequest("홍길동", TODAY.plusDays(1), Attendance.VACATION, Preference.MORNING);
         saveRequest("홍길동", TODAY.plusDays(1), Attendance.WORK, Preference.EVENING);
@@ -54,12 +55,12 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
         assertThatThrownBy(() -> saveRequest("홍길동", TODAY, Attendance.VACATION, Preference.ANY))
                 .hasMessageContaining("휴일");
         now("08:50");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         assertThatThrownBy(() -> holidayService.removeHoliday(TODAY)).hasMessageContaining("마감");
         testClock.set(saturday.atTime(9, 0));
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         testClock.set(saturday.plusDays(1).atTime(9, 0));
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         assertThat(workTaskRepository.count()).isZero();
         sharingShopTimePreferenceService.save(employeeId("홍길동"), Preference.MORNING);
         assertThat(sharingShopTimePreferenceService.getTimePreference(employeeId("홍길동")))
@@ -188,7 +189,7 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
         assertThatThrownBy(() -> leaveRequestService.save(target, TODAY, Attendance.WORK))
                 .hasMessageContaining("마감");
         now("08:50");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks())
                 .allSatisfy(
                         t ->

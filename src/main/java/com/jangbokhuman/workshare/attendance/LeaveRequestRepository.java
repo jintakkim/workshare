@@ -1,8 +1,9 @@
-package com.jangbokhuman.workshare.leave;
+package com.jangbokhuman.workshare.attendance;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,6 +14,7 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
 
     List<LeaveRequest> findByWorkDateBetweenAndAttendanceNot(LocalDate from, LocalDate to, Attendance attendance);
 
-    List<LeaveRequest> findByEmployeeIdAndWorkDateBetween(
-            Long employeeId, LocalDate from, LocalDate to);
+    List<LeaveRequest> findByEmployeeIdAndWorkDateBetween(Long employeeId, LocalDate from, LocalDate to);
+
+    List<LeaveRequest> findByEmployeeIdInAndWorkDateBetween(Collection<Long> employeeIds, LocalDate from, LocalDate to);
 }
