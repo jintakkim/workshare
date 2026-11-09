@@ -82,7 +82,7 @@
             status.append(
                 createElement("p", "", "배정 결과 공개까지"),
                 createElement("strong", "day-countdown", "--:--:--"),
-                createElement("small", "", "오전 08:50:10에 결과를 확인해요."),
+                createElement("small", "", deck.dataset.resultTime + "부터 결과를 확인할 수 있어요."),
             );
         } else if (day.phase === "READY")
             status.append(

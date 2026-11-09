@@ -55,8 +55,7 @@ public class SharingShopQueryService {
                     return new Member(worker.id(), worker.name(), reason, photoIds.contains(worker.id()));
                 })
                 .toList();
-        Instant refreshAt = date.atTime(workSettings.allocationTime())
-                .plusSeconds(10)
+        Instant refreshAt = date.atTime(workSettings.allocationResultTime())
                 .atZone(workSettings.zone())
                 .toInstant();
         List<WorkQueryService.TaskView> shiftTasks = view.tasks().stream()

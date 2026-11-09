@@ -167,32 +167,32 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
     }
 
     @Test
-    @DisplayName("08:50:10 전에는 예정 인원만 보여주고 이후 저장된 배정 결과를 공개한다")
-    void sharingApiPreviewsCountsAndRevealsPersistedAssignmentsAtEightFiftyTen() throws Exception {
+    @DisplayName("08:50 전에는 예정 인원만 보여주고 08:50부터 저장된 배정 결과를 공개한다")
+    void sharingApiPreviewsCountsAndRevealsPersistedAssignmentsAtEightFifty() throws Exception {
         for (String name : List.of("홍길동", "김민수", "이서연", "박지훈", "최유진")) register(name);
         registerRestaurant("강수진");
         leaveRequestService.save(employeeId("홍길동"), TODAY, Attendance.AFTERNOON_HALF_DAY);
         leaveRequestService.save(employeeId("김민수"), TODAY, Attendance.VACATION);
         leaveRequestService.save(employeeId("이서연"), TODAY, Attendance.SICK_LEAVE);
         String url = "/api/sharing-shop/days/" + TODAY;
-        now("08:49:59");
+        now("08:49:09");
         mockMvc.perform(get(url).with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.phase").value("WAITING"))
-                .andExpect(jsonPath("$.refreshAt").value("2026-11-03T23:50:10Z"))
+                .andExpect(jsonPath("$.refreshAt").value("2026-11-03T23:50:00Z"))
                 .andExpect(jsonPath("$.participants.length()").value(3))
                 .andExpect(jsonPath("$.leaves.length()").value(2))
                 .andExpect(jsonPath("$.morningSlots").value(2))
                 .andExpect(jsonPath("$.eveningSlots").value(1));
         assertThat(workTaskRepository.count()).isZero();
-        now("08:50:00");
+        now("08:49:10");
         workTaskService.allocateTodayIfDue();
         long taskCount = workTaskRepository.count();
-        now("08:50:09.999");
+        now("08:49:59.999");
         mockMvc.perform(get(url).with(testUser("홍길동", "STAFF")))
                 .andExpect(jsonPath("$.phase").value("WAITING"))
                 .andExpect(jsonPath("$.morning.length()").value(0));
-        now("08:50:10");
+        now("08:50:00");
         mockMvc.perform(get(url).with(testUser("홍길동", "STAFF")))
                 .andExpect(jsonPath("$.phase").value("READY"))
                 .andExpect(jsonPath("$.morning.length()").value(2))
@@ -208,14 +208,14 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                         content()
                                 .string(
                                         org.hamcrest.Matchers.containsString(
-                                                "data-today=\"2026-11-04\"")));
+                                                "data-result-time=\"08:50\"")));
     }
 
     @Test
     @DisplayName("배정 지연은 준비 중으로 표시하고 토·일·사유 없는 휴일에는 배정하지 않는다")
     void sharingApiHandlesDelayedSchedulerWeekendsAndBlankHolidayReasons() throws Exception {
         register("홍길동");
-        now("08:50:10");
+        now("08:50:00");
         mockMvc.perform(get("/api/sharing-shop/days/" + TODAY).with(testUser("admin", "ADMIN")))
                 .andExpect(jsonPath("$.phase").value("PREPARING"))
                 .andExpect(jsonPath("$.morning.length()").value(0));

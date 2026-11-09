@@ -32,7 +32,7 @@ import java.util.concurrent.*;
 })
 class AllocationFeatureTest extends BusinessFeatureTestSupport {
     @Test
-    @DisplayName("08:50 전에는 배정하지 않고 재시도해도 확정 배정을 유지한다")
+    @DisplayName("08:49:10 전에는 배정하지 않고 재시도해도 확정 배정을 유지한다")
     void dueTimeRecoveryAndRepeatedCallsKeepPersistedResultsIncludingAdditionalTasks() {
         register("홍길동");
         register("김민수");
@@ -40,11 +40,11 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         saveRequest("홍길동", TODAY, Attendance.AFTERNOON_HALF_DAY, Preference.EVENING);
         saveRequest("김민수", TODAY, Attendance.WORK, Preference.EVENING);
         addTask(TODAY, "정리 업무", WorkPeriod.EVENING, 1);
-        now("08:49:59");
+        now("08:49:09.999999999");
         workTaskService.allocateTodayIfDue();
         assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks())
                 .singleElement().satisfies(task -> assertThat(task.assigned()).isFalse());
-        now("08:50:00");
+        now("08:49:10");
         workTaskService.allocateTodayIfDue();
         List<WorkQueryService.TaskView> first =
                 workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks();
@@ -184,7 +184,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
                 .allSatisfy(t -> assertThat(t.assigned()).isFalse());
         assertThatThrownBy(() -> saveRequest("홍길동", TODAY, Attendance.VACATION, Preference.ANY))
                 .hasMessageContaining("마감");
-        now("08:50");
+        now("08:49:10");
         workTaskService.allocateTodayIfDue();
         assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).tasks())
                 .hasSize(3)

@@ -14,6 +14,7 @@ public record WorkSettings(
         LocalTime leaveCutoff,
         LocalTime cafeteriaSupportCutoff,
         LocalTime allocationTime,
+        LocalTime allocationResultTime,
         String adminUsername,
         String adminPassword,
         Map<Integer, ShiftQuota> sharingShopQuotas) {
@@ -31,8 +32,12 @@ public record WorkSettings(
                 || leaveCutoff == null
                 || cafeteriaSupportCutoff == null
                 || allocationTime == null
-                || !leaveCutoff.isBefore(allocationTime)) {
+                || !leaveCutoff.isBefore(allocationTime)
+                || !cafeteriaSupportCutoff.isBefore(allocationTime)) {
             throw new IllegalArgumentException("입력 마감은 배정 시각보다 빨라야 합니다.");
+        }
+        if (allocationResultTime == null || allocationResultTime.isBefore(allocationTime)) {
+            throw new IllegalArgumentException("결과 공개는 배정 시각부터 가능합니다.");
         }
         if (adminUsername == null
                 || adminUsername.isBlank()

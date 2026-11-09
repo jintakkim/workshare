@@ -47,10 +47,7 @@ public class SupportExchangeService {
                 target.getReason(), target.getWorkDate(), source.getEmployeeId(), target.getId());
         if (supportExchangeRequestRepository.existsBySourceIdAndTargetId(sourceId, targetId))
             throw new IllegalArgumentException("이미 보낸 교환 요청입니다.");
-        LocalDate firstSupportDate = source.getWorkDate().isBefore(target.getWorkDate())
-                ? source.getWorkDate()
-                : target.getWorkDate();
-        Instant deadline = supportScheduleDeadline.getDeadline(source.getReason(), firstSupportDate);
+        Instant deadline = getExchangeDeadline(source, target);
         supportExchangeRequestRepository.save(
                 new SupportExchangeRequest(
                         sourceId, targetId, self.getId(), target.getEmployeeId(), deadline));
@@ -150,12 +147,15 @@ public class SupportExchangeService {
                     || to.isEmpty()
                     || !from.get().getEmployeeId().equals(request.getRequesterId())
                     || !to.get().getEmployeeId().equals(request.getRecipientId())) continue;
+            Instant deadline = getExchangeDeadline(from.get(), to.get());
+            if (!workTime.getInstant().isBefore(deadline)) continue;
+            Instant expiresAt = request.getExpiresAt().isBefore(deadline) ? request.getExpiresAt() : deadline;
             RequestView view =
                     new RequestView(
                             request.getId(),
                             createSlotView(from.get(), names),
                             createSlotView(to.get(), names),
-                            LocalDateTime.ofInstant(request.getExpiresAt(), workSettings.zone()));
+                            LocalDateTime.ofInstant(expiresAt, workSettings.zone()));
             (request.getRecipientId().equals(self.getId()) ? incoming : outgoing).add(view);
         }
         return new Page(
@@ -189,6 +189,13 @@ public class SupportExchangeService {
                                 source.getEmployeeId(),
                                 target.getId())
                         .allowed();
+    }
+
+    private Instant getExchangeDeadline(DailyExclusion source, DailyExclusion target) {
+        LocalDate firstSupportDate = source.getWorkDate().isBefore(target.getWorkDate())
+                ? source.getWorkDate()
+                : target.getWorkDate();
+        return supportScheduleDeadline.getDeadline(source.getReason(), firstSupportDate);
     }
 
     private Slot createSlotView(DailyExclusion a, Map<Long, String> names) {

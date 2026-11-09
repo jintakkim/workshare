@@ -40,10 +40,10 @@
 
 | 주어진 상황 | 사용자 동작·실행 | 확인하는 결과 | 실행 횟수 |
 | --- | --- | --- | --- |
-| 정상 출근자 0~5명, 휴가·선호도 미입력 | 관리자 직원 등록 → 실제 로그인 → 08:50 배정 → 08:50:10 REST 조회 | YAML 설정과 기본 비율, 1명 겸임, 별도 상주 인원 미제외, 재실행 시 동일 결과 | 6 |
+| 정상 출근자 0~5명, 휴가·선호도 미입력 | 관리자 직원 등록 → 실제 로그인 → 08:49:10 배정 → 08:50 REST 조회 | YAML 설정과 기본 비율, 1명 겸임, 별도 상주 인원 미제외, 재실행 시 동일 결과 | 6 |
 | 일반 직원 6명 + 식당 직원 1명, 식당지원 2명, 연차 1명, 반차 1명 | YAML에서 3명 기준 1/2 설정 → 관리자가 지원표 입력 → 직원이 휴가·오후 선호 신청 → 배정 → 서비스에서 추가 업무 등록 | 실제 가능 인원 3명, 반차자 오전 1명, 오후 선호자 2명, 지원·연차·식당 직군 제외, 추가 업무 후 기존 배정 보존 | 1 |
-| 홍길동 오늘 지원, 김민수 내일 지원 | 홍길동이 요청 → 제3자 수락 시도 → 김민수가 로그인해 08:50 직전 수락 | 수락 전 명단 유지, 제3자 403, 두 날짜의 지원자·활동 제외 인원 동시 변경, 재수락 불가 | 1 |
-| 당일 지원표와 휴가가 있는 직원 | 08:49 전 휴가 신청 → 08:49 휴가·선호도 변경 시도 → 08:50 직전 지원표 수정 → 08:50 지원표 변경 시도 | 휴가는 08:49부터 거절, 나눔가게 시간대 선호도는 계속 변경 가능, 지원표는 08:50 직전까지 허용, 실패 요청이 기존 기록을 바꾸지 않음 | 1 |
+| 홍길동 오늘 지원, 김민수 내일 지원 | 홍길동이 요청 → 제3자 수락 시도 → 김민수가 로그인해 08:49 직전 수락 | 수락 전 명단 유지, 제3자 403, 두 날짜의 지원자·활동 제외 인원 동시 변경, 재수락 불가 | 1 |
+| 당일 지원표와 휴가가 있는 직원 | 08:49 직전 휴가와 지원표 저장 → 08:49에 변경 시도 | 휴가와 지원표는 08:49부터 거절, 나눔가게 시간대 선호도는 계속 변경 가능, 실패 요청이 기존 기록을 바꾸지 않음 | 1 |
 | 내일 연차를 미리 신청한 직원 | 관리자가 사유 없는 휴일 등록 → 직원 신청 시도 → 관리자 휴일 해제 → 직원 연차 취소 → 주말 배정 실행 | 휴일 신청 차단·OFF 표시, 기존 연차 보존, 정상 출근으로 취소, 주말에는 배정 없음 | 1 |
 
 ## 규칙별로 찾기
@@ -54,11 +54,11 @@
 | 직원 본인 입력·관리자 대리 휴가·08:49 마감·미래 예약·취소·주말·휴일 | `LeaveFeatureTest`, `BusinessRulesAcceptanceTest` |
 | 식당 직군 금지·영구 활동 명부와 날짜별 제외 구분·나눔가게 전용 시간대 선호도 | `ActivityFeatureTest`, `AllocationFeatureTest`, `SupportFeatureTest` |
 | 0~5명 기본 배분·1명 겸임·정원 제한 없음·설정 배분·오전·오후 반차의 시간대 제한·선호도 추첨 | `AllocationFeatureTest`, `BusinessRulesAcceptanceTest`, 배분 정책 테스트 |
-| 월별 지원표·필요 인원 변경·다른 제외 사유·지원 중복·지원 당일 08:50 마감 | `SupportFeatureTest`, `BusinessRulesAcceptanceTest` |
+| 월별 지원표·필요 인원 변경·다른 제외 사유·지원 중복·지원 당일 08:49 마감 | `SupportFeatureTest`, `BusinessRulesAcceptanceTest` |
 | 본인 요청·상대 수락·두 날짜 동시 교환·만료·관리자 수정·동시 수락·휴가 충돌·정리 | `SupportFeatureTest`, `BusinessRulesAcceptanceTest` |
 | 여러 업무 추가·추가 업무만 배정·확정 결과 보존·중복 추첨 금지 | `AllocationFeatureTest`, `BusinessRulesAcceptanceTest` |
 | 관리자 URL 직접 접근·직원 403·일반 화면 관리자 메뉴 미노출 | `SecurityFeatureTest` |
-| 햄버거 메뉴·날짜 카드 HTML·08:50:10 REST 결과 공개·준비 중·휴일 | `NavigationFeatureTest` |
+| 햄버거 메뉴·날짜 카드 HTML·08:50 REST 결과 공개·준비 중·휴일 | `NavigationFeatureTest` |
 
 ## 업무별 상세 시나리오
 
@@ -99,7 +99,7 @@
 
 [AllocationFeatureTest.java](../src/test/java/com/jangbokhuman/workshare/integration/AllocationFeatureTest.java)
 
-- 08:50 전에는 배정하지 않고 재시도해도 확정 배정을 유지한다: `dueTimeRecoveryAndRepeatedCallsKeepPersistedResultsIncludingAdditionalTasks`
+- 08:49:10 전에는 배정하지 않고 재시도해도 확정 배정을 유지한다: `dueTimeRecoveryAndRepeatedCallsKeepPersistedResultsIncludingAdditionalTasks`
 - 자동 배정 서비스를 동시에 호출해도 한 세트만 저장되며, 충돌한 호출은 롤백될 수 있다: `concurrentAllocationCallsProduceOnlyOneSavedPlan`
 - 마감 후 직원 추가·제외는 다음 날부터 적용한다: `afterCutoffRosterChangesTakeEffectTomorrow`
 - 같은 날 추가 업무가 늘어나도 이전 업무 배정을 보존한다: `severalLaterTasksKeepAllEarlierAssignmentsAndEachOthersResults`
@@ -143,7 +143,7 @@
 
 - 식당지원자를 기본 업무와 추가 업무의 자동 배정에서 제외한다: `scheduledSupportIsExcludedFromAutomaticShiftAndExtraTaskAssignments`
 - 제외 사유를 추가해도 활동 가입은 유지하며 날짜별 지원 중복은 막는다: `exclusionReasonsPreserveActivityMembershipAndPreventDoubleBooking`
-- 휴가는 08:49에 마감하고 지원표는 08:50 전까지 반영한다: `supportCloseAtEightFiftyWhileLeaveClosesAtEightFortyNine`
+- 휴가와 지원표는 08:49에 함께 마감한다: `supportAndLeaveCloseAtEightFortyNine`
 - 상대방 수락 전에는 표를 유지하고 수락하면 두 지원일을 함께 교환한다: `supportExchangeRequiresRecipientConsentAndSwapsBothDatesAtomically`
 - 만료 요청은 수락할 수 없고 정리 시 미만료 요청과 지원표는 보존한다: `expiredExchangesCannotBeAcceptedAndDailyCleanupRetainsFutureRequests`
 - 관리자 표 수정은 관련 요청을 무효화하며 동시 수락은 한 번만 처리한다: `adminRosterEditsInvalidateRelatedRequestsAndConcurrentAcceptsOnlySucceedOnce`
@@ -193,7 +193,7 @@
 
 - 관리자 메뉴는 선택한 기능만 보여주고 직원이 없어도 열 수 있다: `adminMenuRendersOnlyTheSelectedFeatureIncludingEmptyEmployeeState`
 - 직원 햄버거 메뉴에서 날짜 카드·본인 휴가·프로필로 이동한다: `staffMenuOpensSharingCardsAndOwnLeaveCalendarAcrossStaffPages`
-- 08:50:10 전에는 예정 인원만 보여주고 이후 저장된 배정 결과를 공개한다: `sharingApiPreviewsCountsAndRevealsPersistedAssignmentsAtEightFiftyTen`
+- 08:50 전에는 예정 인원만 보여주고 이후 저장된 배정 결과를 공개한다: `sharingApiPreviewsCountsAndRevealsPersistedAssignmentsAtEightFifty`
 - 배정 지연은 준비 중으로 표시하고 토·일·사유 없는 휴일에는 배정하지 않는다: `sharingApiHandlesDelayedSchedulerWeekendsAndBlankHolidayReasons`
 
 ## 동시 저장·행 잠금 기능 검증

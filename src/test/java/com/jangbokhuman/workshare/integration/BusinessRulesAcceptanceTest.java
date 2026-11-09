@@ -61,11 +61,11 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
                 .andExpect(jsonPath("$.eveningSlots").value(evening));
 
         // When: the real scheduler entry point is invoked at the business deadline.
-        runAllocationAt("08:50:00");
+        runAllocationAt("08:49:10");
         mockMvc.perform(get(dayUrl(TODAY)).session(viewer))
                 .andExpect(jsonPath("$.phase").value("WAITING"))
                 .andExpect(jsonPath("$.morning.length()").value(0));
-        now("08:50:10");
+        now("08:50:00");
 
         // Then: stored assignments are revealed, with no extra desk-person exclusion.
         MvcResult first =
@@ -116,8 +116,8 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
                 .andExpect(jsonPath("$.eveningSlots").value(2));
 
         // When/Then: half-day staff get morning; both compatible evening preferences are honored.
-        runAllocationAt("08:50");
-        now("08:50:10");
+        runAllocationAt("08:49:10");
+        now("08:50:00");
         mockMvc.perform(get(dayUrl(TODAY)).session(worker))
                 .andExpect(jsonPath("$.morning[*].name").value(containsInAnyOrder("박지훈")))
                 .andExpect(jsonPath("$.evening[*].name").value(containsInAnyOrder("최유진", "정하늘")));
@@ -175,7 +175,7 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
                                 .session(outsider)
                                 .with(csrf()))
                 .andExpect(status().isForbidden());
-        now("08:49:59.999999999");
+        now("08:48:59.999999999");
         mockMvc.perform(
                         post("/supports/requests/" + requestId + "/accept")
                                 .session(recipient)
@@ -196,8 +196,8 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
     }
 
     @Test
-    @DisplayName("휴가는 08:49, 지원표는 08:50에 마감하며 나눔가게 시간대 선호도는 상시 저장한다")
-    void distinctDeadlinesAreEnforcedThroughThePublicForms() throws Exception {
+    @DisplayName("휴가와 지원표는 08:49에 마감하며 나눔가게 시간대 선호도는 상시 저장한다")
+    void dailyInputsCloseTogetherThroughThePublicForms() throws Exception {
         MockHttpSession admin = login("admin", "test-admin-password-2026");
         createEmployee(admin, "홍길동", "GENERAL");
         createEmployee(admin, "김민수", "GENERAL");
@@ -206,6 +206,7 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
         MockHttpSession worker = login("홍길동", STAFF_PASSWORD);
         now("08:48:59.999999999");
         saveLeave(worker, TODAY, Attendance.VACATION);
+        saveSupport(admin, reason, Map.of(TODAY, List.of(employeeId("김민수"))));
         now("08:49:00");
         mockMvc.perform(
                         post("/leave-requests")
@@ -222,9 +223,6 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
                                 .param("activityCode", Activity.SHARING_SHOP.getCode())
                                 .param("timePreference", "EVENING"))
                 .andExpect(flash().attributeExists("success"));
-        now("08:49:59.999999999");
-        saveSupport(admin, reason, Map.of(TODAY, List.of(employeeId("김민수"))));
-        now("08:50:00");
         mockMvc.perform(supportForm(admin, reason, Map.of(TODAY, List.of())))
                 .andExpect(flash().attributeExists("error"));
         mockMvc.perform(get(dayUrl(TODAY)).session(worker))

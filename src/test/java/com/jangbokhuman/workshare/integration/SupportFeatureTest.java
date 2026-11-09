@@ -97,20 +97,20 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
     }
 
     @Test
-    @DisplayName("휴가는 08:49에 마감하고 지원표는 08:50 전까지 반영한다")
-    void supportClosesAtEightFiftyWhileLeaveClosesAtEightFortyNine() {
+    @DisplayName("휴가와 지원표는 당일 08:49에 함께 마감한다")
+    void supportAndLeaveCloseAtEightFortyNine() {
         register("홍길동");
         register("김민수");
         Long reason = exclusionManagementService.addReason(Activity.SHARING_SHOP.getCode(), "식당지원", 1);
-        now("08:49:59.999999999");
+        now("08:48:59.999999999");
         supportOn(reason, TODAY, "홍길동");
+        now("08:49:00");
         assertThatThrownBy(
                         () ->
                                 leaveRequestService.save(
                                         employeeId("홍길동"), TODAY, Attendance.VACATION))
                 .hasMessageContaining("마감");
-        now("08:50");
-        assertThatThrownBy(() -> supportOn(reason, TODAY, "김민수")).hasMessageContaining("08:50");
+        assertThatThrownBy(() -> supportOn(reason, TODAY, "김민수")).hasMessageContaining("08:49");
         exclusionManagementService.changeRequired(reason, 2);
         assertThat(
                         exclusionManagementService
@@ -163,7 +163,7 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                                 .with(testUser("이서연", "STAFF"))
                                 .with(csrf()))
                 .andExpect(status().isForbidden());
-        now("08:49:59");
+        now("08:48:59");
         supportExchangeService.accept(employeeId("김민수"), request);
         assertThat(dailyExclusionRepository.findById(source).orElseThrow().getEmployeeId())
                 .isEqualTo(employeeId("김민수"));
@@ -198,7 +198,7 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                 employeeId("홍길동"),
                 supportEntry(reason, TODAY.plusDays(2), "홍길동"),
                 supportEntry(reason, TODAY.plusDays(1), "김민수"));
-        now("08:50");
+        now("08:49:00");
         assertThatThrownBy(() -> supportExchangeService.accept(employeeId("김민수"), expired))
                 .hasMessageContaining("만료");
         assertThat(supportExchangeService.getExchangePage(employeeId("김민수"), null).incoming())

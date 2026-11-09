@@ -3,6 +3,7 @@ package com.jangbokhuman.workshare.activity.sharingshop;
 import com.jangbokhuman.workshare.calendar.WorkTime;
 
 import com.jangbokhuman.workshare.config.AuthenticatedUser;
+import com.jangbokhuman.workshare.config.WorkSettings;
 
 import lombok.RequiredArgsConstructor;
 
@@ -18,6 +19,7 @@ import java.util.stream.IntStream;
 @RequiredArgsConstructor
 public class SharingShopController {
     private final WorkTime workTime;
+    private final WorkSettings workSettings;
     private final SharingShopTimePreferenceService sharingShopTimePreferenceService;
 
     @GetMapping("/sharing-shop")
@@ -52,6 +54,8 @@ public class SharingShopController {
         model.addAttribute("management", management);
         model.addAttribute("section", "sharing");
         model.addAttribute("today", workTime.getToday());
+        model.addAttribute("leaveCutoff", workSettings.leaveCutoff());
+        model.addAttribute("allocationResultTime", workSettings.allocationResultTime());
         model.addAttribute("dates", IntStream.rangeClosed(-15, 15)
                 .mapToObj(offset -> workTime.getToday().plusDays(offset))
                 .toList()

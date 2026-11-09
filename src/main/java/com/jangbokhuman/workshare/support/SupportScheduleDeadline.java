@@ -45,6 +45,6 @@ public class SupportScheduleDeadline {
     public LocalTime getCutoff(ExclusionReason reason) {
         return reason != null && reason.isCafeteriaSupport()
                 ? workSettings.cafeteriaSupportCutoff()
-                : workSettings.allocationTime();
+                : workSettings.leaveCutoff();
     }
 }
