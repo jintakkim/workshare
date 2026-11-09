@@ -1,6 +1,6 @@
 package com.jangbokhuman.workshare.activity;
 
-import com.jangbokhuman.workshare.leave.Attendance;
+import com.jangbokhuman.workshare.attendance.Attendance;
 
 import jakarta.persistence.*;
 

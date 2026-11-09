@@ -16,9 +16,9 @@ import com.jangbokhuman.workshare.calendar.WorkPeriod;
 import com.jangbokhuman.workshare.calendar.WorkTime;
 import com.jangbokhuman.workshare.employee.Employee;
 import com.jangbokhuman.workshare.employee.EmployeeRepository;
-import com.jangbokhuman.workshare.leave.Attendance;
-import com.jangbokhuman.workshare.leave.LeaveRequest;
-import com.jangbokhuman.workshare.leave.LeaveRequestRepository;
+import com.jangbokhuman.workshare.attendance.Attendance;
+import com.jangbokhuman.workshare.attendance.LeaveRequest;
+import com.jangbokhuman.workshare.attendance.LeaveRequestRepository;
 
 import com.jangbokhuman.workshare.config.WorkSettings;
 
@@ -89,13 +89,12 @@ public class WorkQueryService {
                 .toList();
         LeaveRequest mine = myLeaves.get(date);
         boolean business = businessCalendar.isWorkingDay(date);
+        boolean scheduleChangeable = workTime.isBeforeScheduleChangeDeadline(date)
+                && !workTaskRepository.existsByWorkDateAndStatus(date, WorkTask.Status.ASSIGNED);
         boolean editable = business
-                && workTime.isBeforeScheduleChangeDeadline(date)
-                && !workTaskRepository.existsByWorkDateAndStatus(date, WorkTask.Status.ASSIGNED)
+                && scheduleChangeable
                 && self != null
-                && self.isActiveOn(date)
-                && (self.getInactiveFrom() == null
-                || workTime.getToday().isBefore(self.getInactiveFrom()));
+                && self.isActiveOn(date);
         ParticipationDecision decision = self == null
                     ? ParticipationDecision.deny("관리자 계정은 활동에 참여하지 않습니다.")
                     : dailyActivityParticipationPolicy.evaluateAvailability(self, activity, date);
@@ -113,9 +112,7 @@ public class WorkQueryService {
                 mine == null ? Attendance.WORK : mine.getAttendance(),
                 business,
                 editable,
-                workTime.isBeforeScheduleChangeDeadline(date)
-                        && !workTaskRepository.existsByWorkDateAndStatus(
-                                date, WorkTask.Status.ASSIGNED),
+                scheduleChangeable,
                 workSettings.leaveCutoff(),
                 holidayMap.get(date),
                 month.minusMonths(1).atDay(1),

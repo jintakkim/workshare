@@ -26,6 +26,13 @@ public interface ActivityRegistrationRepository extends JpaRepository<ActivityRe
     List<ActivityRegistration> findByEmployeeId(Long employeeId);
 
     @Query("""
+            SELECT registration.employee.id AS employeeId, registration.activityCode AS activityCode
+            FROM ActivityRegistration registration
+            ORDER BY registration.activityCode
+            """)
+    List<EmployeeActivity> findEmployeeActivities();
+
+    @Query("""
             SELECT registration.activityCode AS activityCode, COUNT(registration) AS memberCount
             FROM ActivityRegistration registration
             GROUP BY registration.activityCode
@@ -36,5 +43,11 @@ public interface ActivityRegistrationRepository extends JpaRepository<ActivityRe
         Activity getActivityCode();
 
         long getMemberCount();
+    }
+
+    interface EmployeeActivity {
+        Long getEmployeeId();
+
+        Activity getActivityCode();
     }
 }

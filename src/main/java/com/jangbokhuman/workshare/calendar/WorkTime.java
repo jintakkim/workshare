@@ -34,7 +34,7 @@ public class WorkTime {
         return isBeforeScheduleChangeDeadline(getToday()) ? getToday() : getToday().plusDays(1);
     }
 
-    public boolean  isAllocationDue() {
+    public boolean isAllocationDue() {
         return !getNow().toLocalTime().isBefore(workSettings.allocationTime());
     }
 }

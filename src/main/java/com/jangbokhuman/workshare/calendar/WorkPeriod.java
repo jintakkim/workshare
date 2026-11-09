@@ -1,7 +1,5 @@
 package com.jangbokhuman.workshare.calendar;
 
-import com.jangbokhuman.workshare.activity.Worker;
-
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -20,9 +18,5 @@ public enum WorkPeriod {
 
     public String getTimeRange() {
         return startTime == null ? "시간대 미기록" : startTime + "~" + endTime;
-    }
-
-    public boolean isEligible(Worker worker) {
-        return worker.attendance().canWork(this);
     }
 }

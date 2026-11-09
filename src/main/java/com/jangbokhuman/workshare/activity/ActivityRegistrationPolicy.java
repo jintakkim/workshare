@@ -19,7 +19,7 @@ public class ActivityRegistrationPolicy {
     private final WorkTime workTime;
 
     public ParticipationDecision evaluateRegistration(Employee employee, Activity activity) {
-        if (employee.getInactiveFrom() != null && !workTime.getToday().isBefore(employee.getInactiveFrom())) {
+        if (employee.isExcludedByAdminOn(workTime.getToday())) {
             return ParticipationDecision.deny("제외된 직원은 활동에 가입할 수 없습니다.");
         }
         return evaluateWorkGroupEligibility(employee.getWorkGroup(), activity);

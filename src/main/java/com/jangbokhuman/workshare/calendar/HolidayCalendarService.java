@@ -1,8 +1,5 @@
 package com.jangbokhuman.workshare.calendar;
 
-import com.jangbokhuman.workshare.activity.WorkTask;
-import com.jangbokhuman.workshare.activity.WorkTaskRepository;
-
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
@@ -17,32 +14,26 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class HolidayCalendarService {
     private final HolidayRepository holidayRepository;
-    private final WorkTaskRepository workTaskRepository;
+    private final DailyAllocationStatus dailyAllocationStatus;
     private final WorkTime workTime;
 
     public Month getHolidayCalendar(LocalDate date) {
         YearMonth month = YearMonth.from(date);
-        List<Holiday> registered =
-                holidayRepository.findByDateBetweenOrderByDate(
-                        month.atDay(1), month.atEndOfMonth());
-        Map<LocalDate, String> reasons =
-                registered.stream().collect(Collectors.toMap(Holiday::getDate, Holiday::getName));
+        List<Holiday> registered = holidayRepository.findByDateBetweenOrderByDate(month.atDay(1), month.atEndOfMonth());
+        Map<LocalDate, String> reasons = registered.stream().collect(Collectors.toMap(Holiday::getDate, Holiday::getName));
         LocalDate start = month.atDay(1).minusDays(month.atDay(1).getDayOfWeek().getValue() % 7);
-        int length =
-                ((month.lengthOfMonth() + month.atDay(1).getDayOfWeek().getValue() % 7 + 6) / 7)
-                        * 7;
+        int length = ((month.lengthOfMonth() + month.atDay(1).getDayOfWeek().getValue() % 7 + 6) / 7) * 7;
         ArrayList<Cell> cells = new ArrayList<Cell>();
         for (int i = 0; i < length; i++) {
             LocalDate day = start.plusDays(i);
-            cells.add(
-                    new Cell(
-                            day,
-                            YearMonth.from(day).equals(month),
-                            day.equals(date),
-                            day.equals(workTime.getToday()),
-                            BusinessCalendar.isWeekend(day),
-                            reasons.containsKey(day),
-                            reasons.get(day)));
+            cells.add(new Cell(
+                    day,
+                    YearMonth.from(day).equals(month),
+                    day.equals(date),
+                    day.equals(workTime.getToday()),
+                    BusinessCalendar.isWeekend(day),
+                    reasons.containsKey(day),
+                    reasons.get(day)));
         }
         return new Month(
                 date,
@@ -52,8 +43,7 @@ public class HolidayCalendarService {
                 registered,
                 reasons.get(date),
                 workTime.isBeforeScheduleChangeDeadline(date)
-                        && !workTaskRepository.existsByWorkDateAndStatus(
-                                date, WorkTask.Status.ASSIGNED),
+                        && !dailyAllocationStatus.isAllocated(date),
                 month.minusMonths(1).atDay(1),
                 month.plusMonths(1).atDay(1));
     }
@@ -65,7 +55,8 @@ public class HolidayCalendarService {
             boolean today,
             boolean weekend,
             boolean registered,
-            String reason) {}
+            String reason
+    ) {}
 
     public record Month(
             LocalDate date,
@@ -76,5 +67,6 @@ public class HolidayCalendarService {
             String holidayName,
             boolean holidayEditable,
             LocalDate previousMonth,
-            LocalDate nextMonth) {}
+            LocalDate nextMonth
+    ) {}
 }

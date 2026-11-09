@@ -57,6 +57,7 @@ public class ActivityManagementService {
     public List<WorkGroupChangeImpact> getWorkGroupChangeImpacts(Long employeeId) {
         List<Activity> activities = activityRegistrationRepository.findByEmployeeId(employeeId).stream()
                 .map(ActivityRegistration::getActivityCode)
+                .sorted()
                 .toList();
         List<WorkGroupChangeImpact> impacts = new ArrayList<>();
         for (WorkGroupType workGroup : WorkGroupType.values()) {

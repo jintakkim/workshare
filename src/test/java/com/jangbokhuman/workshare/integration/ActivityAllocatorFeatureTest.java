@@ -2,6 +2,7 @@ package com.jangbokhuman.workshare.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.jangbokhuman.workshare.activity.Activity;
 import com.jangbokhuman.workshare.activity.RosterReader;
 import com.jangbokhuman.workshare.activity.TaskAllocationPolicy;
 import com.jangbokhuman.workshare.activity.TaskAssignment;
@@ -37,7 +38,7 @@ class ActivityAllocatorFeatureTest extends BusinessFeatureTestSupport {
                 workTaskRepository, taskAssignmentRepository, businessCalendar, workTime, taskAllocationPolicy, rosterReader,
                 assignmentGuard, List.of());
         new TransactionTemplate(platformTransactionManager).executeWithoutResult(status -> {
-            workTaskServiceWithoutAllocators.allocateTodayIfDue();
+            workTaskServiceWithoutAllocators.allocate(Activity.SHARING_SHOP, TODAY);
             assertThat(workTaskRepository.findAll()).singleElement().satisfies(task -> {
                 assertThat(task.getId()).isEqualTo(taskId);
                 assertThat(task.getStatus()).isEqualTo(WorkTask.Status.ASSIGNED);

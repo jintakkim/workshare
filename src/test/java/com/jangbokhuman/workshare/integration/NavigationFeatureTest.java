@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.jangbokhuman.workshare.calendar.HolidayCalendarService;
-import com.jangbokhuman.workshare.leave.Attendance;
+import com.jangbokhuman.workshare.attendance.Attendance;
 
 import org.junit.jupiter.api.*;
 import org.springframework.boot.test.context.*;
@@ -186,7 +186,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(jsonPath("$.eveningSlots").value(1));
         assertThat(workTaskRepository.count()).isZero();
         now("08:49:10");
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         long taskCount = workTaskRepository.count();
         now("08:49:59.999");
         mockMvc.perform(get(url).with(testUser("홍길동", "STAFF")))
@@ -220,7 +220,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(jsonPath("$.phase").value("PREPARING"))
                 .andExpect(jsonPath("$.morning.length()").value(0));
         assertThat(workTaskRepository.count()).isZero();
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
         mockMvc.perform(get("/api/sharing-shop/days/" + TODAY).with(testUser("admin", "ADMIN")))
                 .andExpect(jsonPath("$.phase").value("READY"))
                 .andExpect(jsonPath("$.morningSlots").value(1))

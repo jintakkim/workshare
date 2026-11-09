@@ -10,11 +10,11 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 @Component
 public class AllocationScheduler {
-    private final WorkTaskService workTaskService;
+    private final DailyAllocationService dailyAllocationService;
 
     @Scheduled(cron = "${app.allocation-cron}", zone = "${app.zone}")
     @EventListener(ApplicationReadyEvent.class)
     public void allocate() {
-        workTaskService.allocateTodayIfDue();
+        dailyAllocationService.allocateTodayIfDue();
     }
 }
