@@ -1,6 +1,5 @@
 package com.jangbokhuman.workshare.support;
 
-import com.jangbokhuman.workshare.activity.Activity;
 import com.jangbokhuman.workshare.calendar.WorkTime;
 import com.jangbokhuman.workshare.config.AuthenticatedUser;
 
@@ -32,7 +31,7 @@ public class SupportController {
         boolean admin = user.getAuthorities().stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
         model.addAttribute("month", selectedMonth);
-        model.addAttribute("days", dailyExclusionReader.getSupportDays(Activity.SHARING_SHOP, "식당지원", selectedMonth));
+        model.addAttribute("days", dailyExclusionReader.getCafeteriaSupportDays(selectedMonth));
         model.addAttribute("admin", admin);
         model.addAttribute("section", "cafeteria-support");
         return "cafeteria-support";

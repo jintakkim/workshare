@@ -311,16 +311,12 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
                         post("/admin/supports/reasons")
                                 .session(admin)
                                 .with(csrf())
-                                .param("activityCode", Activity.SHARING_SHOP.getCode())
                                 .param("name", "식당지원")
                                 .param("requiredWorkers", Integer.toString(count)))
                 .andExpect(flash().attributeExists("success"));
         return exclusionReasonRepository
-                .findByActivityCodeOrderByName(Activity.SHARING_SHOP)
-                .stream()
-                .filter(reason -> reason.getName().equals("식당지원"))
+                .findByName("식당지원")
                 .map(ExclusionReason::getId)
-                .findFirst()
                 .orElseThrow();
     }
 

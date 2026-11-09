@@ -12,6 +12,7 @@ import java.util.Map;
 public record WorkSettings(
         ZoneId zone,
         LocalTime leaveCutoff,
+        LocalTime cafeteriaSupportCutoff,
         LocalTime allocationTime,
         String adminUsername,
         String adminPassword,
@@ -28,6 +29,7 @@ public record WorkSettings(
         }
         if (zone == null
                 || leaveCutoff == null
+                || cafeteriaSupportCutoff == null
                 || allocationTime == null
                 || !leaveCutoff.isBefore(allocationTime)) {
             throw new IllegalArgumentException("입력 마감은 배정 시각보다 빨라야 합니다.");

@@ -1,6 +1,5 @@
 package com.jangbokhuman.workshare.support;
 
-import com.jangbokhuman.workshare.activity.sharingshop.AllocationInputChangeValidator;
 import com.jangbokhuman.workshare.calendar.WorkTime;
 import com.jangbokhuman.workshare.employee.Employee;
 import com.jangbokhuman.workshare.employee.EmployeeRepository;
@@ -25,7 +24,7 @@ public class SupportExchangeService {
     private final EmployeeRepository employeeRepository;
     private final ExclusionManagementService exclusionManagementService;
     private final ExclusionReasonRepository exclusionReasonRepository;
-    private final AllocationInputChangeValidator allocationInputChangeValidator;
+    private final SupportScheduleDeadline supportScheduleDeadline;
     private final WorkTime workTime;
     private final WorkSettings workSettings;
 
@@ -40,21 +39,18 @@ public class SupportExchangeService {
                 || source.getWorkDate().equals(target.getWorkDate())
                 || !source.getReason().getId().equals(target.getReason().getId()))
             throw new IllegalArgumentException("같은 지원 업무를 맡은 다른 직원의 다른 날짜를 선택하세요.");
-        allocationInputChangeValidator.validateAllocationInputChange(source.getWorkDate());
-        allocationInputChangeValidator.validateAllocationInputChange(target.getWorkDate());
+        supportScheduleDeadline.validateSupportScheduleChange(source.getReason(), source.getWorkDate());
+        supportScheduleDeadline.validateSupportScheduleChange(target.getReason(), target.getWorkDate());
         exclusionManagementService.requireAvailable(
                 source.getReason(), source.getWorkDate(), target.getEmployeeId(), source.getId());
         exclusionManagementService.requireAvailable(
                 target.getReason(), target.getWorkDate(), source.getEmployeeId(), target.getId());
         if (supportExchangeRequestRepository.existsBySourceIdAndTargetId(sourceId, targetId))
             throw new IllegalArgumentException("이미 보낸 교환 요청입니다.");
-        Instant deadline =
-                (source.getWorkDate().isBefore(target.getWorkDate())
-                                ? source.getWorkDate()
-                                : target.getWorkDate())
-                        .atTime(workSettings.allocationTime())
-                        .atZone(workSettings.zone())
-                        .toInstant();
+        LocalDate firstSupportDate = source.getWorkDate().isBefore(target.getWorkDate())
+                ? source.getWorkDate()
+                : target.getWorkDate();
+        Instant deadline = supportScheduleDeadline.getDeadline(source.getReason(), firstSupportDate);
         supportExchangeRequestRepository.save(
                 new SupportExchangeRequest(
                         sourceId, targetId, self.getId(), target.getEmployeeId(), deadline));
@@ -73,8 +69,9 @@ public class SupportExchangeService {
         if (!source.getEmployeeId().equals(request.getRequesterId())
                 || !target.getEmployeeId().equals(request.getRecipientId()))
             throw new IllegalArgumentException("지원표가 변경되어 이 요청을 수락할 수 없습니다.");
-        allocationInputChangeValidator.validateAllocationInputChange(source.getWorkDate());
-        allocationInputChangeValidator.validateAllocationInputChange(target.getWorkDate());
+        supportScheduleDeadline.validateSupportScheduleChange(source.getReason(), source.getWorkDate());
+        supportScheduleDeadline.validateSupportScheduleChange(target.getReason(), target.getWorkDate());
+        exclusionManagementService.lockSupportEmployees(List.of(request.getRequesterId(), request.getRecipientId()));
         exclusionManagementService.requireAvailable(
                 source.getReason(), source.getWorkDate(), request.getRecipientId(), source.getId());
         exclusionManagementService.requireAvailable(
@@ -120,8 +117,7 @@ public class SupportExchangeService {
                         .filter(
                                 a ->
                                         a.getEmployeeId().equals(self.getId())
-                                                && allocationInputChangeValidator
-                                                        .canChangeAllocationInputs(a.getWorkDate())
+                                                && supportScheduleDeadline.canChangeSupportSchedule(a.getReason(), a.getWorkDate())
                                                 && (sourceId == null || a.getId().equals(sourceId)))
                         .findFirst()
                         .orElse(null);
@@ -137,9 +133,7 @@ public class SupportExchangeService {
                                                         && a.getReason()
                                                                 .getId()
                                                                 .equals(source.getReason().getId())
-                                                        && allocationInputChangeValidator
-                                                                .canChangeAllocationInputs(
-                                                                        a.getWorkDate())
+                                                        && supportScheduleDeadline.canChangeSupportSchedule(a.getReason(), a.getWorkDate())
                                                         && isExchangeable(source, a))
                                 .map(a -> createSlotView(a, names))
                                 .toList();
@@ -203,7 +197,7 @@ public class SupportExchangeService {
                 a.getWorkDate(),
                 a.getReason().getName(),
                 names.getOrDefault(a.getEmployeeId(), "직원"),
-                allocationInputChangeValidator.canChangeAllocationInputs(a.getWorkDate()));
+                supportScheduleDeadline.canChangeSupportSchedule(a.getReason(), a.getWorkDate()));
     }
 
     private Employee getEmployee(Long employeeId) {

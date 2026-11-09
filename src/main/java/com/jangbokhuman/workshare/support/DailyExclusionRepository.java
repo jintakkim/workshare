@@ -1,7 +1,5 @@
 package com.jangbokhuman.workshare.support;
 
-import com.jangbokhuman.workshare.activity.Activity;
-
 import org.springframework.data.jpa.repository.*;
 
 import java.time.LocalDate;
@@ -19,7 +17,13 @@ public interface DailyExclusionRepository extends JpaRepository<DailyExclusion, 
     List<DailyExclusion> findByWorkDateBetweenOrderByWorkDateAsc(LocalDate start, LocalDate end);
 
     @EntityGraph(attributePaths = "reason")
-    List<DailyExclusion> findByActivityCodeAndWorkDate(Activity code, LocalDate date);
+    List<DailyExclusion> findByScopeCodeAndReasonNameNotAndWorkDate(String scopeCode, String excludedName, LocalDate date);
+
+    @EntityGraph(attributePaths = "reason")
+    List<DailyExclusion> findByReasonNameAndWorkDate(String reasonName, LocalDate date);
+
+    @EntityGraph(attributePaths = "reason")
+    List<DailyExclusion> findByWorkDateAndEmployeeId(LocalDate date, Long employeeId);
 
     @EntityGraph(attributePaths = "reason")
     List<DailyExclusion> findByReasonIdAndWorkDateBetweenOrderByWorkDateAsc(
@@ -29,6 +33,4 @@ public interface DailyExclusionRepository extends JpaRepository<DailyExclusion, 
     List<DailyExclusion> findByEmployeeIdAndWorkDateGreaterThanEqualOrderByWorkDateAsc(
             Long id, LocalDate date);
 
-    boolean existsByActivityCodeAndWorkDateAndEmployeeIdAndIdNot(
-            Activity code, LocalDate date, Long employeeId, Long id);
 }

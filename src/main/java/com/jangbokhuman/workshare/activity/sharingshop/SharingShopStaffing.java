@@ -59,7 +59,7 @@ public class SharingShopStaffing {
         if (facilityIds.isEmpty()) {
             return new FacilityCoverage(0, 0);
         }
-        Set<Long> awayIds = dailyExclusionReader.getExclusionsOn(Activity.SHARING_SHOP, workDate).stream()
+        Set<Long> awayIds = dailyExclusionReader.getExclusionsOn(Activity.SHARING_SHOP.getSupportScopes(), workDate).stream()
                 .map(DailyExclusion::getEmployeeId)
                 .collect(Collectors.toSet());
         Map<Long, Attendance> attendanceById = leaveRequestRepository.findByWorkDate(workDate).stream()

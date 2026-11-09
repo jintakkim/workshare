@@ -1,7 +1,5 @@
 package com.jangbokhuman.workshare.support;
 
-import com.jangbokhuman.workshare.activity.Activity;
-
 import jakarta.persistence.*;
 
 import lombok.AccessLevel;
@@ -25,9 +23,8 @@ public class DailyExclusion {
     @JoinColumn(nullable = false)
     private ExclusionReason reason;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 40)
-    private Activity activityCode;
+    @Column(name = "activity_code", nullable = false, length = 40)
+    private String scopeCode;
 
     @Column(nullable = false)
     private LocalDate workDate;
@@ -37,7 +34,7 @@ public class DailyExclusion {
 
     public DailyExclusion(ExclusionReason reason, LocalDate date, Long employeeId) {
         this.reason = reason;
-        activityCode = reason.getActivityCode();
+        scopeCode = reason.getScopeCode();
         workDate = date;
         this.employeeId = employeeId;
     }

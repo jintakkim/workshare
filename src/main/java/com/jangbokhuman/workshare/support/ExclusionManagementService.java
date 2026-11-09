@@ -1,10 +1,10 @@
 package com.jangbokhuman.workshare.support;
 
 import com.jangbokhuman.workshare.activity.DailyActivityParticipationPolicy;
-import com.jangbokhuman.workshare.activity.sharingshop.AllocationInputChangeValidator;
 import com.jangbokhuman.workshare.calendar.BusinessCalendar;
 import com.jangbokhuman.workshare.employee.Employee;
 import com.jangbokhuman.workshare.employee.EmployeeRepository;
+import com.jangbokhuman.workshare.employee.WorkGroupType;
 import com.jangbokhuman.workshare.leave.LeaveRequestRepository;
 import com.jangbokhuman.workshare.activity.Activity;
 
@@ -20,6 +20,9 @@ import java.time.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.jangbokhuman.workshare.support.ExclusionReason.CAFETERIA_SUPPORT;
+import static com.jangbokhuman.workshare.support.ExclusionReason.CAFETERIA_SUPPORT_NAME;
+
 @Service
 @Transactional(isolation = Isolation.READ_COMMITTED)
 @RequiredArgsConstructor
@@ -32,28 +35,32 @@ public class ExclusionManagementService {
     private final EmployeeRepository employeeRepository;
     private final LeaveRequestRepository leaveRequestRepository;
     private final DailyActivityParticipationPolicy dailyActivityParticipationPolicy;
-    private final AllocationInputChangeValidator allocationInputChangeValidator;
+    private final SupportScheduleDeadline supportScheduleDeadline;
     private final BusinessCalendar businessCalendar;
 
     public Long addReason(String code, String name, int count) {
-        Activity activity = Activity.getByCode(code);
         String title = name == null ? "" : name.strip();
         if (title.isBlank() || title.length() > 60)
             throw new IllegalArgumentException("제외 사유는 1~60자로 입력하세요.");
-        if (exclusionReasonRepository.existsByActivityCodeAndName(activity, title))
+        boolean cafeteriaSupport = CAFETERIA_SUPPORT_NAME.equals(title);
+        String scopeCode = cafeteriaSupport ? CAFETERIA_SUPPORT : Activity.getByCode(code).getCode();
+        boolean alreadyExists = cafeteriaSupport
+                ? exclusionReasonRepository.findByName(title).isPresent()
+                : exclusionReasonRepository.existsByScopeCodeAndName(scopeCode, title);
+        if (alreadyExists)
             throw new IllegalArgumentException("이미 등록된 제외 사유입니다.");
-        ExclusionReason reason = exclusionReasonRepository.save(new ExclusionReason(activity, title));
+        ExclusionReason reason = exclusionReasonRepository.save(new ExclusionReason(scopeCode, title));
         exclusionRequirementRepository.save(
                 new ExclusionRequirement(
                         reason.getId(),
-                        allocationInputChangeValidator.getAllocationInputChangeEffectiveDate(),
+                        supportScheduleDeadline.getSupportChangeEffectiveDate(reason),
                         count));
         return reason.getId();
     }
 
     public void changeRequired(Long reasonId, int count) {
-        getReasonForUpdate(reasonId);
-        LocalDate date = allocationInputChangeValidator.getAllocationInputChangeEffectiveDate();
+        ExclusionReason reason = getReasonForUpdate(reasonId);
+        LocalDate date = supportScheduleDeadline.getSupportChangeEffectiveDate(reason);
         ExclusionRequirement rule =
                 exclusionRequirementRepository
                         .findByReasonIdAndEffectiveFrom(reasonId, date)
@@ -65,11 +72,12 @@ public class ExclusionManagementService {
     public void saveMonth(Long reasonId, YearMonth month, Map<LocalDate, List<Long>> changes) {
         ExclusionReason reason = getReasonForUpdate(reasonId);
         if (changes.isEmpty()) throw new IllegalArgumentException("변경 가능한 날짜가 없습니다.");
+        lockSupportEmployees(changes.values().stream().flatMap(Collection::stream).toList());
         for (Map.Entry<LocalDate, List<Long>> item : changes.entrySet()) {
             LocalDate date = item.getKey();
             if (!YearMonth.from(date).equals(month))
                 throw new IllegalArgumentException("선택한 달의 날짜만 변경할 수 있습니다.");
-            allocationInputChangeValidator.validateAllocationInputChange(date);
+            supportScheduleDeadline.validateSupportScheduleChange(reason, date);
             if (!businessCalendar.isWorkingDay(date))
                 throw new IllegalArgumentException("주말·휴일에는 지원을 등록하지 않습니다.");
             HashSet<Long> ids = new HashSet<>(item.getValue());
@@ -107,31 +115,39 @@ public class ExclusionManagementService {
         Optional<Employee> found = employeeRepository.findById(id);
         if (found.isEmpty()) return ParticipationDecision.deny("직원을 확인해주세요.");
         Employee employee = found.get();
-        Activity activity = reason.getActivityCode();
-        ParticipationDecision membership = dailyActivityParticipationPolicy.evaluateEligibility(employee, activity, date);
-        if (!membership.allowed()) return membership;
+        ParticipationDecision eligibility = evaluateSupportEligibility(employee, reason, date);
+        if (!eligibility.allowed()) return eligibility;
         if (leaveRequestRepository
                 .findByEmployeeIdAndWorkDate(id, date)
                 .map(l -> !l.getAttendance().isFullDayAvailable())
                 .orElse(false))
             return ParticipationDecision.deny(
                     employee.getName() + " 님은 " + date + "에 휴가·반차가 있어 종일 지원할 수 없습니다.");
-        boolean duplicate =
-                dailyExclusionRepository
-                        .findByActivityCodeAndWorkDate(reason.getActivityCode(), date)
-                        .stream()
-                        .anyMatch(
-                                a ->
-                                        a.getEmployeeId().equals(id)
-                                                && !a.getId().equals(replacingId)
-                                                && !a.getReason().getId().equals(reason.getId()));
-        if (duplicate
-                || (replacingId != null
-                        && dailyExclusionRepository
-                                .existsByActivityCodeAndWorkDateAndEmployeeIdAndIdNot(
-                                        reason.getActivityCode(), date, id, replacingId)))
+        boolean duplicate = dailyExclusionRepository.findByWorkDateAndEmployeeId(date, id).stream()
+                .filter(entry -> !entry.getId().equals(replacingId))
+                .filter(entry -> replacingId != null || !entry.getReason().getId().equals(reason.getId()))
+                .anyMatch(entry -> reason.isCafeteriaSupport() || entry.getReason().isCafeteriaSupport()
+                        || entry.getScopeCode().equals(reason.getScopeCode()));
+        if (duplicate)
             return ParticipationDecision.deny(employee.getName() + " 님은 해당 날짜에 다른 지원이 등록되어 있습니다.");
         return ParticipationDecision.allow();
+    }
+
+    private ParticipationDecision evaluateSupportEligibility(Employee employee, ExclusionReason reason, LocalDate date) {
+        if (!reason.isCafeteriaSupport()) {
+            return dailyActivityParticipationPolicy.evaluateEligibility(employee, Activity.getByCode(reason.getScopeCode()), date);
+        }
+        if (!employee.isActiveOn(date) || employee.getWorkGroup() == WorkGroupType.RESTAURANT) {
+            return ParticipationDecision.deny("해당 날짜에 식당지원을 맡을 수 있는 직원이 아닙니다.");
+        }
+        return ParticipationDecision.allow();
+    }
+
+    void lockSupportEmployees(Collection<Long> employeeIds) {
+        for (Long employeeId : new TreeSet<>(employeeIds)) {
+            employeeRepository.findByIdForUpdate(employeeId)
+                    .orElseThrow(() -> new IllegalArgumentException("직원을 확인해주세요."));
+        }
     }
 
     @Transactional(readOnly = true)
@@ -150,7 +166,6 @@ public class ExclusionManagementService {
                         .sorted(Comparator.comparing(Employee::getName))
                         .toList();
         if (reason != null) {
-            Activity activity = reason.getActivityCode();
             List<DailyExclusion> entries =
                     dailyExclusionRepository.findByReasonIdAndWorkDateBetweenOrderByWorkDateAsc(
                             reason.getId(), month.atDay(1), month.atEndOfMonth());
@@ -165,9 +180,7 @@ public class ExclusionManagementService {
                         staff.stream()
                                 .filter(
                                         e ->
-                                                dailyActivityParticipationPolicy
-                                                                .evaluateEligibility(e, activity, date)
-                                                                .allowed()
+                                                evaluateSupportEligibility(e, reason, date).allowed()
                                                         || selected.contains(e.getId()))
                                 .map(
                                         e ->
@@ -182,8 +195,7 @@ public class ExclusionManagementService {
                                 date,
                                 working,
                                 working
-                                        && allocationInputChangeValidator.canChangeAllocationInputs(
-                                                date),
+                                        && supportScheduleDeadline.canChangeSupportSchedule(reason, date),
                                 dailyExclusionReader.getRequiredWorkers(reason.getId(), date),
                                 selected,
                                 people,
@@ -198,13 +210,13 @@ public class ExclusionManagementService {
                 all,
                 reason,
                 rows,
-                allocationInputChangeValidator.getAllocationInputChangeEffectiveDate(),
+                supportScheduleDeadline.getCutoff(reason),
+                supportScheduleDeadline.getSupportChangeEffectiveDate(reason),
                 reason == null
                         ? 0
                         : dailyExclusionReader.getRequiredWorkers(
                                 reason.getId(),
-                                allocationInputChangeValidator
-                                        .getAllocationInputChangeEffectiveDate()));
+                                supportScheduleDeadline.getSupportChangeEffectiveDate(reason)));
     }
 
     private ExclusionReason getReasonForUpdate(Long reasonId) {
@@ -234,6 +246,7 @@ public class ExclusionManagementService {
             List<ExclusionReason> reasons,
             ExclusionReason reason,
             List<Day> days,
+            LocalTime cutoff,
             LocalDate effectiveDate,
             int required) {}
 }

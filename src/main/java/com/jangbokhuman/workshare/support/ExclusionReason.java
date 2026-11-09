@@ -1,7 +1,5 @@
 package com.jangbokhuman.workshare.support;
 
-import com.jangbokhuman.workshare.activity.Activity;
-
 import jakarta.persistence.*;
 
 import lombok.AccessLevel;
@@ -12,19 +10,25 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 public class ExclusionReason {
+    public static final String CAFETERIA_SUPPORT = "CAFETERIA_SUPPORT";
+    public static final String CAFETERIA_SUPPORT_NAME = "식당지원";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 40)
-    private Activity activityCode;
+    @Column(name = "activity_code", nullable = false, length = 40)
+    private String scopeCode;
 
     @Column(nullable = false, length = 60)
     private String name;
 
-    public ExclusionReason(Activity activityCode, String name) {
-        this.activityCode = activityCode;
+    public ExclusionReason(String scopeCode, String name) {
+        this.scopeCode = scopeCode;
         this.name = name;
+    }
+
+    public boolean isCafeteriaSupport() {
+        return CAFETERIA_SUPPORT_NAME.equals(name);
     }
 }

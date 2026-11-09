@@ -35,6 +35,7 @@ server:
 app:
   zone: Asia/Seoul
   leave-cutoff: '08:49'
+  cafeteria-support-cutoff: '08:50'
   allocation-time: '08:50'
   allocation-cron: '0 50 8 * * *'
   # 예: 5명일 때 기본 방향을 오전 2명, 오후 3명으로 두려면 아래 예시로 교체

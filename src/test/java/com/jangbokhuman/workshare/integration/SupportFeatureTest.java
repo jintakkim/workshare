@@ -5,6 +5,7 @@ import com.jangbokhuman.workshare.activity.sharingshop.WorkQueryService;
 import com.jangbokhuman.workshare.activity.Worker;
 import com.jangbokhuman.workshare.calendar.WorkPeriod;
 import com.jangbokhuman.workshare.leave.Attendance;
+import com.jangbokhuman.workshare.support.ExclusionReason;
 import com.jangbokhuman.workshare.support.SupportExchangeCleanupScheduler;
 import com.jangbokhuman.workshare.support.SupportExchangeService;
 import com.jangbokhuman.workshare.activity.sharingshop.Preference;
@@ -307,6 +308,40 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                     .hasMessageContaining("휴가");
         }
         assertThat(supportExchangeRequestRepository.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("나눔가게 미가입 직원도 식당지원표에 등록하고 지원일을 맞교환한다")
+    void cafeteriaSupportDoesNotRequireSharingShopMembership() throws Exception {
+        rosterService.registerEmployee("홍길동", "staff-password", "THIRD_FLOOR");
+        rosterService.registerEmployee("김민수", "staff-password", "DEVELOPMENT_SUPPORT");
+        registerRestaurant("강수진");
+        Long reason = exclusionReasonRepository.save(new ExclusionReason(Activity.SHARING_SHOP.getCode(), "식당지원")).getId();
+        LocalDate tomorrow = TODAY.plusDays(1);
+
+        String adminRoster = mockMvc.perform(get("/admin/supports").with(testUser("admin", "ADMIN"))
+                        .param("reasonId", reason.toString()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(adminRoster).contains("홍길동", "김민수").doesNotContain("강수진");
+
+        mockMvc.perform(post("/admin/supports/month").with(testUser("admin", "ADMIN")).with(csrf())
+                        .param("reasonId", reason.toString())
+                        .param("month", YearMonth.from(TODAY).toString())
+                        .param("editedDates", TODAY.toString(), tomorrow.toString())
+                        .param("day_" + TODAY, employeeId("홍길동").toString())
+                        .param("day_" + tomorrow, employeeId("김민수").toString()))
+                .andExpect(flash().attributeExists("success"));
+
+        Long source = supportEntry(reason, TODAY, "홍길동");
+        Long target = supportEntry(reason, tomorrow, "김민수");
+        supportExchangeService.request(employeeId("홍길동"), source, target);
+        Long requestId = supportExchangeRequestRepository.findAll().getFirst().getId();
+        supportExchangeService.accept(employeeId("김민수"), requestId);
+
+        assertThat(supportEntry(reason, TODAY, "김민수")).isEqualTo(source);
+        assertThat(supportEntry(reason, tomorrow, "홍길동")).isEqualTo(target);
+        assertThat(activityRegistrationRepository.count()).isZero();
     }
 
     @Test

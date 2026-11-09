@@ -1,7 +1,5 @@
 package com.jangbokhuman.workshare.support;
 
-import com.jangbokhuman.workshare.activity.Activity;
-
 import org.springframework.data.jpa.repository.*;
 import jakarta.persistence.LockModeType;
 
@@ -17,9 +15,9 @@ public interface ExclusionReasonRepository extends JpaRepository<ExclusionReason
             """)
     Optional<ExclusionReason> findByIdForUpdate(Long id);
 
-    List<ExclusionReason> findByActivityCodeOrderByName(Activity activityCode);
+    List<ExclusionReason> findByScopeCodeAndNameNotOrderByName(String scopeCode, String excludedName);
 
-    Optional<ExclusionReason> findByActivityCodeAndName(Activity activityCode, String name);
+    Optional<ExclusionReason> findByName(String name);
 
-    boolean existsByActivityCodeAndName(Activity activityCode, String name);
+    boolean existsByScopeCodeAndName(String scopeCode, String name);
 }

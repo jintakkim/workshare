@@ -223,7 +223,6 @@ com.jangbokhuman.workshare/
 │     ├─ ShiftQuotaService                             가능 인원수에 맞는 YAML 배분 기준 또는 기본값 선택
 │     ├─ RestaurantSharingRestriction                  식당 직군의 나눔가게 참여를 제한
 │     ├─ SharingShopConfiguration                      나눔가게 배정 정책과 식당 직군 제한을 Spring 빈으로 등록
-│     ├─ AllocationInputChangeValidator                지원표·맞교환의 08:50 마감과 지원 필요 인원 적용일 계산
 │     └─ WorkQueryService                              휴가 달력, 배정 후보, 날짜별 업무 결과를 화면에 제공
 ├─ leave/                                              휴가·반차
 │  ├─ Attendance                                       정상 출근·연차·병가·오전 및 오후 반차와 시간대별 근무 가능 여부
@@ -243,6 +242,7 @@ com.jangbokhuman.workshare/
 │  ├─ DailyExclusion                                   특정 활동·날짜에서 지원으로 제외되는 직원 한 명을 저장하는 엔티티
 │  ├─ DailyExclusionRepository                         날짜별 지원자 조회와 중복 지원 검사
 │  ├─ DailyExclusionReader                             날짜별 지원자, 월별 지원표와 인원 불일치 조회
+│  ├─ SupportScheduleDeadline                         지원표·맞교환의 마감과 필요 인원 적용일 계산
 │  ├─ SupportExchangeRequest                           두 직원의 지원일 맞교환 요청과 만료 시각을 저장하는 엔티티
 │  ├─ SupportExchangeRequestRepository                 요청 조회·행 잠금과 만료 또는 무효화된 요청 삭제
 │  ├─ SupportExchangeService                           지원일 맞교환의 자격 확인·요청·수락·취소·거절 처리
@@ -331,7 +331,7 @@ DB와 스케줄러를 포함한 단일 프로세스 운영을 전제로 합니�
 
 ## 검증
 
-`./mvnw test`는 기능·통합 93회와 배분 정책·참여 제한·출근 시간대 30회, 총 123회를 실행합니다. [업무 규칙별 테스트 목록](docs/business-tests.md)에서 각 시나리오와 검증 범위를 확인할 수 있습니다.
+`./mvnw test`는 기능·통합 94회와 배분 정책·참여 제한·출근 시간대 30회, 총 124회를 실행합니다. [업무 규칙별 테스트 목록](docs/business-tests.md)에서 각 시나리오와 검증 범위를 확인할 수 있습니다.
 
 주요 확인 사항은 다음과 같습니다.
 
@@ -408,6 +408,8 @@ DB와 스케줄러를 포함한 단일 프로세스 운영을 전제로 합니�
 - 매일 한국 시간 **09:00**에 `SupportExchangeCleanupScheduler`가 만료 요청을 DB에서 삭제합니다. 08:50부터는 정리 실행 여부와 관계없이 조회·수락에서 만료로 처리합니다.
 
 `ExclusionReason`(사유), `DailyExclusion`(날짜별 지원), `ExclusionRequirement`(필요 인원 이력), `SupportExchangeRequest`(상대방 동의)를 분리했습니다. `RosterReader`는 날짜별 제외를 한 번 반영해 자동 추첨·추가 업무·카드가 같은 가능 인원을 사용합니다. 영구 활동 명부는 날짜별 지원 때문에 변경하지 않습니다.
+
+식당지원은 활동 가입과 별도로 관리합니다. 나눔가게는 배정할 때 식당지원표를 조회합니다. 식당지원 마감은 `app.cafeteria-support-cutoff`에서 관리합니다.
 
 ## 나눔가게 오전·오후 배분
 

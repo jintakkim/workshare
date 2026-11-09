@@ -60,7 +60,7 @@ public class AdminSupportController {
 
     @PostMapping("/admin/supports/reasons")
     public String addExclusionReason(
-            @RequestParam String activityCode,
+            @RequestParam(required = false) String activityCode,
             @RequestParam String name,
             @RequestParam int requiredWorkers,
             RedirectAttributes flash) {

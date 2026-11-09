@@ -32,7 +32,7 @@ public class DailyActivityParticipationPolicy {
         if (!eligibility.allowed()) {
             return eligibility;
         }
-        return dailyExclusionReader.getExclusionReason(activity, participationDate, employee.getId())
+        return dailyExclusionReader.getExclusionReason(activity.getSupportScopes(), participationDate, employee.getId())
                 .map(reason -> ParticipationDecision.deny(reason + "으로 해당 날짜 활동에서 제외됩니다."))
                 .orElse(eligibility);
     }

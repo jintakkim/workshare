@@ -49,10 +49,10 @@ public class RosterReader {
                         .toList();
         HashMap<Long, String> reasons = new HashMap<Long, String>();
         dailyExclusionReader
-                .getExclusionsOn(activity, date)
+                .getExclusionsOn(activity.getSupportScopes(), date)
                 .forEach(a -> reasons.put(a.getEmployeeId(), a.getReason().getName()));
         ArrayList<String> warnings =
-                new ArrayList<>(dailyExclusionReader.getWarnings(activity, date));
+                new ArrayList<>(dailyExclusionReader.getWarnings(activity.getSupportScopes(), date));
         result.stream()
                 .filter(w -> reasons.containsKey(w.id()) && !w.attendance().isFullDayAvailable())
                 .forEach(
