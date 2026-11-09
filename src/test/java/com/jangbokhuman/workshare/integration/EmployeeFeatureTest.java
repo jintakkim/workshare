@@ -59,7 +59,7 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
                 .hasSize(6);
         rosterService.retireEmployee(employeeRepository.findByName("김민수").orElseThrow().getId());
         register("이도윤");
-        activityRegistrationService.changeWorkGroup(
+        rosterService.changeWorkGroup(
                 employeeRepository.findByName("강수진").orElseThrow().getId(), "GENERAL");
         registerForActivity(Activity.SHARING_SHOP, "강수진");
         assertThat(workQueryService.getDashboard(TODAY, employeeId("홍길동")).workers()).hasSize(14);
@@ -139,31 +139,35 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
     }
 
     @Test
-    @DisplayName("복무 연장 종료일은 자동 계산일보다 늦고 오늘 이후여야 한다")
-    void extensionMustFollowCalculatedDateAndCannotBackdateTheEnd() throws Exception {
+    @DisplayName("소집해제일은 직접 고칠 수 있으며 소집일보다 늦고 오늘보다 이르지 않아야 한다")
+    void serviceEndDateCanBeEnteredDirectlyButMustFollowTheStartAndToday() throws Exception {
         register("홍길동");
         Long id = employeeId("홍길동");
         String changePeriod = "/employees/" + id + "/service-period";
         mockMvc.perform(post(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
-                        .param("serviceStartDate", "2025-02-05").param("extendedServiceEndDate", "2026-11-04"))
-                .andExpect(flash().attribute("error", "연장된 소집해제일은 자동 계산일(2026-11-04)보다 늦어야 합니다."));
-        mockMvc.perform(post(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
-                        .param("serviceStartDate", "2025-01-05").param("extendedServiceEndDate", "2026-11-03"))
+                        .param("serviceStartDate", "2025-01-05").param("serviceEndDate", "2026-11-03"))
                 .andExpect(flash().attribute("error", "소집해제일은 오늘보다 이전으로 설정할 수 없습니다."));
         mockMvc.perform(post(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
-                        .param("serviceStartDate", "2025-01-05").param("extendedServiceEndDate", "2024-12-31"))
-                .andExpect(flash().attribute("error", "연장된 소집해제일은 자동 계산일(2026-10-04)보다 늦어야 합니다."));
+                        .param("serviceStartDate", "2025-01-05").param("serviceEndDate", "2024-12-31"))
+                .andExpect(flash().attribute("error", "소집해제일은 소집일보다 늦어야 합니다."));
         mockMvc.perform(post(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
-                        .param("serviceStartDate", "2025-01-05").param("extendedServiceEndDate", "2026-11-05"))
+                        .param("serviceStartDate", "2025-01-05").param("serviceEndDate", "2026-11-05"))
                 .andExpect(flash().attribute("success", "복무 기간을 저장했습니다."));
         assertThat(rosterService.getEmployeeView(id).serviceEndDate()).isEqualTo(TODAY.plusDays(1));
         assertThat(workQueryService.getDashboard(TODAY.plusDays(1), id).workers())
                 .extracting(Worker::id).contains(id);
         mockMvc.perform(post(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
+                        .param("serviceStartDate", "2025-06-01").param("serviceEndDate", "2026-12-31"))
+                .andExpect(flash().attribute("success", "복무 기간을 저장했습니다."));
+        assertThat(rosterService.getEmployeeView(id).serviceEndDate()).isEqualTo(LocalDate.of(2026, 12, 31));
+        mockMvc.perform(post(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
                         .param("serviceStartDate", "2025-01-05"))
                 .andExpect(flash().attribute("error", "소집해제일은 오늘보다 이전으로 설정할 수 없습니다."));
-        assertThat(rosterService.getEmployeeView(id).inactiveFrom()).isEqualTo(TODAY.plusDays(2));
-        assertThat(rosterService.getEmployeeView(id).serviceExtended()).isTrue();
+        assertThat(rosterService.getEmployeeView(id).serviceEndDate()).isEqualTo(LocalDate.of(2026, 12, 31));
+        mockMvc.perform(get("/employees/" + id).with(testUser("홍길동", "STAFF")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"serviceEndDate\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/service-period.js")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("연장된 소집해제일"))));
     }
 
     @Test

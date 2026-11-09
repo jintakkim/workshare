@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#495d3f"><title>프로필 · 장복인간</title><link th:replace="~{fragments/site-layout :: icon}"><link rel="stylesheet" th:href="@{/style.css}"><script defer th:src="@{/admin.js}"></script></head><body class="app-page admin-page"><th:block th:if="${management}"><header th:replace="~{admin :: adminHeader}"></header><dialog th:replace="~{admin :: adminMenu}"></dialog></th:block>
+<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#495d3f"><title>프로필 · 장복인간</title><link th:replace="~{fragments/site-layout :: icon}"><link rel="stylesheet" th:href="@{/style.css}"><script defer th:src="@{/admin.js}"></script><script defer th:src="@{/service-period.js}"></script></head><body class="app-page admin-page"><th:block th:if="${management}"><header th:replace="~{admin :: adminHeader}"></header><dialog th:replace="~{admin :: adminMenu}"></dialog></th:block>
 <th:block th:if="${!management}"><header th:replace="~{fragments/staff-navigation :: header}"></header><dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog></th:block><main th:replace="~{fragments/site-layout :: page('admin-shell', ~{::pageContent})}"><th:block th:fragment="pageContent">
   <a class="profile-back" th:href="${management} ? @{/admin(section='employees')} : @{/employees}">← 직원 목록</a>
   <div th:if="${success != null and servicePeriodFeedback != true}" class="notice" role="status" th:text="${success}"></div>
@@ -18,13 +18,13 @@
         <p th:unless="${employee.excludedByAdmin}"><strong>소집해제 예정일</strong> <time th:datetime="${employee.serviceEndDate()}" th:text="${employee.serviceEndDate()}"></time></p>
         <form th:if="${canChangeServicePeriod}" th:action="@{/employees/{id}/service-period(id=${employee.id})}" method="post" class="stack">
           <label>소집일 <small class="muted">첫 복무일</small>
-            <input type="date" name="serviceStartDate" th:value="${#temporals.format(employee.activeFrom, 'yyyy-MM-dd')}" required>
+            <input type="date" name="serviceStartDate" th:value="${#temporals.format(employee.activeFrom, 'yyyy-MM-dd')}" required data-service-start>
           </label>
-          <label>연장된 소집해제일 <small class="muted">선택 입력</small>
-            <input type="date" name="extendedServiceEndDate" th:min="${#temporals.format(today, 'yyyy-MM-dd')}"
-                   th:value="${employee.serviceExtended ? #temporals.format(employee.serviceEndDate(), 'yyyy-MM-dd') : ''}">
+          <label>소집해제일
+            <input type="date" name="serviceEndDate" th:min="${#temporals.format(today, 'yyyy-MM-dd')}"
+                   th:value="${#temporals.format(employee.serviceEndDate(), 'yyyy-MM-dd')}" data-service-end>
           </label>
-          <p class="small muted">비워두면 소집일부터 21개월 기준으로 계산해요. 복무가 연장됐다면 자동 계산일보다 늦고 오늘보다 이르지 않은 날짜를 입력하세요.</p>
+          <p class="small muted">소집일을 입력하면 21개월 기준 소집해제일이 자동으로 채워져요. 실제 날짜가 다르면 직접 고쳐서 저장하세요.</p>
           <button class="button" type="submit">복무 기간 저장</button>
         </form>
       </section>

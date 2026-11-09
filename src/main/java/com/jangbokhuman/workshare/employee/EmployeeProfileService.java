@@ -33,10 +33,10 @@ public class EmployeeProfileService {
     private final HeifThumbnailConverter heifThumbnailConverter;
 
     @Transactional
-    public void changeServicePeriod(Long employeeId, LocalDate serviceStartDate, LocalDate extendedServiceEndDate) {
+    public void changeServicePeriod(Long employeeId, LocalDate serviceStartDate, LocalDate serviceEndDate) {
         Employee employee = employeeRepository.findByIdForUpdate(employeeId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "직원이 없습니다."));
-        employee.changeServicePeriod(serviceStartDate, extendedServiceEndDate, workTime.getToday());
+        employee.changeServicePeriod(serviceStartDate, serviceEndDate, workTime.getToday());
     }
 
     public void savePhoto(Long employeeId, MultipartFile file) {

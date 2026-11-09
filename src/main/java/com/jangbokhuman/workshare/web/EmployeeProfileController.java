@@ -1,8 +1,6 @@
 package com.jangbokhuman.workshare.web;
 
-import com.jangbokhuman.workshare.activity.Activity;
 import com.jangbokhuman.workshare.activity.ActivityManagementService;
-import com.jangbokhuman.workshare.activity.ActivityRegistrationService;
 import com.jangbokhuman.workshare.calendar.WorkTime;
 import com.jangbokhuman.workshare.common.BusinessException;
 import com.jangbokhuman.workshare.config.AuthenticatedUser;
@@ -39,7 +37,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Controller
 @RequiredArgsConstructor
@@ -52,7 +49,6 @@ public class EmployeeProfileController {
     private final EmployeePhotoRepository employeePhotoRepository;
     private final WorkTime workTime;
     private final ActivityManagementService activityManagementService;
-    private final ActivityRegistrationService activityRegistrationService;
 
     @GetMapping("/employees")
     public String showEmployeeDirectory(@AuthenticationPrincipal AuthenticatedUser auth, Model model) {
@@ -149,13 +145,13 @@ public class EmployeeProfileController {
             @PathVariable Long id,
             @AuthenticationPrincipal AuthenticatedUser auth,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate serviceStartDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate extendedServiceEndDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate serviceEndDate,
             RedirectAttributes flash
     ) {
         if (!id.equals(auth.getEmployeeId())) {
             throw new AccessDeniedException("본인만 복무 기간을 변경할 수 있습니다.");
         }
-        employeeProfileService.changeServicePeriod(auth.getEmployeeId(), serviceStartDate, extendedServiceEndDate);
+        employeeProfileService.changeServicePeriod(auth.getEmployeeId(), serviceStartDate, serviceEndDate);
         flash.addFlashAttribute("success", "복무 기간을 저장했습니다.");
         flash.addFlashAttribute("servicePeriodFeedback", true);
         return "redirect:/employees/" + id + "#service-period";
@@ -186,13 +182,10 @@ public class EmployeeProfileController {
 
     @PostMapping("/admin/employees/{id}/work-group")
     public String changeWorkGroup(@PathVariable Long id, @RequestParam String workGroupCode, RedirectAttributes flash) {
-        List<Activity> removedActivities = activityRegistrationService.changeWorkGroup(id, workGroupCode);
+        List<String> removedActivityNames = rosterService.changeWorkGroup(id, workGroupCode);
         flash.addFlashAttribute("success", "직군을 변경했습니다. 이미 확정된 배정은 유지합니다.");
-        if (!removedActivities.isEmpty()) {
-            String activityNames = removedActivities.stream()
-                    .map(Activity::getName)
-                    .collect(Collectors.joining(", "));
-            flash.addFlashAttribute("warning", "직군 변경으로 " + activityNames + "에서 자동 탈퇴했습니다.");
+        if (!removedActivityNames.isEmpty()) {
+            flash.addFlashAttribute("warning", "직군 변경으로 " + String.join(", ", removedActivityNames) + "에서 자동 탈퇴했습니다.");
         }
         return "redirect:/admin/employees/" + id;
     }

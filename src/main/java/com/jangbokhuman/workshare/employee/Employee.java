@@ -41,7 +41,11 @@ public class Employee {
     private WorkGroupType workGroup;
 
     public Employee(
-            String name, String passwordHash, LocalDate activeFrom, WorkGroupType workGroup) {
+            String name,
+            String passwordHash,
+            LocalDate activeFrom,
+            WorkGroupType workGroup
+    ) {
         this.name = name;
         this.passwordHash = passwordHash;
         this.activeFrom = activeFrom;
@@ -65,23 +69,19 @@ public class Employee {
         return excludedByAdmin && !date.isBefore(inactiveFrom);
     }
 
-    public boolean isServiceExtended() {
-        return !excludedByAdmin && inactiveFrom.isAfter(calculateInactiveFrom(activeFrom));
-    }
-
-    public void changeServicePeriod(LocalDate serviceStartDate, LocalDate extendedServiceEndDate, LocalDate today) {
+    public void changeServicePeriod(LocalDate serviceStartDate, LocalDate enteredServiceEndDate, LocalDate today) {
         if (excludedByAdmin) {
             throw new BusinessException(ErrorCode.NOT_ALLOWED, "관리자가 업무 인원에서 제외한 직원은 복무 기간을 변경할 수 없습니다.");
         }
         if (serviceStartDate == null) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "소집일을 선택해주세요.");
         }
-        LocalDate calculatedInactiveFrom = calculateInactiveFrom(serviceStartDate);
-        LocalDate calculatedEndDate = calculatedInactiveFrom.minusDays(1);
-        if (extendedServiceEndDate != null && !extendedServiceEndDate.isAfter(calculatedEndDate)) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "연장된 소집해제일은 자동 계산일(" + calculatedEndDate + ")보다 늦어야 합니다.");
+        LocalDate serviceEndDate = enteredServiceEndDate == null
+                ? calculateInactiveFrom(serviceStartDate).minusDays(1)
+                : enteredServiceEndDate;
+        if (!serviceEndDate.isAfter(serviceStartDate)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "소집해제일은 소집일보다 늦어야 합니다.");
         }
-        LocalDate serviceEndDate = extendedServiceEndDate == null ? calculatedEndDate : extendedServiceEndDate;
         if (serviceEndDate.isBefore(today)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "소집해제일은 오늘보다 이전으로 설정할 수 없습니다.");
         }
