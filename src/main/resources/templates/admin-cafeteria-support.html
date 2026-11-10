@@ -1,9 +1,98 @@
-<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>식당지원표 · 장복인간</title><link th:replace="~{fragments/site-layout :: icon}"><link rel="stylesheet" th:href="@{/style.css}"><script defer th:src="@{/admin.js}"></script></head><body class="app-page admin-page"><header th:replace="~{admin :: adminHeader}"></header><dialog th:replace="~{admin :: adminMenu}"></dialog><main th:replace="~{fragments/site-layout :: page('admin-shell', ~{::pageContent})}"><th:block th:fragment="pageContent">
-<div class="pane-heading"><div><p class="eyebrow">다른 곳에서 함께하는 일</p><h1>식당지원표</h1><p>매달 받은 표를 날짜별로 입력하세요. 식당지원 직원은 그날 나눔가게 오전·오후 배정에서 제외됩니다.</p></div></div>
-<div th:if="${success}" class="notice" role="status" th:text="${success}"></div><div th:if="${error}" class="notice danger" role="alert" th:text="${error}"></div>
-<section class="card"><form th:action="@{/admin/cafeteria-support}" method="get" class="support-toolbar"><label>월<input type="month" name="month" th:value="${view.month}" required></label><button class="button" type="submit">표 보기</button></form></section>
-<section class="card support-setting"><h2>식당지원 필요 인원</h2><p class="small muted" th:text="${'변경 적용일 · ' + #temporals.format(view.effectiveDate,'yyyy-MM-dd')}"></p><form th:action="@{/admin/cafeteria-support/requirements}" method="post" class="support-toolbar"><label>하루 지원 인원<input name="requiredWorkers" type="number" min="0" th:value="${view.required}" required></label><button class="button" type="submit">인원 저장</button></form><p class="small muted">인원을 바꾸어도 기존 지원자는 유지됩니다. 아래 표에서 명단을 함께 확인해주세요.</p></section>
-<form th:action="@{/admin/cafeteria-support/month}" method="post"><input type="hidden" name="month" th:value="${view.month}"><section class="card support-month"><div class="section-heading"><h2 th:text="${view.month.year + '년 ' + view.month.monthValue + '월'}"></h2><span class="badge working" th:text="${'당일 ' + view.cutoff + ' 마감'}">당일 08:49 마감</span></div><p class="small muted">날짜를 펼쳐 직원을 선택하고 한 번에 저장하세요. 휴가·반차가 있는 직원은 지원자로 저장할 수 없습니다.</p>
-<div class="support-day" th:each="day:${view.days}" th:classappend="${!day.working?' support-off':''}"><details name="support-days"><summary><span><strong th:text="${#temporals.format(day.date,'d일 E요일')}"></strong><small th:text="${!day.working?'휴무':(day.names.isEmpty()?'미입력':#strings.listJoin(day.names,', '))}"></small><small class="support-conflict" th:if="${!day.onLeaveNames.isEmpty()}" th:text="${'휴가 겹침: ' + #strings.listJoin(day.onLeaveNames,', ')}"></small></span><span class="support-count" th:classappend="${day.working && day.selected.size()!=day.required?' mismatch':''}" th:text="${!day.working?'—':day.selected.size()+' / '+day.required+'명'}"></span></summary><div class="support-day-editor" th:if="${day.working}"><input th:if="${day.editable}" type="hidden" name="editedDates" th:value="${#temporals.format(day.date,'yyyy-MM-dd')}"><fieldset class="responsibility-options"><legend>지원 직원 선택</legend><label class="check-label choice-chip" th:each="person:${day.people}"><input type="checkbox" th:name="${'day_'+#temporals.format(day.date,'yyyy-MM-dd')}" th:value="${person.id}" th:checked="${person.selected}" th:disabled="${!day.editable}"><span th:text="${person.name}"></span></label></fieldset><p class="small muted" th:if="${!day.editable}">변경이 마감된 날짜입니다.</p></div></details></div>
-</section><div class="support-save"><button class="primary" type="submit">이 달 지원표 저장</button></div></form>
-</th:block></main></body></html>
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>식당지원표 · 장복인간</title>
+  <link th:replace="~{fragments/site-layout :: icon}">
+  <link rel="stylesheet" th:href="@{/style.css}">
+  <script defer th:src="@{/admin.js}"></script>
+  <script defer th:src="@{/partial-nav.js}"></script>
+</head>
+<body class="app-page admin-page">
+<header th:replace="~{admin :: adminHeader}"></header>
+<dialog th:replace="~{admin :: adminMenu}"></dialog>
+<main th:replace="~{fragments/site-layout :: page('admin-shell', ~{::pageContent})}">
+<th:block th:fragment="pageContent">
+<div class="schedule-page support-admin">
+  <div class="pane-heading">
+    <div>
+      <p class="eyebrow">다른 곳에서 함께하는 일</p>
+      <h1>식당지원표</h1>
+      <p>매달 받은 표를 날짜별로 입력하세요. 식당지원 직원은 그날 나눔가게 오전·오후 배정에서 제외됩니다.</p>
+    </div>
+  </div>
+  <div class="flash-messages" aria-live="polite">
+    <div th:if="${success}" class="notice" role="status" th:text="${success}"></div>
+    <div th:if="${error}" class="notice danger" role="alert" th:text="${error}"></div>
+  </div>
+
+  <section class="card support-setting">
+    <form th:action="@{/admin/cafeteria-support/requirement}" method="post" class="support-requirement"
+          data-swap=".schedule-page">
+      <input type="hidden" name="_method" value="put">
+      <label>
+        <span>하루 필요 인원</span>
+        <input name="requiredWorkers" type="number" min="0" inputmode="numeric" th:value="${view.required}" required>
+      </label>
+      <button class="button" type="submit">인원 저장</button>
+    </form>
+    <p class="small muted" th:text="${#temporals.format(view.effectiveDate, 'M월 d일') + '부터 적용돼요. 인원을 바꾸어도 기존 지원 명단은 그대로입니다.'}"></p>
+  </section>
+
+  <form th:action="@{/admin/cafeteria-support/{month}(month=${view.month})}" method="post" data-swap=".schedule-page">
+    <input type="hidden" name="_method" value="put">
+    <section class="card support-month">
+      <div class="section-heading">
+        <h2 th:text="${view.month.year + '년 ' + view.month.monthValue + '월'}"></h2>
+        <nav class="month-nav" aria-label="식당지원표 월 이동">
+          <a class="icon-button" data-swap=".schedule-page" th:href="@{/admin/cafeteria-support(month=${view.month.minusMonths(1)})}" aria-label="이전 달">‹</a>
+          <a class="button subtle" data-swap=".schedule-page" th:href="@{/admin/cafeteria-support}">이번 달</a>
+          <a class="icon-button" data-swap=".schedule-page" th:href="@{/admin/cafeteria-support(month=${view.month.plusMonths(1)})}" aria-label="다음 달">›</a>
+        </nav>
+      </div>
+      <p class="small muted" th:text="${'날짜를 눌러 직원을 고르고 한 번에 저장하세요. 당일 ' + #temporals.format(view.cutoff, 'HH:mm') + '부터는 변경할 수 없어요.'}"></p>
+      <div class="support-day" th:each="day : ${view.days}"
+           th:classappend="${(!day.working ? ' support-off' : '') + (!day.editable ? ' is-locked' : '')}">
+        <details name="support-days">
+          <summary>
+            <span class="support-date">
+              <strong th:text="${day.date.dayOfMonth}"></strong>
+              <span th:text="${#temporals.format(day.date, 'E')}"></span>
+            </span>
+            <span class="schedule-names">
+              <span class="name-chip is-empty" th:if="${!day.working}">휴무</span>
+              <span class="name-chip is-empty" th:if="${day.working and day.names.isEmpty()}">미입력</span>
+              <span class="name-chip" th:each="name : ${day.names}"
+                    th:classappend="${day.onLeaveNames.contains(name) ? 'is-conflict' : ''}"
+                    th:title="${day.onLeaveNames.contains(name) ? '휴가 겹침' : null}"
+                    th:text="${day.onLeaveNames.contains(name) ? name + ' · 휴가 겹침' : name}"></span>
+            </span>
+            <span class="support-count" th:if="${day.working}"
+                  th:classappend="${day.selected.size() != day.required ? ' mismatch' : ''}"
+                  th:text="${day.selected.size() + ' / ' + day.required + '명'}"></span>
+          </summary>
+          <div class="support-day-editor" th:if="${day.working}">
+            <input th:if="${day.editable}" type="hidden" name="editedDates" th:value="${#temporals.format(day.date, 'yyyy-MM-dd')}">
+            <fieldset class="responsibility-options">
+              <legend>지원 직원 선택</legend>
+              <label class="check-label choice-chip" th:each="person : ${day.people}">
+                <input type="checkbox" th:name="${'day_' + #temporals.format(day.date, 'yyyy-MM-dd')}"
+                       th:value="${person.id}" th:checked="${person.selected}" th:disabled="${!day.editable}">
+                <span th:text="${person.name}"></span>
+              </label>
+            </fieldset>
+            <p class="small muted" th:if="${!day.editable}">변경이 마감된 날짜입니다.</p>
+          </div>
+        </details>
+      </div>
+    </section>
+    <div class="support-save">
+      <button class="primary" type="submit">이 달 지원표 저장</button>
+    </div>
+  </form>
+</div>
+</th:block>
+</main>
+</body>
+</html>

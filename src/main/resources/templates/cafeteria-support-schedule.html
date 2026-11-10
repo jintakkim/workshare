@@ -6,33 +6,56 @@
   <title>식당지원표 · 장복인간</title>
   <link th:replace="~{fragments/site-layout :: icon}"><link rel="stylesheet" th:href="@{/style.css}">
   <script defer th:src="@{/admin.js}"></script>
+  <script defer th:src="@{/partial-nav.js}"></script>
 </head>
 <body class="app-page admin-page">
 <header th:replace="~{fragments/staff-navigation :: header}"></header>
 <dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog>
 <main th:replace="~{fragments/site-layout :: page('admin-shell', ~{::pageContent})}"><th:block th:fragment="pageContent">
+<div class="schedule-page">
   <div class="pane-heading">
     <div>
+      <p class="eyebrow">함께 맡는 식당지원</p>
       <h1>식당지원표</h1>
       <p>날짜별 식당지원 담당자를 확인하세요.</p>
     </div>
-    <a th:if="${!admin}" class="button subtle" th:href="@{/cafeteria-support}">내 일정·교환 요청</a>
+    <a th:if="${!admin}" class="button subtle" th:href="@{/cafeteria-support}">내 식당지원 일정·교환 →</a>
   </div>
-  <section class="card support-month" aria-labelledby="cafeteria-month">
+
+  <section class="card support-month schedule-board" aria-labelledby="cafeteria-month">
     <div class="section-heading">
       <h2 id="cafeteria-month" th:text="${month.year + '년 ' + month.monthValue + '월'}"></h2>
       <nav class="month-nav" aria-label="식당지원표 월 이동">
-        <a class="icon-button" th:href="@{/cafeteria-support/schedule(month=${month.minusMonths(1)})}" aria-label="이전 달">‹</a>
-        <a class="button subtle" th:href="@{/cafeteria-support/schedule}">이번 달</a>
-        <a class="icon-button" th:href="@{/cafeteria-support/schedule(month=${month.plusMonths(1)})}" aria-label="다음 달">›</a>
+        <a class="icon-button" data-swap=".schedule-page" th:href="@{/cafeteria-support/schedule(month=${month.minusMonths(1)})}" aria-label="이전 달">‹</a>
+        <a class="button subtle" data-swap=".schedule-page" th:href="@{/cafeteria-support/schedule}">이번 달</a>
+        <a class="icon-button" data-swap=".schedule-page" th:href="@{/cafeteria-support/schedule(month=${month.plusMonths(1)})}" aria-label="다음 달">›</a>
       </nav>
     </div>
-    <p class="small muted" th:if="${days.isEmpty()}">이 달에 등록된 식당지원 일정이 없습니다.</p>
-    <div class="quota-rule" th:each="day : ${days}">
-      <strong th:text="${#temporals.format(day.date, 'M월 d일 E요일')}"></strong>
-      <span th:text="${#strings.listJoin(day.employeeNames, ', ')}"></span>
-    </div>
+    <p class="schedule-mine" th:if="${myName != null}">
+      <span th:text="${month.monthValue + '월 내 식당지원'}"></span>
+      <strong th:text="${myDayCount + '일'}"></strong>
+    </p>
+    <p class="small muted" th:if="${weeks.isEmpty()}">이 달에 등록된 식당지원 일정이 없습니다.</p>
+    <section class="schedule-week" th:each="week : ${weeks}">
+      <h3 th:text="${#temporals.format(week.start, 'M월 d일') + ' – ' + #temporals.format(week.end, 'd일')}"></h3>
+      <ul class="schedule-days">
+        <li th:each="day : ${week.days}"
+            th:with="mine=${myName != null and day.employeeNames.contains(myName)}"
+            th:classappend="${(day.date == today ? ' is-today' : '') + (day.date.isBefore(today) ? ' is-past' : '') + (mine ? ' is-mine' : '')}">
+          <span class="support-date">
+            <strong th:text="${day.date.dayOfMonth}"></strong>
+            <span th:text="${#temporals.format(day.date, 'E')}"></span>
+          </span>
+          <span class="schedule-names">
+            <span class="name-chip" th:each="name : ${day.employeeNames}"
+                  th:classappend="${name == myName ? 'is-me' : ''}" th:text="${name}"></span>
+          </span>
+          <span class="badge working" th:if="${day.date == today}">오늘</span>
+        </li>
+      </ul>
+    </section>
   </section>
+</div>
 </th:block></main>
 </body>
 </html>

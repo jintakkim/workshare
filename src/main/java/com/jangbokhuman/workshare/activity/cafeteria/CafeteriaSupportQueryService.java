@@ -15,9 +15,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
+import java.time.temporal.TemporalAdjusters;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -73,7 +75,23 @@ public class CafeteriaSupportQueryService {
         );
     }
 
-    public List<SupportDay> getSchedule(YearMonth month) {
+    public List<ScheduleWeek> getScheduleWeeks(YearMonth month) {
+        Map<LocalDate, List<SupportDay>> daysByWeekStart = getSchedule(month).stream()
+                .collect(Collectors.groupingBy(
+                        day -> day.date().with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY)),
+                        TreeMap::new,
+                        Collectors.toList()
+                ));
+        return daysByWeekStart.entrySet().stream()
+                .map(entry -> new ScheduleWeek(
+                        getLaterDate(entry.getKey(), month.atDay(1)),
+                        getEarlierDate(entry.getKey().plusDays(6), month.atEndOfMonth()),
+                        entry.getValue())
+                )
+                .toList();
+    }
+
+    private List<SupportDay> getSchedule(YearMonth month) {
         List<CafeteriaSupportAssignment> assignments = findAssignments(month);
         Map<Long, String> namesById = employeeRepository.findAllById(
                         assignments.stream().map(CafeteriaSupportAssignment::getEmployeeId).distinct().toList()
@@ -89,6 +107,14 @@ public class CafeteriaSupportQueryService {
         return namesByDate.entrySet().stream()
                 .map(entry -> new SupportDay(entry.getKey(), entry.getValue().stream().sorted().toList()))
                 .toList();
+    }
+
+    private static LocalDate getLaterDate(LocalDate first, LocalDate second) {
+        return first.isAfter(second) ? first : second;
+    }
+
+    private static LocalDate getEarlierDate(LocalDate first, LocalDate second) {
+        return first.isBefore(second) ? first : second;
     }
 
     private List<CafeteriaSupportAssignment> findAssignments(YearMonth month) {
@@ -173,4 +199,6 @@ public class CafeteriaSupportQueryService {
     ) {}
 
     public record SupportDay(LocalDate date, List<String> employeeNames) {}
+
+    public record ScheduleWeek(LocalDate start, LocalDate end, List<SupportDay> days) {}
 }
