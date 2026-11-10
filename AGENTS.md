@@ -11,4 +11,5 @@
 - Do not generalize activity-specific mechanics (sharing shop lottery and time preference, cafeteria roster and exchange) into shared models.
 - Comment only where code cannot explain itself; no Javadoc tags.
 - Flyway V1 is the first production schema. Once deployed, add new versions with the same number to both `db/mysql` and `db/migration`.
+- Commit messages are in English. Subjects start with `feat:` (new feature), `improve:` (improvement) or `fix:` (bug fix); docs, tests and chores take no prefix. Deploys publish these subjects as GitHub release notes.
 - Business rules: docs/business-rules.md. DB principles: docs/persistence.md.

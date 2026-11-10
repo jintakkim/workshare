@@ -36,8 +36,11 @@ jobs:
     concurrency:
       group: workshare-production
       cancel-in-progress: false
+    outputs:
+      previous_sha: ${{ steps.deploy.outputs.previous_sha }}
     steps:
       - name: Deploy tested commit to Docker Compose
+        id: deploy
         shell: bash
         env:
           DEPLOY_DIRECTORY: ${{ vars.WORKSHARE_DEPLOY_DIR }}
@@ -60,6 +63,7 @@ jobs:
             echo 'The tested commit must be on origin/main and extend the current production checkout.' >&2
             exit 1
           fi
+          echo "previous_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           git merge --ff-only "$DEPLOY_SHA"
 
           docker compose build app
@@ -67,3 +71,21 @@ jobs:
           app_address="$(docker compose port app 8080)"
           curl --fail --silent --show-error --retry 30 --retry-all-errors \
             --retry-delay 2 --max-time 5 --output /dev/null "http://${app_address}/actuator/health"
+
+  release-notes:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Publish deploy release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS_SHA: ${{ needs.deploy.outputs.previous_sha }}
+          DEPLOY_SHA: ${{ github.sha }}
+        run: .github/scripts/publish-release.sh
