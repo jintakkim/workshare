@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Publishes a GitHub release listing the commits deployed since the previous production commit.
-# Commit subjects starting with feat:, improve:, fix: are grouped; the rest go under 기타.
+# Commit subjects are grouped by their feat:, improve: or fix: prefix; the rest go under chore.
 # Set DRY_RUN=1 to print the notes without creating a release.
 set -euo pipefail
 
@@ -23,10 +23,10 @@ append_section() {
     fi
 }
 
-append_section '새 기능' "$(sed -n 's/^feat:[[:space:]]*/- /p' <<< "$subjects")"
-append_section '개선' "$(sed -n 's/^improve:[[:space:]]*/- /p' <<< "$subjects")"
-append_section '버그 수정' "$(sed -n 's/^fix:[[:space:]]*/- /p' <<< "$subjects")"
-append_section '기타' "$(grep -Ev '^(feat|improve|fix):' <<< "$subjects" | sed 's/^/- /' || true)"
+append_section 'feat' "$(sed -n 's/^feat:[[:space:]]*/- /p' <<< "$subjects")"
+append_section 'improve' "$(sed -n 's/^improve:[[:space:]]*/- /p' <<< "$subjects")"
+append_section 'fix' "$(sed -n 's/^fix:[[:space:]]*/- /p' <<< "$subjects")"
+append_section 'chore' "$(grep -Ev '^(feat|improve|fix):' <<< "$subjects" | sed 's/^/- /' || true)"
 printf '배포 커밋: %s\n' "${DEPLOY_SHA:0:7}" >> "$notes"
 
 deployed_at="$(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M')"
