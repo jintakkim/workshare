@@ -6,4 +6,6 @@ public interface DailyActivityAllocator {
     Activity getActivity();
 
     void allocate(LocalDate workDate);
+
+    boolean isAllocated(LocalDate workDate);
 }

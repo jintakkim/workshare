@@ -53,7 +53,7 @@ public class HolidayCalendarService {
     }
 
     private boolean canChangeHoliday(LocalDate date) {
-        return workTime.isBeforeScheduleChangeDeadline(date) && !dailyAllocationStatus.isAllocated(date);
+        return workTime.isBeforeScheduleChangeDeadline(date) && !dailyAllocationStatus.hasAnyAllocation(date);
     }
 
     public record Cell(

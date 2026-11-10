@@ -3,6 +3,8 @@ package com.jangbokhuman.workshare.integration;
 import com.jangbokhuman.workshare.attendance.Attendance;
 import com.jangbokhuman.workshare.attendance.LeaveHistoryService;
 import com.jangbokhuman.workshare.attendance.ServicePayService;
+import com.jangbokhuman.workshare.activity.sharingshop.SharingShopQueryService;
+import com.jangbokhuman.workshare.activity.sharingshop.SharingShopTaskReader;
 import com.jangbokhuman.workshare.common.BusinessException;
 import com.jangbokhuman.workshare.employee.EmployeeProfileService;
 
@@ -19,12 +21,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.List;
 
 @DisplayName("복무 현황·월급 예상·휴가 내역")
 class ServiceRecordFeatureTest extends BusinessFeatureTestSupport {
     @Autowired ServicePayService servicePayService;
     @Autowired LeaveHistoryService leaveHistoryService;
     @Autowired EmployeeProfileService employeeProfileService;
+    @Autowired SharingShopQueryService sharingShopQueryService;
 
     @Test
     @DisplayName("10일 지급액은 지난달 계급 봉급과 근무일 교통비·식비에서 휴가·교육일을 뺀다")
@@ -69,22 +73,21 @@ class ServiceRecordFeatureTest extends BusinessFeatureTestSupport {
     }
 
     @Test
-    @DisplayName("직원은 교육·훈련을 직접 고를 수 없고 휴가 내역에서 종류별로 센다")
-    void staffCannotEnterTrainingAndHistoryCountsLeave() {
+    @DisplayName("직원이 넣은 휴가·교육·훈련을 휴가 내역에서 종류별로 센다")
+    void historyCountsEachLeaveType() {
         Long id = registerServingSince("홍길동", LocalDate.of(2025, 11, 16));
-        assertThatThrownBy(() -> leaveRequestService.saveOwnLeave(id, LocalDate.of(2026, 11, 5), Attendance.TRAINING))
-                .isInstanceOf(BusinessException.class);
-        leaveRequestService.saveOwnLeave(id, LocalDate.of(2026, 11, 5), Attendance.SPECIAL_LEAVE);
-        leaveRequestService.saveOwnLeave(id, LocalDate.of(2026, 11, 6), Attendance.VACATION);
-        leaveRequestService.saveOwnLeave(id, LocalDate.of(2026, 11, 9), Attendance.MORNING_HALF_DAY);
+        leaveRequestService.save(id, LocalDate.of(2026, 11, 10), Attendance.TRAINING);
+        leaveRequestService.save(id, LocalDate.of(2026, 11, 5), Attendance.SPECIAL_LEAVE);
+        leaveRequestService.save(id, LocalDate.of(2026, 11, 6), Attendance.VACATION);
+        leaveRequestService.save(id, LocalDate.of(2026, 11, 9), Attendance.MORNING_HALF_DAY);
 
         LeaveHistoryService.LeaveHistory history = leaveHistoryService.getHistory(id);
 
         assertThat(history.annualLeaveDays()).isEqualTo(1.5);
         assertThat(history.counts())
                 .extracting(count -> count.attendance().getLabel() + " " + count.days())
-                .containsExactly("오전 반차 1", "연차 1", "특별휴가 1");
-        assertThat(history.entries()).hasSize(3).allSatisfy(entry -> assertThat(entry.upcoming()).isTrue());
+                .containsExactly("오전 반차 1", "연차 1", "특별휴가 1", "교육·훈련 1");
+        assertThat(history.entries()).hasSize(4).allSatisfy(entry -> assertThat(entry.upcoming()).isTrue());
     }
 
     @Test
@@ -105,6 +108,51 @@ class ServiceRecordFeatureTest extends BusinessFeatureTestSupport {
         assertThat(rosterService.getEmployeeViews())
                 .extracting(view -> view.name())
                 .containsExactly("홍길동", "김민수");
+    }
+
+    @Test
+    @DisplayName("지난 날짜 휴가는 직원·관리자 모두 언제든 넣고, 오늘은 08:49부터 막는다")
+    void pastLeaveStaysOpenWhileTodayClosesAtCutoff() {
+        Long id = registerServingSince("홍길동", LocalDate.of(2025, 11, 16));
+        LocalDate yesterday = TODAY.minusDays(1);
+        now("09:30");
+
+        leaveRequestService.save(id, yesterday, Attendance.VACATION);
+        leaveRequestService.save(id, LocalDate.of(2026, 10, 15), Attendance.SICK_LEAVE);
+
+        assertThat(leaveCalendarService.getCalendar(yesterday, id).attendance()).isEqualTo(Attendance.VACATION);
+        assertThat(leaveCalendarService.getCalendar(yesterday, id).editable()).isTrue();
+        assertThat(leaveCalendarService.getCalendar(TODAY, id).editable()).isFalse();
+        assertThatThrownBy(() -> leaveRequestService.save(id, TODAY, Attendance.VACATION))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("배정이 저장되면");
+        assertThatThrownBy(() -> leaveRequestService.save(id, LocalDate.of(2025, 11, 14), Attendance.VACATION))
+                .isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> holidayService.addHoliday(yesterday, "지난 휴일"))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("오늘 배정이 저장되면 오늘 휴가를 다시 받고, 담당자가 못 나오면 카드에 경고한다")
+    void todayReopensAfterTheDrawAndWarnsAboutAssigneesOnLeave() {
+        for (String name : List.of("홍길동", "김민수", "이서연")) {
+            registerServingSince(name, LocalDate.of(2025, 11, 16));
+        }
+        now("08:49:05");
+        assertThatThrownBy(() -> leaveRequestService.save(employeeId("홍길동"), TODAY, Attendance.VACATION))
+                .isInstanceOf(BusinessException.class);
+
+        now("08:50");
+        dailyAllocationService.allocateTodayIfDue();
+        SharingShopTaskReader.AssigneeView eveningAssignee = task(sharingShopTasks(TODAY), "EVENING").assignees().getFirst();
+        leaveRequestService.save(eveningAssignee.employeeId(), TODAY, Attendance.AFTERNOON_HALF_DAY);
+
+        assertThat(leaveCalendarService.getCalendar(TODAY, eveningAssignee.employeeId()).attendance()).isEqualTo(Attendance.AFTERNOON_HALF_DAY);
+        assertThat(task(sharingShopTasks(TODAY), "EVENING").assignees())
+                .extracting(SharingShopTaskReader.AssigneeView::employeeId)
+                .contains(eveningAssignee.employeeId());
+        assertThat(sharingShopQueryService.getDay(TODAY, eveningAssignee.employeeId()).warnings())
+                .contains("오후 담당 " + eveningAssignee.name() + " 님이 오후 반차예요. 대신할 사람을 정해주세요.");
     }
 
     private Long registerServingSince(String name, LocalDate serviceStartDate) {

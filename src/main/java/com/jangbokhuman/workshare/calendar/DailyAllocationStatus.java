@@ -3,5 +3,7 @@ package com.jangbokhuman.workshare.calendar;
 import java.time.LocalDate;
 
 public interface DailyAllocationStatus {
-    boolean isAllocated(LocalDate workDate);
+    boolean hasAnyAllocation(LocalDate workDate);
+
+    boolean isAllocationComplete(LocalDate workDate);
 }

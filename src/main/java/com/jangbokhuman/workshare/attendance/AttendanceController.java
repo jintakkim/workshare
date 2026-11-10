@@ -48,7 +48,7 @@ public class AttendanceController {
             @RequestParam Attendance attendance,
             RedirectAttributes flash
     ) {
-        leaveRequestService.saveOwnLeave(principal.getEmployeeId(), date, attendance);
+        leaveRequestService.save(principal.getEmployeeId(), date, attendance);
         flash.addFlashAttribute("success", "근무 상태를 저장했습니다. 모든 활동에 공통으로 적용합니다.");
         flash.addAttribute("date", date.toString());
         return "redirect:/leave#day-details";

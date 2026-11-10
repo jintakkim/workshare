@@ -43,7 +43,7 @@ public class LeaveDashboardController {
                 leaveCalendarService.getCalendar(date == null ? workTime.getToday() : date, authentication.getEmployeeId())
         );
         model.addAttribute("admin", authentication.isAdmin());
-        model.addAttribute("attendances", Attendance.getEmployeeChoices());
+        model.addAttribute("attendances", Attendance.values());
         if (authentication.getEmployeeId() != null) {
             model.addAttribute("leaveHistory", leaveHistoryService.getHistory(authentication.getEmployeeId()));
         }

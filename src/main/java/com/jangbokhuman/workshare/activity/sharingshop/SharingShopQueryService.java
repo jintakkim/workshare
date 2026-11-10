@@ -3,6 +3,7 @@ package com.jangbokhuman.workshare.activity.sharingshop;
 import com.jangbokhuman.workshare.activity.Activity;
 import com.jangbokhuman.workshare.activity.RosterReader;
 import com.jangbokhuman.workshare.activity.Worker;
+import com.jangbokhuman.workshare.attendance.Attendance;
 import com.jangbokhuman.workshare.calendar.BusinessCalendar;
 import com.jangbokhuman.workshare.calendar.Holiday;
 import com.jangbokhuman.workshare.calendar.HolidayRepository;
@@ -20,8 +21,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
@@ -63,7 +65,7 @@ public class SharingShopQueryService {
                 toMembers(roster.workers().stream().filter(worker -> worker.attendance().isAbsent()), photoVersions),
                 resultReleased ? shiftTasks.getMorningAssignees(photoVersions) : List.of(),
                 resultReleased ? shiftTasks.getEveningAssignees(photoVersions) : List.of(),
-                getWarnings(roster.warnings(), shiftTasks, resultReleased),
+                getWarnings(date, roster, shiftTasks, resultReleased),
                 toExcludedMembers(roster.excluded(), photoVersions)
         );
     }
@@ -108,12 +110,29 @@ public class SharingShopQueryService {
                 .orElse("토·일요일은 쉬는 날이에요.");
     }
 
-    private List<String> getWarnings(List<String> rosterWarnings, ShiftTasks shiftTasks, boolean resultReleased) {
-        List<String> warnings = new ArrayList<>(rosterWarnings);
+    private List<String> getWarnings(LocalDate date, RosterReader.DayRoster roster, ShiftTasks shiftTasks, boolean resultReleased) {
+        List<String> warnings = new ArrayList<>(roster.warnings());
         if (resultReleased) {
             warnings.addAll(shiftTasks.getWarnings());
         }
+        if (resultReleased && !date.isBefore(workTime.getToday())) {
+            warnings.addAll(getLateLeaveWarnings(roster, shiftTasks));
+        }
         return warnings;
+    }
+
+    private List<String> getLateLeaveWarnings(RosterReader.DayRoster roster, ShiftTasks shiftTasks) {
+        Map<Long, Attendance> currentAttendance = Stream.concat(
+                        roster.workers().stream(),
+                        roster.excluded().stream().map(RosterReader.ExcludedWorker::worker)
+                )
+                .collect(Collectors.toMap(Worker::id, Worker::attendance, (first, second) -> first));
+        return Stream.concat(shiftTasks.morning().stream(), shiftTasks.evening().stream())
+                .flatMap(task -> task.assignees().stream()
+                        .filter(assignee -> !currentAttendance.getOrDefault(assignee.employeeId(), Attendance.WORK).canWork(task.period()))
+                        .map(assignee -> task.period().getLabel() + " 담당 " + assignee.name() + " 님이 "
+                                + currentAttendance.get(assignee.employeeId()).getLabel() + "예요. 대신할 사람을 정해주세요."))
+                .toList();
     }
 
     private List<Member> toMembers(Stream<Worker> workers, Map<Long, Long> photoVersions) {

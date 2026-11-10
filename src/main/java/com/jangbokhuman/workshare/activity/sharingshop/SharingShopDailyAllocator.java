@@ -27,6 +27,8 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional
 public class SharingShopDailyAllocator implements DailyActivityAllocator {
+    private static final List<WorkPeriod> SHIFTS = List.of(WorkPeriod.MORNING, WorkPeriod.EVENING);
+
     private final WorkTaskRepository workTaskRepository;
     private final TaskAssignmentRepository taskAssignmentRepository;
     private final RosterReader rosterReader;
@@ -41,23 +43,32 @@ public class SharingShopDailyAllocator implements DailyActivityAllocator {
     }
 
     @Override
+    public boolean isAllocated(LocalDate workDate) {
+        return countSavedShifts(workDate) == SHIFTS.size();
+    }
+
+    private long countSavedShifts(LocalDate workDate) {
+        return workTaskRepository.countByWorkDateAndActivityCodeAndCodeIn(
+                workDate,
+                getActivity(),
+                SHIFTS.stream().map(WorkPeriod::name).toList()
+        );
+    }
+
+    @Override
     public void allocate(LocalDate workDate) {
         Activity activity = getActivity();
-        long existingShiftCount = workTaskRepository.countByWorkDateAndActivityCodeAndCodeIn(
-                workDate,
-                activity,
-                List.of(WorkPeriod.MORNING.name(), WorkPeriod.EVENING.name())
-        );
-        if (existingShiftCount == 1) {
+        long existingShiftCount = countSavedShifts(workDate);
+        if (existingShiftCount > 0 && existingShiftCount < SHIFTS.size()) {
             throw new IllegalStateException("오전·오후 배정 기록의 무결성을 확인하세요.");
         }
-        if (existingShiftCount == 2) {
+        if (existingShiftCount == SHIFTS.size()) {
             return;
         }
         List<Worker> workers = rosterReader.getWorkersOn(activity, workDate);
         SharingShopStaffing.Roster roster = sharingShopStaffing.getRoster(workDate, workers);
         ShiftAllocation allocation = preferenceShiftAllocationPolicy.allocate(roster.workers(), roster.quota(), roster.facilityCoverage());
-        for (WorkPeriod period : List.of(WorkPeriod.MORNING, WorkPeriod.EVENING)) {
+        for (WorkPeriod period : SHIFTS) {
             List<Worker> selected = allocation.assignments().stream()
                     .filter(assignment -> assignment.periods().contains(period))
                     .map(ShiftAllocation.Assignment::worker)

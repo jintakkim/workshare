@@ -28,13 +28,6 @@ public class LeaveRequestService {
     private final WorkTime workTime;
     private final BusinessCalendar businessCalendar;
 
-    public void saveOwnLeave(Long employeeId, LocalDate date, Attendance attendance) {
-        if (attendance != null && !attendance.isEmployeeSelectable()) {
-            throw new BusinessException(ErrorCode.NOT_ALLOWED, attendance.getLabel() + "은 관리자가 입력합니다.");
-        }
-        save(employeeId, date, attendance);
-    }
-
     public void save(Long employeeId, LocalDate date, Attendance attendance) {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "등록된 직원이 없습니다."));

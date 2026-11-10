@@ -5,9 +5,6 @@ import com.jangbokhuman.workshare.calendar.WorkPeriod;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
-import java.util.Arrays;
-import java.util.List;
-
 @Getter
 @RequiredArgsConstructor
 public enum Attendance {
@@ -41,16 +38,6 @@ public enum Attendance {
 
     public boolean isTransportPaid() {
         return !isAbsent();
-    }
-
-    public boolean isEmployeeSelectable() {
-        return this != TRAINING;
-    }
-
-    public static List<Attendance> getEmployeeChoices() {
-        return Arrays.stream(values())
-                .filter(Attendance::isEmployeeSelectable)
-                .toList();
     }
 
     public boolean canWork(WorkPeriod period) {
