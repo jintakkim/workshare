@@ -167,7 +167,7 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
         assertThat(rosterService.getEmployeeView(id).serviceEndDate()).isEqualTo(LocalDate.of(2026, 12, 31));
         mockMvc.perform(get("/employees/" + id).with(testUser("홍길동", "STAFF")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"serviceEndDate\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("/service-period.js")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/service-period-")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("연장된 소집해제일"))));
     }
 

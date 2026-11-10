@@ -21,6 +21,16 @@ spring:
   web:
     locale: ko_KR
     locale-resolver: fixed
+    resources:
+      cache:
+        cachecontrol:
+          max-age: 365d
+          cache-private: true
+      chain:
+        strategy:
+          content:
+            enabled: true
+            paths: /**
   mvc:
     hiddenmethod:
       filter:

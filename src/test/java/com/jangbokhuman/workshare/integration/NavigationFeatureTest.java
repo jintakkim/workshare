@@ -44,7 +44,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                             .getResponse()
                             .getContentAsString();
             assertThat(result)
-                    .contains("장복인간", "관리 메뉴 열기", markers.get(section), "class=\"support-footer\"", "href=\"/favicon.svg\"")
+                    .contains("장복인간", "관리 메뉴 열기", markers.get(section), "class=\"support-footer\"", "href=\"/favicon-")
                     .doesNotContain("WorkShare", "직원과 휴일 관리", "section=tasks", "추가 업무 관리");
             for (String other : markers.keySet())
                 if (!other.equals(section)) assertThat(result).doesNotContain(markers.get(other));
@@ -87,7 +87,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                             "href=\"/employees/me\"",
                             "class=\"support-footer\"",
                             "href=\"mailto:support@jangbokhuman.app\"",
-                            "href=\"/favicon.svg\"",
+                            "href=\"/favicon-",
                             "내 휴가 일정<small>연차·병가·반차 등록</small>")
                     .doesNotContain(
                             "href=\"/admin", "name=\"workGroupCode\"", "name=\"responsibilities\"");
@@ -111,7 +111,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                             .getContentAsString();
             assertThat(html)
                     .contains(
-                            "class=\"day-deck\"", "data-today=\"2026-11-04\"", "/sharing-shop.js",
+                            "class=\"day-deck\"", "data-today=\"2026-11-04\"", "/sharing-shop-",
                             "선정 기준 확인", "id=\"allocation-guide\"", "기계실 상주 확인", "선호도 반영과 추첨",
                             "버그나 건의사항은", "href=\"mailto:support@jangbokhuman.app\"")
                     .doesNotContain("class=\"calendar-grid\"", "하루를 함께 나누는 일", "내 휴가 입력");
@@ -125,10 +125,20 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(redirectedUrl("/employees/" + id));
         mockMvc.perform(get("/leave")).andExpect(status().is3xxRedirection());
         mockMvc.perform(get("/login"))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/favicon.svg\"")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/favicon-")));
         mockMvc.perform(get("/favicon.svg"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("image/svg+xml"));
+        String login = mockMvc.perform(get("/login")).andReturn().getResponse().getContentAsString();
+        java.util.regex.Matcher stylesheet = java.util.regex.Pattern.compile("href=\"(/style-[0-9a-f]+\\.css)\"").matcher(login);
+        assertThat(stylesheet.find()).isTrue();
+        String css = mockMvc.perform(get(stylesheet.group(1)))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("max-age=31536000")))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertThat(css).containsPattern("fonts/jangbokhuman-wordmark-[0-9a-f]+\\.woff2");
     }
 
     @Test

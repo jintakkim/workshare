@@ -47,10 +47,10 @@ public class SecurityConfiguration {
                         auth ->
                                 auth.requestMatchers(
                                                 "/login",
-                                                "/style.css",
-                                                "/admin.js",
-                                                "/forms.js",
-                                                "/favicon.svg",
+                                                "/style*.css",
+                                                "/admin*.js",
+                                                "/forms*.js",
+                                                "/favicon*.svg",
                                                 "/fonts/**",
                                                 "/error",
                                                 "/actuator/health")
