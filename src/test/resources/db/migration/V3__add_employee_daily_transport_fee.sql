@@ -1,0 +1,1 @@
+ALTER TABLE employee ADD COLUMN daily_transport_fee INTEGER DEFAULT 3000 NOT NULL;
