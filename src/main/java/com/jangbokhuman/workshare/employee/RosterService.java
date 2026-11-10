@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -94,13 +93,13 @@ public class RosterService {
 
     @Transactional(readOnly = true)
     public List<EmployeeView> getEmployeeViews() {
-        HashSet<Long> photoIds = new HashSet<>(employeePhotoRepository.findEmployeeIds());
+        Map<Long, Long> photoVersions = employeePhotoRepository.findPhotoVersionsByEmployeeId();
         Map<Long, List<String>> activityNamesByEmployeeId = employeeActivityReader.getActivityNamesByEmployeeId();
         return employeeRepository.findAll().stream()
                 .sorted(Comparator.comparing(Employee::getName))
                 .map(employee -> createEmployeeView(
                         employee,
-                        photoIds.contains(employee.getId()),
+                        photoVersions.get(employee.getId()),
                         activityNamesByEmployeeId.getOrDefault(employee.getId(), List.of()))
                 )
                 .toList();
@@ -110,10 +109,13 @@ public class RosterService {
     public EmployeeView getEmployeeView(Long id) {
         Employee employee = employeeRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "직원이 없습니다."));
         List<String> activityNames = employeeActivityReader.getActivityNames(id);
-        return createEmployeeView(employee, employeePhotoRepository.existsById(id), activityNames);
+        Long photoVersion = employeePhotoRepository.findPhotoVersion(id)
+                .map(PhotoVersion::getVersion)
+                .orElse(null);
+        return createEmployeeView(employee, photoVersion, activityNames);
     }
 
-    private EmployeeView createEmployeeView(Employee employee, boolean hasPhoto, List<String> activityNames) {
+    private EmployeeView createEmployeeView(Employee employee, Long photoVersion, List<String> activityNames) {
         WorkGroupType group = employee.getWorkGroup();
         return new EmployeeView(
                 employee.getId(),
@@ -124,7 +126,7 @@ public class RosterService {
                 group == null ? "UNCLASSIFIED" : group.name(),
                 group == null ? "직군 미지정" : group.getLabel(),
                 activityNames,
-                hasPhoto);
+                photoVersion);
     }
 
     public LocalDate getRosterChangeEffectiveDate() {
@@ -140,8 +142,12 @@ public class RosterService {
             String workGroupCode,
             String workGroupName,
             List<String> activityNames,
-            boolean hasPhoto
+            Long photoVersion
     ) {
+        public boolean hasPhoto() {
+            return photoVersion != null;
+        }
+
         public LocalDate serviceEndDate() {
             return inactiveFrom.minusDays(1);
         }

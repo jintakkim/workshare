@@ -1,7 +1,7 @@
 <!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><body>
 <div class="employee-card-grid" th:fragment="cards(employees, management)">
   <a class="employee-profile-card" th:each="e : ${employees}" th:href="${management} ? @{/admin/employees/{id}(id=${e.id})} : @{/employees/{id}(id=${e.id})}" th:attr="aria-label=${e.name + (management ? ' 직원 관리' : ' 프로필 보기')}">
-    <div class="employee-card-top"><span class="profile-avatar"><img th:if="${e.hasPhoto}" th:src="@{/employees/{id}/photo(id=${e.id})}" alt="" loading="lazy"><span th:if="${!e.hasPhoto}" th:text="${#strings.substring(e.name,0,1)}"></span></span><span class="card-open" aria-hidden="true">↗</span></div>
+    <div class="employee-card-top"><span class="profile-avatar"><span th:text="${#strings.substring(e.name,0,1)}"></span><img th:if="${e.photoVersion != null}" th:src="@{/employees/{id}/photo(id=${e.id},v=${e.photoVersion})}" alt="" loading="lazy" decoding="async"></span><span class="card-open" aria-hidden="true">↗</span></div>
     <h3 th:text="${e.name}"></h3><p class="employee-group" th:text="${e.workGroupName}"></p>
     <div class="responsibility-chips">
       <span th:each="activity : ${e.activityNames}" th:text="${activity}"></span>

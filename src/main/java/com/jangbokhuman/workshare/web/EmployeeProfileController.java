@@ -32,6 +32,7 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -71,14 +72,20 @@ public class EmployeeProfileController {
 
     @GetMapping("/employees/{id}/photo")
     @ResponseBody
-    public ResponseEntity<byte[]> getPhoto(@PathVariable Long id, WebRequest webRequest) {
+    public ResponseEntity<byte[]> getPhoto(
+            @PathVariable Long id,
+            @RequestParam(name = "v", required = false) Long version,
+            WebRequest webRequest
+    ) {
         Optional<EmployeePhoto> photo = employeePhotoRepository.findById(id);
         if (photo.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
         byte[] image = photo.get().getImage();
         String etag = "\"" + DigestUtils.md5DigestAsHex(image) + "\"";
-        CacheControl cacheControl = CacheControl.noCache().cachePrivate();
+        CacheControl cacheControl = version == null
+                ? CacheControl.noCache().cachePrivate()
+                : CacheControl.maxAge(Duration.ofDays(365)).cachePrivate().immutable();
         if (webRequest.checkNotModified(etag)) {
             return ResponseEntity.status(HttpStatus.NOT_MODIFIED)
                     .eTag(etag)

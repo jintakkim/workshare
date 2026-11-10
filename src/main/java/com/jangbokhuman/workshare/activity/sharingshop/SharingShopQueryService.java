@@ -21,7 +21,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
+import java.util.Map;
 import java.util.stream.Stream;
 
 @Service
@@ -41,7 +41,7 @@ public class SharingShopQueryService {
     public Day getDay(LocalDate date, Long employeeId) {
         RosterReader.DayRoster roster = rosterReader.getRosterOn(Activity.SHARING_SHOP, date);
         boolean workingDay = businessCalendar.isWorkingDay(date);
-        Set<Long> photoIds = Set.copyOf(employeePhotoRepository.findEmployeeIds());
+        Map<Long, Long> photoVersions = employeePhotoRepository.findPhotoVersionsByEmployeeId();
         ShiftTasks shiftTasks = ShiftTasks.from(sharingShopTaskReader.getTasks(date));
         Instant resultReleaseAt = getResultReleaseAt(date);
         DayPhase phase = determinePhase(date, workingDay, resultReleaseAt, shiftTasks);
@@ -59,12 +59,12 @@ public class SharingShopQueryService {
                 slots.evening(),
                 WorkPeriod.MORNING.getTimeRange(),
                 WorkPeriod.EVENING.getTimeRange(),
-                toMembers(roster.workers().stream().filter(worker -> !worker.attendance().isAbsent()), photoIds),
-                toMembers(roster.workers().stream().filter(worker -> worker.attendance().isAbsent()), photoIds),
-                resultReleased ? shiftTasks.getMorningAssignees(photoIds) : List.of(),
-                resultReleased ? shiftTasks.getEveningAssignees(photoIds) : List.of(),
+                toMembers(roster.workers().stream().filter(worker -> !worker.attendance().isAbsent()), photoVersions),
+                toMembers(roster.workers().stream().filter(worker -> worker.attendance().isAbsent()), photoVersions),
+                resultReleased ? shiftTasks.getMorningAssignees(photoVersions) : List.of(),
+                resultReleased ? shiftTasks.getEveningAssignees(photoVersions) : List.of(),
                 getWarnings(roster.warnings(), shiftTasks, resultReleased),
-                toExcludedMembers(roster.excluded(), photoIds)
+                toExcludedMembers(roster.excluded(), photoVersions)
         );
     }
 
@@ -116,19 +116,19 @@ public class SharingShopQueryService {
         return warnings;
     }
 
-    private List<Member> toMembers(Stream<Worker> workers, Set<Long> photoIds) {
+    private List<Member> toMembers(Stream<Worker> workers, Map<Long, Long> photoVersions) {
         return workers
-                .map(worker -> new Member(worker.id(), worker.name(), worker.attendance().getLabel(), photoIds.contains(worker.id())))
+                .map(worker -> new Member(worker.id(), worker.name(), worker.attendance().getLabel(), photoVersions.get(worker.id())))
                 .toList();
     }
 
-    private List<Member> toExcludedMembers(List<RosterReader.ExcludedWorker> excludedWorkers, Set<Long> photoIds) {
+    private List<Member> toExcludedMembers(List<RosterReader.ExcludedWorker> excludedWorkers, Map<Long, Long> photoVersions) {
         return excludedWorkers.stream()
                 .map(excluded -> new Member(
                         excluded.worker().id(),
                         excluded.worker().name(),
                         getExclusionLabel(excluded),
-                        photoIds.contains(excluded.worker().id()))
+                        photoVersions.get(excluded.worker().id()))
                 )
                 .toList();
     }
@@ -170,12 +170,12 @@ public class SharingShopQueryService {
             );
         }
 
-        List<Member> getMorningAssignees(Set<Long> photoIds) {
-            return toAssignees(morning, photoIds);
+        List<Member> getMorningAssignees(Map<Long, Long> photoVersions) {
+            return toAssignees(morning, photoVersions);
         }
 
-        List<Member> getEveningAssignees(Set<Long> photoIds) {
-            return toAssignees(evening, photoIds);
+        List<Member> getEveningAssignees(Map<Long, Long> photoVersions) {
+            return toAssignees(evening, photoVersions);
         }
 
         List<String> getWarnings() {
@@ -185,20 +185,20 @@ public class SharingShopQueryService {
                     .toList();
         }
 
-        private static List<Member> toAssignees(Optional<SharingShopTaskReader.TaskView> task, Set<Long> photoIds) {
+        private static List<Member> toAssignees(Optional<SharingShopTaskReader.TaskView> task, Map<Long, Long> photoVersions) {
             return task.stream()
                     .flatMap(view -> view.assignees().stream())
                     .map(assignee -> new Member(
                             assignee.employeeId(),
                             assignee.name(),
                             assignee.attendance().getLabel(),
-                            photoIds.contains(assignee.employeeId()))
+                            photoVersions.get(assignee.employeeId()))
                     )
                     .toList();
         }
     }
 
-    public record Member(Long id, String name, String attendance, boolean hasPhoto) {}
+    public record Member(Long id, String name, String attendance, Long photoVersion) {}
 
     public record Day(
             LocalDate date,

@@ -301,8 +301,8 @@ body:has(.admin-menu[open]) { overflow:hidden; }
 .employee-profile-card { display:flex; flex-direction:column; min-width:0; padding:23px; border:1px solid #dee3d5; border-radius:17px; background:#fffefa; box-shadow:0 10px 30px -24px #3f50354a; }
 .employee-profile-card:hover { border-color:#aebda1; background:#fcfef6; }
 .employee-card-top { display:flex; justify-content:space-between; align-items:start; margin-bottom:19px; }
-.profile-avatar { width:64px; height:64px; flex-shrink:0; border:1px solid #dce5d2; border-radius:22px; background:#edf2e5; color:#788b65; display:grid; place-items:center; overflow:hidden; font-size:25px; font-family:"Jangbok Wordmark","Apple SD Gothic Neo",sans-serif; }
-.profile-avatar img { width:100%; height:100%; object-fit:cover; }
+.profile-avatar { width:64px; height:64px; flex-shrink:0; position:relative; border:1px solid #dce5d2; border-radius:22px; background:#edf2e5; color:#788b65; display:grid; place-items:center; overflow:hidden; font-size:25px; font-family:"Jangbok Wordmark","Apple SD Gothic Neo",sans-serif; }
+.profile-avatar img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
 .card-open { font-size:21px; color:#a7b199; line-height:1.4; }
 .employee-profile-card h3 { font-size:19px; margin:0 0 6px; color:#394832; letter-spacing:-.6px; }
 .employee-group { font-size:12px; color:#829176; }
@@ -444,8 +444,8 @@ body:has(.admin-menu[open]) { overflow:hidden; }
 .day-members { list-style:none; margin:0; padding:0; display:grid; gap:8px; max-height:220px; overflow:auto; }
 .day-member { display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; }
 .day-member-link { display:flex; align-items:center; gap:9px; min-width:0; min-height:34px; }
-.day-member-avatar { display:grid; place-items:center; overflow:hidden; flex-shrink:0; width:30px; height:30px; border-radius:10px; background:#edf2e5; color:#8a9a79; font-size:12px; }
-.day-member-avatar img { width:100%; height:100%; object-fit:cover; }
+.day-member-avatar { display:grid; position:relative; place-items:center; overflow:hidden; flex-shrink:0; width:30px; height:30px; border-radius:10px; background:#edf2e5; color:#8a9a79; font-size:12px; }
+.day-member-avatar img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
 .day-member-name { font-size:12px; color:#657654; overflow-wrap:anywhere; }
 .day-member-attendance { font-size:10px; color:#9aa28e; flex-shrink:0; }
 .member-empty { font-size:11px; line-height:1.7; padding:7px 0; color:#a4ad98; }

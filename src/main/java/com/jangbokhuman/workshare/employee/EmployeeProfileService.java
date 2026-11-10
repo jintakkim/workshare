@@ -37,7 +37,7 @@ public class EmployeeProfileService {
         validateEmployeeExists(employeeId);
         validatePhotoSize(file);
         byte[] thumbnail = profilePhotoConverter.convertToJpegThumbnail(readBytes(file));
-        employeePhotoRepository.save(new EmployeePhoto(employeeId, thumbnail));
+        employeePhotoRepository.save(new EmployeePhoto(employeeId, thumbnail, workTime.getInstant()));
     }
 
     private void validateEmployeeExists(Long employeeId) {

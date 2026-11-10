@@ -477,6 +477,14 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
         assertThat(thumbnail.getWidth()).isEqualTo(512);
         assertThat(thumbnail.getHeight()).isEqualTo(256);
         assertThat(rosterService.getEmployeeView(id).hasPhoto()).isTrue();
+        Long photoVersion = rosterService.getEmployeeView(id).photoVersion();
+        mockMvc.perform(get("/employees/" + id).with(testUser("홍길동", "STAFF")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/employees/" + id + "/photo?v=" + photoVersion)));
+        mockMvc.perform(get("/employees/" + id + "/photo").param("v", String.valueOf(photoVersion)).with(testUser("홍길동", "STAFF")))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("immutable")));
+        mockMvc.perform(get("/employees/" + id + "/photo").with(testUser("홍길동", "STAFF")))
+                .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-cache")));
         mockMvc.perform(get("/employees/" + id + "/photo")).andExpect(status().is3xxRedirection());
         mockMvc.perform(
                         org.springframework.test.web.servlet.request.MockMvcRequestBuilders

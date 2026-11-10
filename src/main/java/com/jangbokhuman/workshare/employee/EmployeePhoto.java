@@ -6,6 +6,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
+
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Getter
@@ -18,9 +20,13 @@ public class EmployeePhoto {
     @Column(nullable = false, length = Integer.MAX_VALUE)
     private byte[] image;
 
-    public EmployeePhoto(Long employeeId, byte[] image) {
+    @Column(nullable = false)
+    private Instant savedAt;
+
+    public EmployeePhoto(Long employeeId, byte[] image, Instant savedAt) {
         this.employeeId = employeeId;
         this.image = image.clone();
+        this.savedAt = savedAt;
     }
 
     public byte[] getImage() {

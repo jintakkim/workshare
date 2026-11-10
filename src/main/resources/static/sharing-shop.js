@@ -34,13 +34,14 @@
             link.href = deck.dataset.photoBase + encodeURIComponent(person.id);
             const avatar = createElement("span", "day-member-avatar");
             avatar.setAttribute("aria-hidden", "true");
-            if (person.hasPhoto) {
+            avatar.textContent = person.name.slice(0, 1);
+            if (person.photoVersion != null) {
                 const image = createElement("img");
-                image.src = link.href + "/photo";
+                image.src = link.href + "/photo?v=" + person.photoVersion;
                 image.alt = "";
-                image.loading = "lazy";
+                image.decoding = "async";
                 avatar.append(image);
-            } else avatar.textContent = person.name.slice(0, 1);
+            }
             link.append(
                 avatar,
                 createElement("span", "day-member-name", person.name),
