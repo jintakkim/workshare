@@ -1,6 +1,7 @@
 package com.jangbokhuman.workshare.web;
 
 import com.jangbokhuman.workshare.common.BusinessException;
+import com.jangbokhuman.workshare.common.RequestPaths;
 import com.jangbokhuman.workshare.config.AuthenticatedUser;
 import com.jangbokhuman.workshare.employee.EmployeeProfileService;
 import com.jangbokhuman.workshare.employee.RosterService;
@@ -15,7 +16,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -36,14 +37,14 @@ public class EmployeeManagementController {
         return "employee-profile";
     }
 
-    @PostMapping("/admin/employees/{id}/photo")
+    @PutMapping("/admin/employees/{id}/photo")
     public String savePhoto(@PathVariable Long id, @RequestParam MultipartFile photo, RedirectAttributes flash) {
         employeeProfileService.savePhoto(id, photo);
         flash.addFlashAttribute("success", "프로필 사진을 저장했습니다.");
         return "redirect:/admin/employees/" + id;
     }
 
-    @PostMapping("/admin/employees/{id}/work-group")
+    @PutMapping("/admin/employees/{id}/work-group")
     public String changeWorkGroup(@PathVariable Long id, @RequestParam String workGroupCode, RedirectAttributes flash) {
         List<String> removedActivityNames = rosterService.changeWorkGroup(id, workGroupCode);
         flash.addFlashAttribute("success", "직군을 변경했습니다. 이미 확정된 배정은 유지합니다.");
@@ -57,9 +58,9 @@ public class EmployeeManagementController {
     public String handleBusinessException(BusinessException error, HttpServletRequest request, RedirectAttributes flash) {
         flash.addFlashAttribute("error", error.getMessage());
         Optional<String> employeeId = RequestPaths.findPathVariable(request, "id");
-        if (request.getMethod().equals("POST") && employeeId.isPresent()) {
+        if (!request.getMethod().equals("GET") && employeeId.isPresent()) {
             return "redirect:/admin/employees/" + employeeId.get();
         }
-        return "redirect:/admin?section=employees";
+        return "redirect:/admin/employees";
     }
 }

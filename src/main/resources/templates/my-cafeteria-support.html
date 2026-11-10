@@ -3,10 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>내 지원 일정 · 장복인간</title>
+  <title>내 식당지원 일정 · 장복인간</title>
   <link th:replace="~{fragments/site-layout :: icon}">
   <link rel="stylesheet" th:href="@{/style.css}">
   <script defer th:src="@{/admin.js}"></script>
+  <script defer th:src="@{/partial-nav.js}"></script>
   <script defer th:src="@{/support-exchange.js}"></script>
 </head>
 <body class="app-page admin-page">
@@ -18,12 +19,11 @@
   <div class="pane-heading">
     <div>
       <p class="eyebrow">서로의 일정을 맞추는 시간</p>
-      <h1>내 지원 일정</h1>
+      <h1>내 식당지원 일정</h1>
       <p>바꾸고 싶은 날짜를 고르고 상대 일정을 선택하면 지원일 교환 요청이 전달돼요. 두 날짜 모두 당일 08:49 전까지 수락해야 합니다.</p>
     </div>
   </div>
-  <div th:if="${success}" class="notice" role="status" th:text="${success}"></div>
-  <div th:if="${error}" class="notice danger" role="alert" th:text="${error}"></div>
+  <div class="flash-messages" aria-live="polite"><div th:if="${success}" class="notice" role="status" th:text="${success}"></div><div th:if="${error}" class="notice danger" role="alert" th:text="${error}"></div></div>
 
   <section class="card exchange-inbox" th:classappend="${view.incoming.isEmpty() ? '' : 'has-requests'}">
     <h2>받은 교환 요청 <span class="exchange-count" th:unless="${view.incoming.isEmpty()}" th:text="${view.incoming.size()}"></span></h2>
@@ -42,10 +42,11 @@
       </div>
       <p class="small muted" th:text="${#temporals.format(request.expiresAt, 'M월 d일 HH:mm') + '까지 수락할 수 있어요.'}"></p>
       <div class="exchange-actions">
-        <form th:action="@{/cafeteria-support/exchange-requests/{id}/accept(id=${request.id})}" method="post">
+        <form data-swap=".exchange-page" th:action="@{/cafeteria-support/exchange-requests/{id}/acceptance(id=${request.id})}" method="post">
           <button class="primary" type="submit">교환 수락</button>
         </form>
-        <form th:action="@{/cafeteria-support/exchange-requests/{id}/dismiss(id=${request.id})}" method="post">
+        <form data-swap=".exchange-page" th:action="@{/cafeteria-support/exchange-requests/{id}(id=${request.id})}" method="post">
+          <input type="hidden" name="_method" value="delete">
           <button class="button" type="submit">거절</button>
         </form>
       </div>
@@ -53,9 +54,9 @@
   </section>
 
   <section class="card">
-    <h2>내 지원일</h2>
+    <h2>내 식당지원일</h2>
     <p class="small muted">오늘부터 3개월 뒤까지의 일정이에요. 바꾸고 싶은 날짜의 바꾸기를 눌러주세요.</p>
-    <p th:if="${view.mine.isEmpty()}" class="small muted">등록된 지원 일정이 없습니다.</p>
+    <p th:if="${view.mine.isEmpty()}" class="small muted">등록된 식당지원 일정이 없습니다.</p>
     <ul class="my-support-list" th:unless="${view.mine.isEmpty()}">
       <li th:each="slot : ${view.mine}"
           th:with="selected=${slot.id == view.sourceId},requested=${#lists.contains(view.outgoing.![source.id], slot.id)}"
@@ -69,7 +70,7 @@
           <span class="badge" th:if="${!slot.editable}">마감</span>
           <span class="badge waiting" th:if="${slot.editable and requested}">교환 요청 중</span>
         </span>
-        <a class="button small-button" th:if="${slot.editable and !selected}"
+        <a class="button small-button" data-swap=".exchange-page" th:if="${slot.editable and !selected}"
            th:href="@{/cafeteria-support(sourceId=${slot.id})} + '#support-exchange'">바꾸기</a>
         <span class="selected-mark" th:if="${selected}">선택됨</span>
       </li>
@@ -83,7 +84,7 @@
       <span>과 맞바꿀 상대 일정을 골라주세요.</span>
     </p>
     <p class="small muted" th:if="${view.candidates.isEmpty()}">이 날짜와 바꿀 수 있는 상대 일정이 없습니다. 상대가 휴가이거나 이미 다른 지원이 있는 날짜는 보이지 않아요.</p>
-    <form th:unless="${view.candidates.isEmpty()}" th:action="@{/cafeteria-support/exchange-requests}" method="post" class="stack" data-exchange-form>
+    <form th:unless="${view.candidates.isEmpty()}" data-swap=".exchange-page" th:action="@{/cafeteria-support/exchange-requests}" method="post" class="stack" data-exchange-form>
       <input type="hidden" name="sourceId" th:value="${view.sourceId}">
       <label class="candidate-search" hidden data-support-search>
         <span class="sr-only">이름 검색</span>
@@ -120,7 +121,8 @@
         </div>
       </div>
       <p class="small muted" th:text="${'수락 대기 · ' + #temporals.format(request.expiresAt, 'M월 d일 HH:mm') + ' 마감'}"></p>
-      <form th:action="@{/cafeteria-support/exchange-requests/{id}/dismiss(id=${request.id})}" method="post">
+      <form data-swap=".exchange-page" th:action="@{/cafeteria-support/exchange-requests/{id}(id=${request.id})}" method="post">
+          <input type="hidden" name="_method" value="delete">
         <button class="button" type="submit">요청 취소</button>
       </form>
     </article>

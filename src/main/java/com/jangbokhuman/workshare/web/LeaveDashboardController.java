@@ -25,7 +25,12 @@ public class LeaveDashboardController {
     private final LeaveCalendarService leaveCalendarService;
     private final WorkTime workTime;
 
-    @GetMapping({"/", "/my-leave"})
+    @GetMapping("/")
+    public String redirectToLeaveCalendar() {
+        return "redirect:/leave";
+    }
+
+    @GetMapping("/leave")
     public String showLeaveCalendar(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @AuthenticationPrincipal AuthenticatedUser authentication,
@@ -44,6 +49,6 @@ public class LeaveDashboardController {
     @ExceptionHandler(BusinessException.class)
     public String handleBusinessException(BusinessException error, RedirectAttributes flash) {
         flash.addFlashAttribute("error", error.getMessage());
-        return "redirect:/my-leave";
+        return "redirect:/leave";
     }
 }

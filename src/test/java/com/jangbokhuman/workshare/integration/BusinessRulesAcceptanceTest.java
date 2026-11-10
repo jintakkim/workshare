@@ -6,6 +6,8 @@ import static org.hamcrest.Matchers.containsString;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -96,7 +98,7 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
         saveLeave(login("박지훈", STAFF_PASSWORD), TODAY, Attendance.AFTERNOON_HALF_DAY);
         for (String name : List.of("최유진", "정하늘")) {
             mockMvc.perform(
-                            post("/sharing-shop/time-preference")
+                            put("/sharing-shop/time-preference")
                                     .session(login(name, STAFF_PASSWORD))
                                     .with(csrf())
                                     .param("date", TODAY.toString())
@@ -155,13 +157,13 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
         assertThat(inbox.incoming()).hasSize(1);
         Long requestId = inbox.incoming().getFirst().id();
         mockMvc.perform(
-                        post("/cafeteria-support/exchange-requests/" + requestId + "/accept")
+                        post("/cafeteria-support/exchange-requests/" + requestId + "/acceptance")
                                 .session(outsider)
                                 .with(csrf()))
                 .andExpect(status().isForbidden());
         now("08:48:59.999999999");
         mockMvc.perform(
-                        post("/cafeteria-support/exchange-requests/" + requestId + "/accept")
+                        post("/cafeteria-support/exchange-requests/" + requestId + "/acceptance")
                                 .session(recipient)
                                 .with(csrf()))
                 .andExpect(flash().attributeExists("success"));
@@ -171,7 +173,7 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
                 .andExpect(model().attributeExists("view"))
                 .andExpect(content().string(containsString("받은 요청이 없습니다.")));
         mockMvc.perform(
-                        post("/cafeteria-support/exchange-requests/" + requestId + "/accept")
+                        post("/cafeteria-support/exchange-requests/" + requestId + "/acceptance")
                                 .session(recipient)
                                 .with(csrf()))
                 .andExpect(flash().attributeExists("error"));
@@ -193,14 +195,13 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
         saveSupport(admin, Map.of(TODAY, List.of(employeeId("김민수"))));
         now("08:49:00");
         mockMvc.perform(
-                        post("/leave-requests")
+                        put("/leave/" + TODAY.toString())
                                 .session(worker)
                                 .with(csrf())
-                                .param("date", TODAY.toString())
                                 .param("attendance", "WORK"))
                 .andExpect(flash().attributeExists("error"));
         mockMvc.perform(
-                        post("/sharing-shop/time-preference")
+                        put("/sharing-shop/time-preference")
                                 .session(worker)
                                 .with(csrf())
                                 .param("date", TODAY.toString())
@@ -223,26 +224,23 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
         LocalDate next = TODAY.plusDays(1);
         saveLeave(worker, next, Attendance.VACATION);
         mockMvc.perform(
-                        post("/admin/holidays")
+                        put("/admin/holidays/" + next.toString())
                                 .session(admin)
                                 .with(csrf())
-                                .param("date", next.toString())
                                 .param("name", ""))
                 .andExpect(flash().attributeExists("success"));
         mockMvc.perform(get(dayUrl(next)).session(worker))
                 .andExpect(jsonPath("$.phase").value("OFF"));
         mockMvc.perform(
-                        post("/leave-requests")
+                        put("/leave/" + next.toString())
                                 .session(worker)
                                 .with(csrf())
-                                .param("date", next.toString())
                                 .param("attendance", "WORK"))
                 .andExpect(flash().attributeExists("error"));
         mockMvc.perform(
-                        post("/admin/holidays/remove")
+                        delete("/admin/holidays/" + next.toString())
                                 .session(admin)
-                                .with(csrf())
-                                .param("date", next.toString()))
+                                .with(csrf()))
                 .andExpect(flash().attributeExists("success"));
         mockMvc.perform(get(dayUrl(next)).session(worker))
                 .andExpect(jsonPath("$.leaves[*].name").value(containsInAnyOrder("홍길동")));
@@ -281,7 +279,7 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
                                 .param("workGroupCode", group))
                 .andExpect(flash().attributeExists("success"));
         if (group.equals("GENERAL")) {
-            mockMvc.perform(post("/admin/activities/SHARING_SHOP/members/{employeeId}/add", employeeId(name))
+            mockMvc.perform(put("/admin/activities/SHARING_SHOP/members/{employeeId}", employeeId(name))
                             .session(admin)
                             .with(csrf()))
                     .andExpect(flash().attributeExists("success"));
@@ -290,7 +288,7 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
 
     private void requireCafeteriaWorkers(MockHttpSession admin, int count) throws Exception {
         mockMvc.perform(
-                        post("/admin/cafeteria-support/requirements")
+                        put("/admin/cafeteria-support/requirement")
                                 .session(admin)
                                 .with(csrf())
                                 .param("requiredWorkers", Integer.toString(count)))
@@ -303,10 +301,9 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
     ) {
         LocalDate first = changes.keySet().iterator().next();
         MockHttpServletRequestBuilder form =
-                post("/admin/cafeteria-support/month")
+                put("/admin/cafeteria-support/" + YearMonth.from(first).toString())
                         .session(admin)
-                        .with(csrf())
-                        .param("month", YearMonth.from(first).toString());
+                        .with(csrf());
         for (Map.Entry<LocalDate, List<Long>> change : changes.entrySet()) {
             form.param("editedDates", change.getKey().toString());
             if (!change.getValue().isEmpty())
@@ -326,10 +323,9 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
     private void saveLeave(MockHttpSession worker, LocalDate date, Attendance attendance)
             throws Exception {
         mockMvc.perform(
-                        post("/leave-requests")
+                        put("/leave/" + date.toString())
                                 .session(worker)
                                 .with(csrf())
-                                .param("date", date.toString())
                                 .param("attendance", attendance.name()))
                 .andExpect(flash().attributeExists("success"));
     }

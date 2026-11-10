@@ -14,7 +14,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 @RequiredArgsConstructor
 public class AdminEmployeeController {
-    private static final String EMPLOYEE_SECTION = "redirect:/admin?section=employees";
+    private static final String EMPLOYEE_SECTION = "redirect:/admin/employees";
 
     private final RosterService rosterService;
 
@@ -30,7 +30,7 @@ public class AdminEmployeeController {
         return EMPLOYEE_SECTION;
     }
 
-    @PostMapping("/admin/employees/{id}/retire")
+    @PostMapping("/admin/employees/{id}/retirement")
     public String retire(@PathVariable Long id, RedirectAttributes flash) {
         rosterService.retireEmployee(id);
         flash.addFlashAttribute("success", "직원 제외를 등록했습니다. 적용일: " + rosterService.getRosterChangeEffectiveDate());

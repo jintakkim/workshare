@@ -266,14 +266,13 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         register("김민수");
         Long selfId = employeeId("홍길동");
         mockMvc.perform(
-                        post("/leave-requests")
+                        put("/leave/" + TODAY.toString())
                                 .with(testUser("홍길동", "STAFF"))
                                 .with(csrf())
-                                .param("date", TODAY.toString())
                                 .param("attendance", attendance.name()))
                 .andExpect(status().is3xxRedirection());
         sharingShopTimePreferenceService.save(selfId, Preference.valueOf(unavailable.name()));
-        mockMvc.perform(get("/my-leave").with(testUser("홍길동", "STAFF")))
+        mockMvc.perform(get("/leave").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("오전 반차")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("오후 반차")));

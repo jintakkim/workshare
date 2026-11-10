@@ -84,25 +84,24 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
     @DisplayName("브라우저 언어와 무관하게 선택한 날짜에 신청을 저장한다")
     void datesInFormsAndRedirectsStayIsoAcrossBrowserLocales() throws Exception {
         register("홍길동");
-        mockMvc.perform(get("/").with(testUser("홍길동", "STAFF")).locale(Locale.KOREAN))
+        mockMvc.perform(get("/leave").with(testUser("홍길동", "STAFF")).locale(Locale.KOREAN))
                 .andExpect(status().isOk())
                 .andExpect(
                         content()
                                 .string(
                                         org.hamcrest.Matchers.containsString(
-                                                "name=\"date\" value=\"2026-11-04\"")));
+                                                "action=\"/leave/2026-11-04\"")));
         mockMvc.perform(
-                        post("/leave-requests")
+                        put("/leave/" + TODAY.toString())
                                 .with(testUser("홍길동", "STAFF"))
                                 .with(csrf())
                                 .locale(Locale.US)
-                                .param("date", TODAY.toString())
                                 .param("attendance", "WORK"))
                 .andExpect(
                         redirectedUrl(
-                                "/my-leave?date=2026-11-04#day-details"));
+                                "/leave?date=2026-11-04#day-details"));
         mockMvc.perform(
-                        post("/sharing-shop/time-preference")
+                        put("/sharing-shop/time-preference")
                                 .with(testUser("홍길동", "STAFF"))
                                 .with(csrf())
                                 .locale(Locale.KOREAN)
@@ -124,37 +123,30 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
                         Attendance.AFTERNOON_HALF_DAY,
                         Attendance.WORK)) {
             mockMvc.perform(
-                            post("/admin/leave-requests")
+                            put("/admin/employees/" + String.valueOf(target) + "/leave/" + TODAY.toString())
                                     .with(testUser("admin", "ADMIN"))
                                     .with(csrf())
-                                    .param("employeeId", String.valueOf(target))
-                                    .param("date", TODAY.toString())
                                     .param("attendance", attendance.name()))
                     .andExpect(status().is3xxRedirection());
             assertThat(leaveCalendarService.getCalendar(TODAY, employeeId("김민수")).attendance())
                     .isEqualTo(attendance);
         }
         mockMvc.perform(
-                        post("/admin/leave-requests")
+                        put("/admin/employees/" + String.valueOf(target) + "/leave/" + TODAY.toString())
                                 .with(testUser("홍길동", "STAFF"))
                                 .with(csrf())
-                                .param("employeeId", String.valueOf(target))
-                                .param("date", TODAY.toString())
                                 .param("attendance", "SICK_LEAVE"))
                 .andExpect(status().isForbidden());
         mockMvc.perform(
-                        post("/admin/leave-requests")
+                        put("/admin/employees/" + String.valueOf(target) + "/leave/" + TODAY.toString())
                                 .with(testUser("admin", "ADMIN"))
-                                .param("employeeId", String.valueOf(target))
-                                .param("date", TODAY.toString())
                                 .param("attendance", "SICK_LEAVE"))
                 .andExpect(status().isForbidden());
         mockMvc.perform(
-                        post("/leave-requests")
+                        put("/leave/" + TODAY.toString())
                                 .with(testUser("홍길동", "STAFF"))
                                 .with(csrf())
                                 .param("employeeId", String.valueOf(target))
-                                .param("date", TODAY.toString())
                                 .param("attendance", "SICK_LEAVE"))
                 .andExpect(status().is3xxRedirection());
         assertThat(leaveCalendarService.getCalendar(TODAY, employeeId("홍길동")).attendance())
@@ -162,7 +154,7 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
         assertThat(leaveCalendarService.getCalendar(TODAY, employeeId("김민수")).attendance())
                 .isEqualTo(Attendance.WORK);
         mockMvc.perform(
-                        get("/admin")
+                        get("/admin/leave")
                                 .param("employeeId", String.valueOf(target))
                                 .with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())
@@ -193,7 +185,7 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
                                 assertThat(t.assignees())
                                         .extracting(SharingShopTaskReader.AssigneeView::name)
                                         .doesNotContain("김민수"));
-        mockMvc.perform(get("/").with(testUser("김민수", "STAFF")))
+        mockMvc.perform(get("/leave").with(testUser("김민수", "STAFF")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("병가")));
         LocalDate future = TODAY.plusDays(1);
@@ -210,19 +202,18 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
         Long id = employeeRepository.findByName("홍길동").orElseThrow().getId();
         Long otherId = employeeRepository.findByName("김민수").orElseThrow().getId();
         mockMvc.perform(
-                        post("/leave-requests")
+                        put("/leave/" + TODAY.toString())
                                 .with(testUser("홍길동", "STAFF"))
                                 .with(csrf())
-                                .param("date", TODAY.toString())
                                 .param("attendance", "VACATION")
                                 .param("employeeId", String.valueOf(otherId)))
                 .andExpect(
                         redirectedUrl(
-                                "/my-leave?date=2026-11-04#day-details"));
+                                "/leave?date=2026-11-04#day-details"));
         LeaveCalendarService.LeaveCalendar view =
                 (LeaveCalendarService.LeaveCalendar)
                         mockMvc.perform(
-                                        get("/my-leave")
+                                        get("/leave")
                                                 .param("employeeId", String.valueOf(otherId))
                                                 .with(testUser("홍길동", "STAFF")))
                                 .andExpect(status().isOk())
@@ -235,21 +226,19 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
         assertThat(leaveCalendarService.getCalendar(TODAY, employeeId("김민수")).attendance())
                 .isEqualTo(Attendance.WORK);
         mockMvc.perform(
-                        post("/admin/leave-requests")
+                        put("/admin/employees/" + String.valueOf(id) + "/leave/" + TODAY.toString())
                                 .with(testUser("admin", "ADMIN"))
                                 .with(csrf())
-                                .param("employeeId", String.valueOf(id))
-                                .param("date", TODAY.toString())
                                 .param("attendance", "SICK_LEAVE"))
                 .andExpect(status().is3xxRedirection());
-        mockMvc.perform(get("/my-leave").with(testUser("홍길동", "STAFF")))
+        mockMvc.perform(get("/leave").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
                 .andExpect(
                         content()
                                 .string(
                                         org.hamcrest.Matchers.containsString(
                                                 "value=\"SICK_LEAVE\" selected=\"selected\"")));
-        mockMvc.perform(get("/my-leave").with(testUser("김민수", "STAFF")))
+        mockMvc.perform(get("/leave").with(testUser("김민수", "STAFF")))
                 .andExpect(status().isOk())
                 .andExpect(
                         content()
@@ -258,12 +247,11 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
                                                 "value=\"WORK\" selected=\"selected\"")));
         now("08:49");
         mockMvc.perform(
-                        post("/leave-requests")
+                        put("/leave/" + TODAY.toString())
                                 .with(testUser("홍길동", "STAFF"))
                                 .with(csrf())
-                                .param("date", TODAY.toString())
                                 .param("attendance", "WORK"))
-                .andExpect(redirectedUrl("/my-leave?date=2026-11-04#day-details"))
+                .andExpect(redirectedUrl("/leave?date=2026-11-04#day-details"))
                 .andExpect(flash().attributeExists("error"));
         assertThat(leaveCalendarService.getCalendar(TODAY, employeeId("홍길동")).attendance())
                 .isEqualTo(Attendance.SICK_LEAVE);

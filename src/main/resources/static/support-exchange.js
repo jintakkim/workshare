@@ -1,5 +1,7 @@
-const exchangeForm = document.querySelector("[data-exchange-form]");
-if (exchangeForm) {
+function bindCandidateFilter(exchangeForm) {
+    if (!exchangeForm) {
+        return;
+    }
     const search = exchangeForm.querySelector("[data-support-search]");
     const nameFilter = exchangeForm.querySelector("[data-support-name]");
     const count = exchangeForm.querySelector("[data-support-count]");
@@ -24,3 +26,6 @@ if (exchangeForm) {
         filterSupportCandidates();
     }
 }
+
+bindCandidateFilter(document.querySelector("[data-exchange-form]"));
+document.addEventListener("partial:swapped", () => bindCandidateFilter(document.querySelector("[data-exchange-form]")));

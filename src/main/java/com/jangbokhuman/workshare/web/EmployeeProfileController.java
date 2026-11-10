@@ -2,6 +2,7 @@ package com.jangbokhuman.workshare.web;
 
 import com.jangbokhuman.workshare.calendar.WorkTime;
 import com.jangbokhuman.workshare.common.BusinessException;
+import com.jangbokhuman.workshare.common.RequestPaths;
 import com.jangbokhuman.workshare.config.AuthenticatedUser;
 import com.jangbokhuman.workshare.employee.EmployeePhoto;
 import com.jangbokhuman.workshare.employee.EmployeePhotoRepository;
@@ -24,7 +25,7 @@ import org.springframework.util.DigestUtils;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.context.request.WebRequest;
@@ -57,7 +58,7 @@ public class EmployeeProfileController {
         return "employees";
     }
 
-    @GetMapping("/my-profile")
+    @GetMapping("/employees/me")
     public String redirectToOwnProfile(@AuthenticationPrincipal AuthenticatedUser auth) {
         return "redirect:/employees/" + auth.getEmployeeId();
     }
@@ -91,7 +92,7 @@ public class EmployeeProfileController {
                 .body(image);
     }
 
-    @PostMapping("/employees/{id}/photo")
+    @PutMapping("/employees/{id}/photo")
     public String savePhoto(
             @PathVariable Long id,
             @RequestParam MultipartFile photo,
@@ -111,7 +112,7 @@ public class EmployeeProfileController {
     public String handleBusinessException(BusinessException error, HttpServletRequest request, RedirectAttributes flash) {
         flash.addFlashAttribute("error", error.getMessage());
         Optional<String> employeeId = RequestPaths.findPathVariable(request, "id");
-        if (request.getMethod().equals("POST") && employeeId.isPresent()) {
+        if (!request.getMethod().equals("GET") && employeeId.isPresent()) {
             return "redirect:/employees/" + employeeId.get();
         }
         return "redirect:/employees";

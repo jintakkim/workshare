@@ -25,7 +25,7 @@ class ActivityFeatureTest extends BusinessFeatureTestSupport {
     void restaurantWorkersCannotRegisterOrBeAssignedToSharingShop() throws Exception {
         registerRestaurant("강수진");
         Long employeeId = employeeId("강수진");
-        mockMvc.perform(post("/admin/activities/SHARING_SHOP/members/{id}/add", employeeId)
+        mockMvc.perform(put("/admin/activities/SHARING_SHOP/members/{id}", employeeId)
                         .with(testUser("admin", "ADMIN")).with(csrf()))
                 .andExpect(status().isForbidden());
         assertThatThrownBy(() -> sharingShopTimePreferenceService.save(employeeId, Preference.EVENING))
@@ -62,7 +62,7 @@ class ActivityFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
                         "식당 직군으로 변경하면 " + activityName + "에서 자동 탈퇴합니다.")));
-        mockMvc.perform(post("/admin/employees/{id}/work-group", employeeId)
+        mockMvc.perform(put("/admin/employees/{id}/work-group", employeeId)
                         .with(testUser("admin", "ADMIN")).with(csrf())
                         .param("workGroupCode", "RESTAURANT"))
                 .andExpect(redirectedUrl("/admin/employees/" + employeeId))
@@ -82,12 +82,12 @@ class ActivityFeatureTest extends BusinessFeatureTestSupport {
         mockMvc.perform(post("/admin/activities")
                         .with(testUser("admin", "ADMIN")).with(csrf())
                         .param("code", "NEW_ACTIVITY").param("name", "새 활동"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isMethodNotAllowed());
         mockMvc.perform(get("/admin/activities/SHARING_SHOP").with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(Activity.SHARING_SHOP.getDescription())))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("textarea"))));
-        mockMvc.perform(post("/admin/activities/SHARING_SHOP/members/{id}/add", employeeId("홍길동"))
+        mockMvc.perform(put("/admin/activities/SHARING_SHOP/members/{id}", employeeId("홍길동"))
                         .with(testUser("admin", "ADMIN")).with(csrf())
                         .param("description", "바꾸려는 설명"))
                 .andExpect(status().is3xxRedirection());
@@ -121,17 +121,17 @@ class ActivityFeatureTest extends BusinessFeatureTestSupport {
         List<SharingShopTaskReader.TaskView> before = sharingShopTasks(TODAY);
         mockMvc.perform(get("/admin/activities/SHARING_SHOP").with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("/members/" + employeeId + "/delete")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("/members/" + newEmployeeId + "/add")));
-        mockMvc.perform(post("/admin/activities/SHARING_SHOP/members/{id}/delete", employeeId)
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/members/" + employeeId + "\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/members/" + newEmployeeId + "\"")));
+        mockMvc.perform(delete("/admin/activities/SHARING_SHOP/members/{id}", employeeId)
                         .with(testUser("홍길동", "STAFF")).with(csrf()))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(post("/admin/activities/SHARING_SHOP/members/{id}/add", newEmployeeId)
+        mockMvc.perform(put("/admin/activities/SHARING_SHOP/members/{id}", newEmployeeId)
                         .with(testUser("admin", "ADMIN")).with(csrf()))
                 .andExpect(redirectedUrl("/admin/activities/SHARING_SHOP"));
         assertThat(activityRegistrationRepository.findEmployeeIdsByActivityCode(Activity.SHARING_SHOP))
                 .containsExactlyInAnyOrder(employeeId, employeeId("김민수"), newEmployeeId);
-        mockMvc.perform(post("/admin/activities/SHARING_SHOP/members/{id}/delete", employeeId)
+        mockMvc.perform(delete("/admin/activities/SHARING_SHOP/members/{id}", employeeId)
                         .with(testUser("admin", "ADMIN")).with(csrf()))
                 .andExpect(redirectedUrl("/admin/activities/SHARING_SHOP"));
         assertThat(sharingShopWorkers(TODAY))
@@ -142,7 +142,7 @@ class ActivityFeatureTest extends BusinessFeatureTestSupport {
     @Test
     @DisplayName("가입자가 없어도 코드에 정의된 활동을 조회할 수 있다")
     void activitiesRemainVisibleWithoutAnyRegisteredEmployees() throws Exception {
-        mockMvc.perform(get("/admin").param("section", "activities").with(testUser("admin", "ADMIN")))
+        mockMvc.perform(get("/admin/activities").with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("나눔가게 활동")));
         assertThat(activityManagementService.getDetails("SHARING_SHOP").candidates()).isEmpty();

@@ -37,8 +37,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
         for (String section : markers.keySet()) {
             String result =
                     mockMvc.perform(
-                                    get("/admin")
-                                            .param("section", String.valueOf(section))
+                                    get("/admin/" + section)
                                             .with(testUser("admin", "ADMIN")))
                             .andExpect(status().isOk())
                             .andReturn()
@@ -51,15 +50,15 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                 if (!other.equals(section)) assertThat(result).doesNotContain(markers.get(other));
         }
         mockMvc.perform(
-                        get("/admin")
+                        get("/admin/leave")
                                 .param("employeeId", "")
                                 .param("date", TODAY.plusMonths(1).withDayOfMonth(1).toString())
                                 .with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk());
-        mockMvc.perform(get("/admin").param("section", "unknown").with(testUser("admin", "ADMIN")))
-                .andExpect(status().is3xxRedirection());
-        mockMvc.perform(get("/admin").param("section", "tasks").with(testUser("admin", "ADMIN")))
-                .andExpect(redirectedUrl("/admin"));
+        mockMvc.perform(get("/admin").with(testUser("admin", "ADMIN")))
+                .andExpect(redirectedUrl("/admin/leave"));
+        mockMvc.perform(get("/admin/tasks").with(testUser("admin", "ADMIN")))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -69,7 +68,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
         register("김민수");
         Long id = employeeRepository.findByName("홍길동").orElseThrow().getId();
         for (String page :
-                List.of("/", "/my-leave", "/sharing-shop", "/leave-calendar", "/cafeteria-support", "/cafeteria-support/schedule", "/employees", "/employees/" + id)) {
+                List.of("/leave", "/sharing-shop", "/leave/team", "/cafeteria-support", "/cafeteria-support/schedule", "/employees", "/employees/" + id)) {
             String html =
                     mockMvc.perform(get(page).with(testUser("홍길동", "STAFF")))
                             .andExpect(status().isOk())
@@ -82,17 +81,17 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                             "aria-controls=\"staff-menu\"",
                             "id=\"staff-menu\"",
                             "href=\"/sharing-shop\"",
-                            "href=\"/my-leave\"",
-                            "href=\"/leave-calendar\"",
+                            "href=\"/leave\"",
+                            "href=\"/leave/team\"",
                             "href=\"/cafeteria-support/schedule\"",
-                            "href=\"/my-profile\"",
+                            "href=\"/employees/me\"",
                             "class=\"support-footer\"",
                             "href=\"mailto:support@jangbokhuman.app\"",
                             "href=\"/favicon.svg\"",
                             "내 휴가 일정<small>연차·병가·반차 등록</small>")
                     .doesNotContain(
                             "href=\"/admin", "name=\"workGroupCode\"", "name=\"responsibilities\"");
-            if (page.equals("/") || page.equals("/my-leave")) {
+            if (page.equals("/leave")) {
                 assertThat(html).contains("입력 마감", "휴가 입력은 해당 날짜 오전 8시 49분에 마감돼요.",
                                 "버그나 건의사항은", "href=\"mailto:support@jangbokhuman.app\"")
                         .doesNotContain("우리의 하루를 조금 더 공평하게", "자동 배정");
@@ -122,9 +121,9 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                 assertThat(html).doesNotContain("sharing-preference");
             }
         }
-        mockMvc.perform(get("/my-profile").with(testUser("홍길동", "STAFF")))
+        mockMvc.perform(get("/employees/me").with(testUser("홍길동", "STAFF")))
                 .andExpect(redirectedUrl("/employees/" + id));
-        mockMvc.perform(get("/my-leave")).andExpect(status().is3xxRedirection());
+        mockMvc.perform(get("/leave")).andExpect(status().is3xxRedirection());
         mockMvc.perform(get("/login"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/favicon.svg\"")));
         mockMvc.perform(get("/favicon.svg"))
@@ -149,24 +148,24 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
         leaveRequestService.save(employeeId("홍길동"), TODAY, Attendance.WORK);
         leaveRequestService.save(employeeId("홍길동"), TODAY.plusDays(1), Attendance.VACATION);
 
-        String today = mockMvc.perform(get("/leave-calendar").with(testUser("홍길동", "STAFF")))
+        String today = mockMvc.perform(get("/leave/team").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(today).contains("전체 휴가 일정", "11월 4일 휴가 일정", "2026년 11월 4일 · 휴가 4명")
-                .doesNotContain("홍길동", "정상 출근", "action=\"/leave-requests\"");
+                .doesNotContain("홍길동", "정상 출근", "action=\"/leave/");
         leaves.forEach((name, attendance) -> assertThat(today)
                 .containsPattern("<strong>" + name + "</strong>\\s*<span class=\"badge (leave|half)\">" + attendance.getLabel() + "</span>"));
 
-        String tomorrow = mockMvc.perform(get("/leave-calendar").with(testUser("admin", "ADMIN"))
+        String tomorrow = mockMvc.perform(get("/leave/team").with(testUser("admin", "ADMIN"))
                         .param("date", TODAY.plusDays(1).toString()))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(tomorrow).contains("11월 5일 휴가 일정", "<strong>홍길동</strong>")
                 .doesNotContain("김민수", "이서연", "박지훈", "정하늘");
-        mockMvc.perform(get("/leave-calendar").with(testUser("홍길동", "STAFF")).param("date", "2026-12-01"))
+        mockMvc.perform(get("/leave/team").with(testUser("홍길동", "STAFF")).param("date", "2026-12-01"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("등록된 휴가나 반차가 없어요.")));
-        mockMvc.perform(get("/leave-calendar")).andExpect(status().is3xxRedirection());
+        mockMvc.perform(get("/leave/team")).andExpect(status().is3xxRedirection());
     }
 
     @Test
@@ -238,8 +237,8 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(jsonPath("$.phase").value("OFF"))
                 .andExpect(jsonPath("$.morningSlots").value(0));
         mockMvc.perform(
-                        get("/admin")
-                                .param("section", "holidays")
+                        get("/admin/holidays")
+                                
                                 .param("date", future.toString())
                                 .with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())

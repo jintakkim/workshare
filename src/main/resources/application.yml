@@ -18,6 +18,13 @@ spring:
           time_zone: UTC
     hibernate:
       ddl-auto: validate
+  web:
+    locale: ko_KR
+    locale-resolver: fixed
+  mvc:
+    hiddenmethod:
+      filter:
+        enabled: true
   servlet:
     multipart:
       max-file-size: 2MB

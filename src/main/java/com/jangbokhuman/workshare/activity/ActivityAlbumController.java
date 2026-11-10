@@ -23,7 +23,7 @@ public class ActivityAlbumController {
         return "activity-detail";
     }
 
-    @PostMapping("/{code}/members/{employeeId}/add")
+    @PutMapping("/{code}/members/{employeeId}")
     public String addRegistration(
             @PathVariable String code,
             @PathVariable Long employeeId,
@@ -34,7 +34,7 @@ public class ActivityAlbumController {
         return "redirect:/admin/activities/" + code;
     }
 
-    @PostMapping("/{code}/members/{employeeId}/delete")
+    @DeleteMapping("/{code}/members/{employeeId}")
     public String deleteRegistration(
             @PathVariable String code,
             @PathVariable Long employeeId,
@@ -48,6 +48,6 @@ public class ActivityAlbumController {
     @ExceptionHandler(BusinessException.class)
     public String handleBusinessException(BusinessException error, RedirectAttributes flash) {
         flash.addFlashAttribute("error", error.getMessage());
-        return "redirect:/admin?section=activities";
+        return "redirect:/admin/activities";
     }
 }

@@ -2,6 +2,7 @@ package com.jangbokhuman.workshare.activity.cafeteria;
 
 import com.jangbokhuman.workshare.calendar.WorkTime;
 import com.jangbokhuman.workshare.common.BusinessException;
+import com.jangbokhuman.workshare.common.RequestPaths;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -14,7 +15,8 @@ import org.springframework.ui.Model;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -27,8 +29,6 @@ import java.util.List;
 @Controller
 @RequiredArgsConstructor
 public class CafeteriaSupportAdminController {
-    private static final String MONTH_PATTERN = "\\d{4}-\\d{2}";
-
     private final CafeteriaSupportScheduleService cafeteriaSupportScheduleService;
     private final CafeteriaSupportQueryService cafeteriaSupportQueryService;
     private final WorkTime workTime;
@@ -44,9 +44,9 @@ public class CafeteriaSupportAdminController {
         return "admin-cafeteria-support";
     }
 
-    @PostMapping("/admin/cafeteria-support/month")
+    @PutMapping("/admin/cafeteria-support/{month}")
     public String saveMonth(
-            @RequestParam @DateTimeFormat(pattern = "uuuu-MM") YearMonth month,
+            @PathVariable @DateTimeFormat(pattern = "uuuu-MM") YearMonth month,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) List<LocalDate> editedDates,
             @RequestParam MultiValueMap<String, String> params,
             RedirectAttributes flash
@@ -61,7 +61,7 @@ public class CafeteriaSupportAdminController {
         return "redirect:/admin/cafeteria-support";
     }
 
-    @PostMapping("/admin/cafeteria-support/requirements")
+    @PutMapping("/admin/cafeteria-support/requirement")
     public String changeRequiredWorkers(@RequestParam int requiredWorkers, RedirectAttributes flash) {
         cafeteriaSupportScheduleService.changeRequiredWorkers(requiredWorkers);
         flash.addFlashAttribute("success", "지원 필요 인원을 저장했습니다. 기존 지원 명단은 자동 변경하지 않습니다.");
@@ -85,10 +85,7 @@ public class CafeteriaSupportAdminController {
 
     private String redirectToSupportMonth(String message, HttpServletRequest request, RedirectAttributes flash) {
         flash.addFlashAttribute("error", message);
-        String month = request.getParameter("month");
-        if (request.getMethod().equals("POST") && month != null && month.matches(MONTH_PATTERN)) {
-            flash.addAttribute("month", month);
-        }
+        RequestPaths.findPathVariable(request, "month").ifPresent(month -> flash.addAttribute("month", month));
         return "redirect:/admin/cafeteria-support";
     }
 }

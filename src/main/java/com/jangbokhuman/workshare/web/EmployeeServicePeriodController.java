@@ -12,7 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -23,7 +23,7 @@ import java.time.LocalDate;
 public class EmployeeServicePeriodController {
     private final EmployeeProfileService employeeProfileService;
 
-    @PostMapping("/employees/{id}/service-period")
+    @PutMapping("/employees/{id}/service-period")
     public String changeServicePeriod(
             @PathVariable Long id,
             @AuthenticationPrincipal AuthenticatedUser auth,

@@ -13,6 +13,7 @@ import com.jangbokhuman.workshare.employee.Employee;
 import com.jangbokhuman.workshare.employee.RosterService;
 import com.jangbokhuman.workshare.employee.WorkGroupType;
 
+import org.springframework.http.HttpMethod;
 import org.junit.jupiter.api.*;
 import org.springframework.boot.test.context.*;
 import org.springframework.context.annotation.*;
@@ -104,11 +105,11 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
         mockMvc.perform(get(profile).with(testUser("김민수", "STAFF")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("name=\"serviceStartDate\""))));
-        mockMvc.perform(post(changeDate).with(testUser("김민수", "STAFF")).with(csrf())
+        mockMvc.perform(put(changeDate).with(testUser("김민수", "STAFF")).with(csrf())
                         .param("serviceStartDate", "2025-02-05"))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(post(changeDate).with(testUser("홍길동", "STAFF")).with(csrf())
+        mockMvc.perform(put(changeDate).with(testUser("홍길동", "STAFF")).with(csrf())
                         .param("serviceStartDate", "2025-02-05"))
                 .andExpect(redirectedUrl(profile + "#service-period"));
         mockMvc.perform(get(profile).with(testUser("홍길동", "STAFF")))
@@ -119,11 +120,11 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
         assertThat(sharingShopWorkers(TODAY)).extracting(Worker::id).contains(employeeId);
         assertThat(sharingShopWorkers(TODAY.plusDays(1))).extracting(Worker::id).doesNotContain(employeeId);
 
-        mockMvc.perform(post(changeDate).with(testUser("홍길동", "STAFF")).with(csrf()))
+        mockMvc.perform(put(changeDate).with(testUser("홍길동", "STAFF")).with(csrf()))
                 .andExpect(redirectedUrl(profile + "#service-period"))
                 .andExpect(flash().attribute("error", "소집일을 선택해주세요."));
         rosterService.retireEmployee(employeeId);
-        mockMvc.perform(post(changeDate).with(testUser("홍길동", "STAFF")).with(csrf())
+        mockMvc.perform(put(changeDate).with(testUser("홍길동", "STAFF")).with(csrf())
                         .param("serviceStartDate", "2026-11-04"))
                 .andExpect(flash().attribute("error", "관리자가 업무 인원에서 제외한 직원은 복무 기간을 변경할 수 없습니다."));
         assertThat(rosterService.getEmployeeView(employeeId).serviceEndDate()).isEqualTo(TODAY);
@@ -144,23 +145,23 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
         register("홍길동");
         Long id = employeeId("홍길동");
         String changePeriod = "/employees/" + id + "/service-period";
-        mockMvc.perform(post(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
+        mockMvc.perform(put(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
                         .param("serviceStartDate", "2025-01-05").param("serviceEndDate", "2026-11-03"))
                 .andExpect(flash().attribute("error", "소집해제일은 오늘보다 이전으로 설정할 수 없습니다."));
-        mockMvc.perform(post(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
+        mockMvc.perform(put(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
                         .param("serviceStartDate", "2025-01-05").param("serviceEndDate", "2024-12-31"))
                 .andExpect(flash().attribute("error", "소집해제일은 소집일보다 늦어야 합니다."));
-        mockMvc.perform(post(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
+        mockMvc.perform(put(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
                         .param("serviceStartDate", "2025-01-05").param("serviceEndDate", "2026-11-05"))
                 .andExpect(flash().attribute("success", "복무 기간을 저장했습니다."));
         assertThat(rosterService.getEmployeeView(id).serviceEndDate()).isEqualTo(TODAY.plusDays(1));
         assertThat(sharingShopWorkers(TODAY.plusDays(1)))
                 .extracting(Worker::id).contains(id);
-        mockMvc.perform(post(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
+        mockMvc.perform(put(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
                         .param("serviceStartDate", "2025-06-01").param("serviceEndDate", "2026-12-31"))
                 .andExpect(flash().attribute("success", "복무 기간을 저장했습니다."));
         assertThat(rosterService.getEmployeeView(id).serviceEndDate()).isEqualTo(LocalDate.of(2026, 12, 31));
-        mockMvc.perform(post(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
+        mockMvc.perform(put(changePeriod).with(testUser("홍길동", "STAFF")).with(csrf())
                         .param("serviceStartDate", "2025-01-05"))
                 .andExpect(flash().attribute("error", "소집해제일은 오늘보다 이전으로 설정할 수 없습니다."));
         assertThat(rosterService.getEmployeeView(id).serviceEndDate()).isEqualTo(LocalDate.of(2026, 12, 31));
@@ -225,7 +226,7 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
                                 .param("name", "홍길동")
                                 .param("password", "staff-password")
                                 .param("workGroupCode", "GENERAL"))
-                .andExpect(redirectedUrl("/admin?section=employees"))
+                .andExpect(redirectedUrl("/admin/employees"))
                 .andExpect(flash().attribute("error", "이미 등록된 이름입니다."));
         assertThat(employeeRepository.count()).isEqualTo(1);
     }
@@ -263,8 +264,8 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
                                 .param("password", "Aa0!@#$%_-Aa0!@#$%_-"))
                 .andExpect(redirectedUrl("/sharing-shop"));
         mockMvc.perform(
-                        get("/admin")
-                                .param("section", "employees")
+                        get("/admin/employees")
+                                
                                 .with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(
@@ -291,24 +292,24 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
         mockMvc.perform(get(profile).with(testUser("김민수", "STAFF")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(passwordForm))));
-        mockMvc.perform(post(passwordForm).with(csrf()).with(testUser("김민수", "STAFF"))
+        mockMvc.perform(put(passwordForm).with(csrf()).with(testUser("김민수", "STAFF"))
                         .param("currentPassword", "Initial1")
                         .param("newPassword", "Changed2!")
                         .param("confirmation", "Changed2!"))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(post(passwordForm).with(csrf()).with(testUser("홍길동", "STAFF"))
+        mockMvc.perform(put(passwordForm).with(csrf()).with(testUser("홍길동", "STAFF"))
                         .param("currentPassword", "Wrong123")
                         .param("newPassword", "Changed2!")
                         .param("confirmation", "Changed2!"))
                 .andExpect(redirectedUrl(profile + "#change-password"))
                 .andExpect(flash().attributeExists("error"));
-        mockMvc.perform(post(passwordForm).with(csrf()).with(testUser("홍길동", "STAFF"))
+        mockMvc.perform(put(passwordForm).with(csrf()).with(testUser("홍길동", "STAFF"))
                         .param("currentPassword", "Initial1")
                         .param("newPassword", "Changed2!")
                         .param("confirmation", "Mismatch2!"))
                 .andExpect(redirectedUrl(profile + "#change-password"))
                 .andExpect(flash().attributeExists("error"));
-        mockMvc.perform(post(passwordForm).with(csrf()).with(testUser("홍길동", "STAFF"))
+        mockMvc.perform(put(passwordForm).with(csrf()).with(testUser("홍길동", "STAFF"))
                         .param("currentPassword", "Initial1")
                         .param("newPassword", "Changed2!")
                         .param("confirmation", "Changed2!"))
@@ -374,7 +375,7 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
         assertThat(rosterService.getEmployeeView(id).activityNames()).containsExactly(Activity.CAFETERIA_SUPPORT.getName());
 
         registerForActivity(Activity.SHARING_SHOP, "홍길동");
-        mockMvc.perform(get("/admin").param("section", "employees").with(testUser("admin", "ADMIN")))
+        mockMvc.perform(get("/admin/employees").with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/admin/employees/" + id + "\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("담당 업무 목록"))));
@@ -408,7 +409,7 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
         for (String name : List.of("김철수", "홍길동")) {
             mockMvc.perform(get("/admin/employees/" + id).with(testUser(name, "STAFF")))
                     .andExpect(status().isForbidden());
-            mockMvc.perform(post("/admin/employees/" + id + "/work-group").with(testUser(name, "STAFF"))
+            mockMvc.perform(put("/admin/employees/" + id + "/work-group").with(testUser(name, "STAFF"))
                             .with(csrf()).param("workGroupCode", "RESTAURANT"))
                     .andExpect(status().isForbidden());
         }
@@ -419,11 +420,11 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(model().attribute("management", true))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"workGroupCode\"")));
-        mockMvc.perform(post("/admin/employees/" + id + "/work-group").with(testUser("admin", "ADMIN"))
+        mockMvc.perform(put("/admin/employees/" + id + "/work-group").with(testUser("admin", "ADMIN"))
                         .with(csrf()).param("workGroupCode", "THIRD_FLOOR"))
                 .andExpect(redirectedUrl("/admin/employees/" + id));
         assertThat(rosterService.getEmployeeView(id).workGroupCode()).isEqualTo("THIRD_FLOOR");
-        mockMvc.perform(post("/admin/employees/" + id + "/work-group").with(testUser("admin", "ADMIN"))
+        mockMvc.perform(put("/admin/employees/" + id + "/work-group").with(testUser("admin", "ADMIN"))
                         .with(csrf()).param("workGroupCode", "INVALID"))
                 .andExpect(redirectedUrl("/admin/employees/" + id))
                 .andExpect(flash().attributeExists("error"));
@@ -445,7 +446,7 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
                         "photo", "photo.png", "image/png", bytes.toByteArray());
         mockMvc.perform(
                         org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                                .multipart("/employees/" + id + "/photo")
+                                .multipart(HttpMethod.PUT, "/employees/" + id + "/photo")
                                 .file(file)
                                 .with(testUser("홍길동", "STAFF"))
                                 .with(csrf()))
@@ -453,13 +454,13 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
         assertThat(employeePhotoRepository.existsById(id)).isFalse();
         mockMvc.perform(
                         org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                                .multipart("/employees/" + id + "/photo")
+                                .multipart(HttpMethod.PUT, "/employees/" + id + "/photo")
                                 .file(file)
                                 .with(testUser("강수진", "STAFF")))
                 .andExpect(status().isForbidden());
         mockMvc.perform(
                         org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                                .multipart("/employees/" + id + "/photo")
+                                .multipart(HttpMethod.PUT, "/employees/" + id + "/photo")
                                 .file(file)
                                 .with(testUser("강수진", "STAFF"))
                                 .with(csrf()))
@@ -479,21 +480,21 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
         mockMvc.perform(get("/employees/" + id + "/photo")).andExpect(status().is3xxRedirection());
         mockMvc.perform(
                         org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                                .multipart("/employees/" + id + "/photo")
+                                .multipart(HttpMethod.PUT, "/employees/" + id + "/photo")
                                 .file(file)
                                 .with(testUser("admin", "ADMIN"))
                                 .with(csrf()))
                 .andExpect(status().is3xxRedirection());
         mockMvc.perform(
                         org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                                .multipart("/admin/employees/" + id + "/photo")
+                                .multipart(HttpMethod.PUT, "/admin/employees/" + id + "/photo")
                                 .file(file)
                                 .with(testUser("강수진", "STAFF"))
                                 .with(csrf()))
                 .andExpect(status().isForbidden());
         mockMvc.perform(
                         org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                                .multipart("/admin/employees/" + id + "/photo")
+                                .multipart(HttpMethod.PUT, "/admin/employees/" + id + "/photo")
                                 .file(file)
                                 .with(testUser("admin", "ADMIN"))
                                 .with(csrf()))
@@ -508,6 +509,7 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
                         org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                                 .multipart("/employees/" + id + "/photo")
                                 .file(invalid)
+                                .param("_method", "put")
                                 .with(testUser("강수진", "STAFF"))
                                 .with(csrf()))
                 .andExpect(redirectedUrl("/employees/" + id))
@@ -517,7 +519,7 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
                         "photo", "large.png", "image/png", new byte[2 * 1024 * 1024 + 1]);
         mockMvc.perform(
                         org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                                .multipart("/employees/" + id + "/photo")
+                                .multipart(HttpMethod.PUT, "/employees/" + id + "/photo")
                                 .file(oversized)
                                 .with(testUser("강수진", "STAFF"))
                                 .with(csrf()))
@@ -548,7 +550,7 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
                 WAAlYAAAAwADLAADPg==
                 """);
         MockMultipartFile file = new MockMultipartFile("photo", "profile.heic", "application/octet-stream", original);
-        mockMvc.perform(multipart("/employees/" + id + "/photo").file(file).with(testUser("홍길동", "STAFF")).with(csrf()))
+        mockMvc.perform(multipart(HttpMethod.PUT, "/employees/" + id + "/photo").file(file).with(testUser("홍길동", "STAFF")).with(csrf()))
                 .andExpect(redirectedUrl("/employees/" + id))
                 .andExpect(flash().attribute("success", "프로필 사진을 저장했습니다."));
 
@@ -563,7 +565,7 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
         assertThat(thumbnail.getHeight()).isEqualTo(256);
 
         MockMultipartFile corrupt = new MockMultipartFile("photo", "broken.heic", "image/heic", Arrays.copyOf(original, 36));
-        mockMvc.perform(multipart("/employees/" + id + "/photo").file(corrupt).with(testUser("홍길동", "STAFF")).with(csrf()))
+        mockMvc.perform(multipart(HttpMethod.PUT, "/employees/" + id + "/photo").file(corrupt).with(testUser("홍길동", "STAFF")).with(csrf()))
                 .andExpect(flash().attributeExists("error"));
         assertThat(employeePhotoRepository.findById(id).orElseThrow().getImage()).isEqualTo(result);
     }
@@ -571,7 +573,7 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
     @Test
     @DisplayName("직군은 정해진 목록에서 하나만 선택하고 비밀번호 표시를 사용할 수 있다")
     void groupsAreSingleChoiceAndPasswordVisibilityIsAvailable() throws Exception {
-        mockMvc.perform(get("/admin").param("section", "employees").with(testUser("admin", "ADMIN")))
+        mockMvc.perform(get("/admin/employees").with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"RESTAURANT\">식당</option>")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"GENERAL\">운영지원</option>")))
@@ -582,7 +584,7 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
         mockMvc.perform(post("/admin/employees").with(testUser("admin", "ADMIN")).with(csrf())
                         .param("name", "홍길동").param("password", "Staff!2026")
                         .param("workGroupCode", "FACILITY_SUPPORT"))
-                .andExpect(redirectedUrl("/admin?section=employees"));
+                .andExpect(redirectedUrl("/admin/employees"));
         assertThat(rosterService.getEmployeeView(employeeId("홍길동")).workGroupName())
                 .isEqualTo("운영지원(기계실)");
         assertThatThrownBy(() -> rosterService.registerEmployee("김민수", "Staff!2026", "GENERAL,RESTAURANT"))

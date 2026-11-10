@@ -45,14 +45,14 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
                 .andReturn();
         Cookie rememberMe = login.getResponse().getCookie("remember-me");
 
-        mockMvc.perform(get("/my-profile").cookie(rememberMe))
+        mockMvc.perform(get("/employees/me").cookie(rememberMe))
                 .andExpect(redirectedUrl("/employees/" + employeeId("홍길동")));
         mockMvc.perform(post("/logout").cookie(rememberMe).with(csrf()))
                 .andExpect(redirectedUrl("/login?logout"))
                 .andExpect(cookie().maxAge("remember-me", 0));
 
         rosterService.changePassword(employeeId("홍길동"), "staff-password", "Changed2!", "Changed2!");
-        mockMvc.perform(get("/my-profile").cookie(rememberMe))
+        mockMvc.perform(get("/employees/me").cookie(rememberMe))
                 .andExpect(redirectedUrl("http://localhost/login"));
     }
 
@@ -63,26 +63,24 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
         register("김민수");
         mockMvc.perform(get("/")).andExpect(status().is3xxRedirection());
         mockMvc.perform(get("/login")).andExpect(status().isOk());
-        mockMvc.perform(get("/").with(testUser("홍길동", "STAFF")))
+        mockMvc.perform(get("/leave").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("내 휴가 일정")));
         mockMvc.perform(get("/admin").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(get("/admin").with(testUser("admin", "ADMIN")))
+        mockMvc.perform(get("/admin/leave").with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("휴가 일정")));
         mockMvc.perform(
-                        post("/leave-requests")
+                        put("/leave/" + TODAY.toString())
                                 .with(testUser("홍길동", "STAFF"))
-                                .param("date", TODAY.toString())
                                 .param("attendance", "VACATION")
                                 .param("timePreference", "ANY"))
                 .andExpect(status().isForbidden());
         mockMvc.perform(
-                        post("/leave-requests")
+                        put("/leave/" + TODAY.toString())
                                 .with(testUser("홍길동", "STAFF"))
                                 .with(csrf())
-                                .param("date", TODAY.toString())
                                 .param("attendance", "VACATION")
                                 .param("timePreference", "EVENING")
                                 .param("name", "김민수"))
@@ -144,14 +142,13 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
                                         org.hamcrest.Matchers.containsString(
                                                 "나눔가게 담당 직원으로 등록되어 있지 않습니다.")));
         mockMvc.perform(
-                        post("/leave-requests")
+                        put("/leave/" + TODAY.toString())
                                 .with(testUser("강수진", "STAFF"))
                                 .with(csrf())
-                                .param("date", TODAY.toString())
                                 .param("attendance", "AFTERNOON_HALF_DAY"))
                 .andExpect(status().is3xxRedirection());
         mockMvc.perform(
-                        post("/sharing-shop/time-preference")
+                        put("/sharing-shop/time-preference")
                                 .with(testUser("강수진", "STAFF"))
                                 .with(csrf())
                                 .param("activityCode", Activity.SHARING_SHOP.getCode())
@@ -199,14 +196,14 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
         register("홍길동");
         register("김민수");
         mockMvc.perform(
-                        post("/sharing-shop/time-preference")
+                        put("/sharing-shop/time-preference")
                                 .with(testUser("홍길동", "STAFF"))
                                 .param("activityCode", "PROGRAM")
                                 .param("date", TODAY.toString())
                                 .param("timePreference", "EVENING"))
                 .andExpect(status().isForbidden());
         mockMvc.perform(
-                        post("/sharing-shop/time-preference")
+                        put("/sharing-shop/time-preference")
                                 .with(testUser("홍길동", "STAFF"))
                                 .with(csrf())
                                 .param("activityCode", "PROGRAM")
@@ -218,7 +215,7 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
                 .isEqualTo(Preference.EVENING);
         assertThat(sharingShopTimePreferenceService.getTimePreference(employeeId("김민수")))
                 .isEqualTo(Preference.ANY);
-        mockMvc.perform(get("/").with(testUser("홍길동", "STAFF")))
+        mockMvc.perform(get("/leave").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
                 .andExpect(
                         content()
@@ -241,8 +238,8 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
                                                 org.hamcrest.Matchers.containsString(
                                                         "name=\"date\""))));
         mockMvc.perform(
-                        get("/admin")
-                                .param("section", "activities")
+                        get("/admin/activities")
+                                
                                 .param("activityCode", "PROGRAM")
                                 .with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())
@@ -265,7 +262,7 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
         for (org.springframework.test.web.servlet.request.RequestPostProcessor account :
                 List.of(testUser("홍길동", "STAFF"), testUser("admin", "ADMIN"))) {
             for (String path :
-                    List.of("/", "/my-leave", "/sharing-shop", "/employees", "/employees/" + id)) {
+                    List.of("/leave", "/sharing-shop", "/employees", "/employees/" + id)) {
                 String html =
                         mockMvc.perform(get(path).param("management", "true").with(account))
                                 .andExpect(status().isOk())
@@ -284,7 +281,7 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
         }
         for (String path :
                 List.of(
-                        "/admin",
+                        "/admin/leave",
                         "/admin/sharing-shop",
                         "/admin/employees/" + id,
                         "/admin/activities/SHARING_SHOP")) {
@@ -328,7 +325,7 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
                                 .param("name", "admin")
                                 .param("password", "test-admin-password-2026"))
                 .andExpect(redirectedUrl("/sharing-shop"));
-        mockMvc.perform(get("/admin").session(session)).andExpect(status().isOk());
+        mockMvc.perform(get("/admin/leave").session(session)).andExpect(status().isOk());
         mockMvc.perform(get("/sharing-shop").session(session))
                 .andExpect(status().isOk())
                 .andExpect(
@@ -387,16 +384,15 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
         assertThat(authenticatedUser.getPassword()).isNull();
 
         mockMvc.perform(
-                        post("/leave-requests")
+                        put("/leave/" + TODAY.toString())
                                 .session(session)
                                 .with(csrf())
-                                .param("date", TODAY.toString())
                                 .param("attendance", "AFTERNOON_HALF_DAY")
                                 .param("employeeId", String.valueOf(otherId))
                                 .param("name", "김민수"))
                 .andExpect(status().is3xxRedirection());
         mockMvc.perform(
-                        post("/sharing-shop/time-preference")
+                        put("/sharing-shop/time-preference")
                                 .session(session)
                                 .with(csrf())
                                 .param("date", TODAY.toString())
@@ -406,7 +402,7 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
                                 .param("name", "김민수"))
                 .andExpect(status().is3xxRedirection());
         mockMvc.perform(
-                        get("/my-profile")
+                        get("/employees/me")
                                 .session(session)
                                 .param("employeeId", String.valueOf(otherId)))
                 .andExpect(redirectedUrl("/employees/" + selfId));

@@ -38,5 +38,6 @@
 - Flyway `V1__initial_schema.sql`(MySQL `db/mysql`, 테스트 H2 `db/migration`)이 첫 운영 배포 스키마다. 운영 DB에 적용된 뒤의 스키마 변경은 두 위치에 같은 번호의 새 버전을 추가하고, 필요한 기존 데이터는 그 버전에서 이관한다. 적용된 버전 파일은 수정하지 않는다. 다른 프로젝트 DB는 대상이 아니다.
 - 패키지 사이 순환 의존을 만들지 않는다. 의존 방향은 `config` → `calendar` → `employee` → `attendance` → `activity` → `activity.cafeteria` → `activity.sharingshop` → `web` 순서로 아래 영역만 참조한다. 아래 영역이 위 영역의 정보가 필요하면 아래 영역에 인터페이스를 두고 위 영역이 구현한다. `PackageDependencyTest`가 순환을 검사한다.
 - 사용자에게 보여줄 업무 규칙 위반은 `common.BusinessException`으로 던진다. 예외에는 `common.ErrorCode` 분류(입력 오류·없음·중복·마감·불허·충돌)를 함께 지정하고, 분류별로 처리 방식이 달라지면 하위 예외로 나눈다. 오류 화면 복귀 경로는 각 컨트롤러의 `@ExceptionHandler`에서 정한다. DB 제약 위반처럼 업무 규칙으로 판별하지 않은 예외는 원인을 짐작해 안내하지 않고 공통 오류 화면(`error.html`, 500)으로 처리한다. 날짜·숫자 형식이 틀린 요청은 업무 오류가 아니므로 `@RequestParam` 타입 바인딩이나 `ResponseStatusException(BAD_REQUEST)`로 400을 응답한다. 코드 오류나 불변식 위반에는 `IllegalArgumentException`·`IllegalStateException`을 사용한다.
+- URL은 화면 이름·동작 이름 대신 자원 이름으로 정하고 변경은 HTTP 메서드로 구분한다. 저장·지정은 `PUT`, 삭제·해제·거절은 `DELETE`, 새 자원 생성이나 상태 전이(`retirement`, `acceptance`)는 `POST`를 쓴다. HTML 폼은 POST로 보내고 숨은 `_method` 값으로 PUT·DELETE를 지정한다. 경로에 날짜·ID처럼 대상을 식별하는 값을 넣고, URL에 `add`·`delete`·`remove`·`my-` 같은 동작어를 쓰지 않는다.
 - 주석은 코드만으로 의도가 드러나지 않는 곳에만 짧게 단다. Javadoc `{@link}`·`{@code}` 같은 태그 주석을 달지 않는다.
 - 업무 규칙은 docs/business-rules.md, 개발 DB 원칙은 docs/persistence.md를 따른다.

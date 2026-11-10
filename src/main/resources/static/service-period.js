@@ -20,14 +20,10 @@ function calculateServiceEndDate(serviceStartDate) {
     return formatDate(anniversary);
 }
 
-document.querySelectorAll("[data-service-start]").forEach((startInput) => {
-    const endInput = startInput.form.querySelector("[data-service-end]");
-    if (!endInput) {
-        return;
+document.addEventListener("change", (event) => {
+    const startInput = event.target.closest("[data-service-start]");
+    const endInput = startInput?.form.querySelector("[data-service-end]");
+    if (endInput && startInput.value) {
+        endInput.value = calculateServiceEndDate(startInput.value);
     }
-    startInput.addEventListener("change", () => {
-        if (startInput.value) {
-            endInput.value = calculateServiceEndDate(startInput.value);
-        }
-    });
 });

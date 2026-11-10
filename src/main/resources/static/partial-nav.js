@@ -1,0 +1,121 @@
+// Links and forms with data-swap replace only the listed regions instead of reloading the page,
+// so the scroll position stays where the user tapped.
+(() => {
+    function replaceRegions(page, selectors) {
+        for (const selector of selectors.split(",").map(value => value.trim())) {
+            const currents = [...document.querySelectorAll(selector)];
+            const nexts = [...page.querySelectorAll(selector)];
+            if (!nexts.length) {
+                currents.forEach(element => element.remove());
+                continue;
+            }
+            if (currents.length !== nexts.length) {
+                return false;
+            }
+            currents.forEach((element, index) => element.replaceWith(nexts[index]));
+        }
+        return true;
+    }
+
+    async function swap(url, selectors, init = {}) {
+        const response = await fetch(url, {
+            ...init,
+            credentials: "same-origin",
+            headers: { Accept: "text/html" },
+        });
+        if (new URL(response.url).pathname === "/login") {
+            location.assign(response.url);
+            return null;
+        }
+        const page = new DOMParser().parseFromString(await response.text(), "text/html");
+        if (!response.ok) {
+            document.documentElement.replaceWith(page.documentElement);
+            return null;
+        }
+        let replaced = true;
+        const update = () => {
+            replaced = replaceRegions(page, selectors);
+            document.title = page.title;
+        };
+        if (document.startViewTransition) {
+            await document.startViewTransition(update).updateCallbackDone;
+        } else {
+            update();
+        }
+        if (!replaced) {
+            location.assign(response.url);
+            return null;
+        }
+        document.dispatchEvent(new CustomEvent("partial:swapped"));
+        fadeSuccessNotices();
+        return response.url;
+    }
+
+    function fadeSuccessNotices() {
+        document.querySelectorAll(".flash-messages .notice:not(.danger)").forEach(notice => {
+            setTimeout(() => notice.classList.add("is-fading"), 3500);
+            setTimeout(() => notice.remove(), 3900);
+        });
+    }
+
+    function scrollToHash(url) {
+        const hash = new URL(url).hash;
+        if (hash) {
+            document.querySelector(hash)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+    }
+
+    function createFormBody(form, submitter) {
+        const data = new FormData(form, submitter);
+        return form.enctype === "multipart/form-data" ? data : new URLSearchParams(data);
+    }
+
+    document.addEventListener("click", async event => {
+        const link = event.target.closest("a[data-swap]");
+        if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+            return;
+        }
+        event.preventDefault();
+        const selectors = link.dataset.swap;
+        try {
+            if (!await swap(link.href, selectors)) {
+                return;
+            }
+            history.replaceState({ swap: selectors }, "");
+            history.pushState({ swap: selectors }, "", link.href);
+            scrollToHash(link.href);
+        } catch (error) {
+            location.assign(link.href);
+        }
+    });
+
+    document.addEventListener("submit", async event => {
+        const form = event.target.closest("form[data-swap]");
+        if (!form || form.method.toLowerCase() !== "post") {
+            return;
+        }
+        event.preventDefault();
+        const selectors = form.dataset.swap;
+        const body = createFormBody(form, event.submitter);
+        const buttons = [...form.querySelectorAll("button[type=submit]")];
+        buttons.forEach(button => button.disabled = true);
+        try {
+            const resultUrl = await swap(form.action, selectors, { method: "POST", body });
+            if (resultUrl) {
+                history.replaceState({ swap: selectors }, "", resultUrl);
+            }
+        } catch (error) {
+            HTMLFormElement.prototype.submit.call(form);
+        } finally {
+            buttons.forEach(button => button.disabled = false);
+        }
+    });
+
+    fadeSuccessNotices();
+
+    window.addEventListener("popstate", event => {
+        if (event.state?.swap) {
+            swap(location.href, event.state.swap).catch(() => location.reload());
+        }
+    });
+})();

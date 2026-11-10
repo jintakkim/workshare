@@ -32,7 +32,7 @@ public class SharingShopController {
         return renderSharingShopPage(authenticatedUser, model, true);
     }
 
-    @PostMapping("/sharing-shop/time-preference")
+    @PutMapping("/sharing-shop/time-preference")
     public String saveTimePreference(
             @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
             @RequestParam Preference timePreference,

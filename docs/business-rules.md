@@ -252,18 +252,37 @@
 | --- | --- |
 | 로그인 | `/login` |
 | 일반 나눔가게 날짜 카드 | `/sharing-shop` |
-| 본인 휴가 달력 | `/my-leave` |
-| 전체 휴가 일정 조회 (직원·관리자) | `/leave-calendar` |
-| 본인 지원 일정·교환 요청함 | `/cafeteria-support` |
+| 본인 휴가 달력 (`/`는 이 화면으로 이동) | `/leave` |
+| 전체 휴가 일정 조회 (직원·관리자) | `/leave/team` |
+| 본인 식당지원 일정·교환 요청함 | `/cafeteria-support` |
 | 월별 식당지원표 조회 (직원·관리자) | `/cafeteria-support/schedule` |
-| 직원 프로필 | `/employees`, `/employees/{id}` |
-| 관리자 진입 | `/admin` |
-| 관리자 직원 관리 | `/admin?section=employees`, `/admin/employees/{id}` |
-| 관리자 대리 휴가 입력 | `/admin?section=leave` |
-| 관리자 휴일 관리 | `/admin?section=holidays` |
-| 관리자 활동 앨범 | `/admin?section=activities` |
+| 직원 프로필 | `/employees`, `/employees/{id}`, `/employees/me` |
+| 관리자 진입 (`/admin/leave`로 이동) | `/admin` |
+| 관리자 직원 관리 | `/admin/employees`, `/admin/employees/{id}` |
+| 관리자 대리 휴가 입력 | `/admin/leave` |
+| 관리자 휴일 관리 | `/admin/holidays` |
+| 관리자 활동 앨범 | `/admin/activities`, `/admin/activities/{code}` |
 | 관리자 나눔가게 날짜 카드 | `/admin/sharing-shop` |
 | 관리자 월별 지원표 | `/admin/cafeteria-support` |
+
+화면 주소는 자원 이름으로 정하고, 변경 요청은 HTTP 메서드로 구분한다. 폼은 POST로 보내되 숨은 `_method` 값으로 PUT·DELETE를 지정한다.
+
+| 변경 | 요청 |
+| --- | --- |
+| 본인 근무 상태 저장 | `PUT /leave/{date}` |
+| 관리자 대리 근무 상태 저장 | `PUT /admin/employees/{employeeId}/leave/{date}` |
+| 휴일 지정·사유 저장 / 해제 | `PUT` / `DELETE /admin/holidays/{date}` |
+| 활동 가입 / 탈퇴 | `PUT` / `DELETE /admin/activities/{code}/members/{employeeId}` |
+| 직원 등록 | `POST /admin/employees` |
+| 인원 제외 | `POST /admin/employees/{id}/retirement` |
+| 직군 변경 | `PUT /admin/employees/{id}/work-group` |
+| 사진 저장 | `PUT /employees/{id}/photo`, `PUT /admin/employees/{id}/photo` |
+| 비밀번호 / 복무 기간 변경 | `PUT /employees/{id}/password`, `PUT /employees/{id}/service-period` |
+| 나눔가게 시간대 선호도 저장 | `PUT /sharing-shop/time-preference` |
+| 월별 식당지원표 저장 | `PUT /admin/cafeteria-support/{yyyy-MM}` |
+| 식당지원 필요 인원 변경 | `PUT /admin/cafeteria-support/requirement` |
+| 교환 요청 / 수락 | `POST /cafeteria-support/exchange-requests`, `POST /cafeteria-support/exchange-requests/{id}/acceptance` |
+| 교환 요청 거절·취소 | `DELETE /cafeteria-support/exchange-requests/{id}` |
 
 ## 12. 구현·확장 원칙
 

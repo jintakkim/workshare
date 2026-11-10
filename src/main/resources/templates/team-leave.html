@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>전체 휴가 일정 · 장복인간</title>
   <link th:replace="~{fragments/site-layout :: icon}"><link rel="stylesheet" th:href="@{/style.css}">
-  <script defer th:src="@{/admin.js}"></script>
+  <script defer th:src="@{/admin.js}"></script><script defer th:src="@{/partial-nav.js}"></script>
 </head>
 <body class="app-page admin-page">
 <header th:replace="~{fragments/staff-navigation :: header}"></header>
@@ -22,16 +22,16 @@
       <div class="section-heading">
         <h2 th:text="${view.month.year + '년 ' + view.month.monthValue + '월'}"></h2>
         <nav class="month-nav" aria-label="월 이동">
-          <a class="icon-button" th:href="@{/leave-calendar(date=${view.previousMonth})}" aria-label="이전 달">‹</a>
-          <a class="button subtle" th:href="@{/leave-calendar}">오늘</a>
-          <a class="icon-button" th:href="@{/leave-calendar(date=${view.nextMonth})}" aria-label="다음 달">›</a>
+          <a class="icon-button" data-swap=".workspace" th:href="@{/leave/team(date=${view.previousMonth})}" aria-label="이전 달">‹</a>
+          <a class="button subtle" data-swap=".workspace" th:href="@{/leave/team}">오늘</a>
+          <a class="icon-button" data-swap=".workspace" th:href="@{/leave/team(date=${view.nextMonth})}" aria-label="다음 달">›</a>
         </nav>
       </div>
       <div class="calendar-week" aria-hidden="true"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
       <div class="calendar-grid">
-        <a th:each="day : ${view.days}" class="calendar-day"
+        <a th:each="day : ${view.days}" class="calendar-day" data-swap=".workspace"
            th:classappend="${(!day.inMonth ? ' outside' : '') + (day.selected ? ' selected' : '') + (day.off ? ' off' : '') + (day.today ? ' today' : '')}"
-           th:href="@{/leave-calendar(date=${day.date})} + '#team-leave-details'"
+           th:href="@{/leave/team(date=${day.date})} + '#team-leave-details'"
            th:attr="aria-label=${#temporals.format(day.date, 'yyyy년 M월 d일') + ' · 휴가 ' + day.leaveCount + '명'},aria-current=${day.selected ? 'date' : null}">
           <span class="date-number" th:text="${day.date.dayOfMonth}"></span>
           <span class="calendar-badge leave" th:if="${day.leaveCount > 0}" th:text="${day.leaveCount + '명'}"></span>

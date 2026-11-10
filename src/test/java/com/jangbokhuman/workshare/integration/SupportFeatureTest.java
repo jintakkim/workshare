@@ -150,7 +150,7 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         assertThat(cafeteriaSupportExchangeService.getExchangePage(employeeId("김민수"), null).incoming())
                 .hasSize(1);
         mockMvc.perform(
-                        post("/cafeteria-support/exchange-requests/" + request + "/accept")
+                        post("/cafeteria-support/exchange-requests/" + request + "/acceptance")
                                 .with(testUser("이서연", "STAFF"))
                                 .with(csrf()))
                 .andExpect(status().isForbidden());
@@ -344,8 +344,7 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                 .andReturn().getResponse().getContentAsString();
         assertThat(adminRoster).contains("홍길동", "김민수").doesNotContain("강수진");
 
-        mockMvc.perform(post("/admin/cafeteria-support/month").with(testUser("admin", "ADMIN")).with(csrf())
-                        .param("month", YearMonth.from(TODAY).toString())
+        mockMvc.perform(put("/admin/cafeteria-support/" + YearMonth.from(TODAY).toString()).with(testUser("admin", "ADMIN")).with(csrf())
                         .param("editedDates", TODAY.toString(), tomorrow.toString())
                         .param("day_" + TODAY, employeeId("홍길동").toString())
                         .param("day_" + tomorrow, employeeId("김민수").toString()))
@@ -380,8 +379,8 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         String november = mockMvc.perform(get("/cafeteria-support/schedule").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(november).contains("2026년 11월", "홍길동", "김민수", "href=\"/cafeteria-support\"", "내 일정·교환 요청")
-                .doesNotContain("이서연", "/admin/cafeteria-support/month");
+        assertThat(november).contains("2026년 11월", "홍길동", "김민수", "href=\"/cafeteria-support\"", "내 식당지원 일정·교환")
+                .doesNotContain("이서연", "action=\"/admin/cafeteria-support/");
 
         String december = mockMvc.perform(get("/cafeteria-support/schedule").param("month", "2026-12")
                         .with(testUser("홍길동", "STAFF")))
@@ -399,7 +398,7 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(adminNovember).contains("2026년 11월", "홍길동", "김민수")
-                .doesNotContain("href=\"/cafeteria-support\"", "내 일정·교환 요청", "/admin/cafeteria-support/month");
+                .doesNotContain("href=\"/cafeteria-support\"", "내 식당지원 일정·교환", "action=\"/admin/cafeteria-support/");
         mockMvc.perform(get("/cafeteria-support/schedule")).andExpect(status().is3xxRedirection());
     }
 
@@ -420,10 +419,9 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                 .hasMessageContaining("휴가");
         assertThat(cafeteriaSupportAssignmentRepository.count()).isZero();
         mockMvc.perform(
-                        post("/admin/cafeteria-support/month")
+                        put("/admin/cafeteria-support/" + "2026-11")
                                 .with(testUser("admin", "ADMIN"))
                                 .with(csrf())
-                                .param("month", "2026-11")
                                 .param(
                                         "editedDates",
                                         TODAY.toString(),
@@ -436,12 +434,10 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         mockMvc.perform(get("/admin/cafeteria-support").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/admin/cafeteria-support").with(testUser("admin", "ADMIN"))).andExpect(status().isOk());
-        mockMvc.perform(post("/admin/cafeteria-support/month").with(testUser("admin", "ADMIN")).with(csrf())
-                        .param("month", "2026-11")
+        mockMvc.perform(put("/admin/cafeteria-support/" + "2026-11").with(testUser("admin", "ADMIN")).with(csrf())
                         .param("editedDates", "2026-13-40"))
                 .andExpect(status().isBadRequest());
-        mockMvc.perform(post("/admin/cafeteria-support/month").with(testUser("admin", "ADMIN")).with(csrf())
-                        .param("month", "2026-11")
+        mockMvc.perform(put("/admin/cafeteria-support/" + "2026-11").with(testUser("admin", "ADMIN")).with(csrf())
                         .param("editedDates", TODAY.toString())
                         .param("day_" + TODAY, "not-a-number"))
                 .andExpect(status().isBadRequest());

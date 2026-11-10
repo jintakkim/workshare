@@ -2,6 +2,7 @@ package com.jangbokhuman.workshare.attendance;
 
 import com.jangbokhuman.workshare.calendar.WorkTime;
 import com.jangbokhuman.workshare.common.BusinessException;
+import com.jangbokhuman.workshare.common.RequestPaths;
 import com.jangbokhuman.workshare.config.AuthenticatedUser;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,7 +15,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -23,13 +25,11 @@ import java.time.LocalDate;
 @Controller
 @RequiredArgsConstructor
 public class AttendanceController {
-    private static final String DATE_PATTERN = "\\d{4}-\\d{2}-\\d{2}";
-
     private final LeaveRequestService leaveRequestService;
     private final TeamLeaveCalendarService teamLeaveCalendarService;
     private final WorkTime workTime;
 
-    @GetMapping("/leave-calendar")
+    @GetMapping("/leave/team")
     public String showTeamLeaveCalendar(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @AuthenticationPrincipal AuthenticatedUser authentication,
@@ -41,17 +41,17 @@ public class AttendanceController {
         return "team-leave";
     }
 
-    @PostMapping("/leave-requests")
+    @PutMapping("/leave/{date}")
     public String saveLeaveRequest(
             @AuthenticationPrincipal AuthenticatedUser principal,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam Attendance attendance,
             RedirectAttributes flash
     ) {
         leaveRequestService.save(principal.getEmployeeId(), date, attendance);
         flash.addFlashAttribute("success", "근무 상태를 저장했습니다. 모든 활동에 공통으로 적용합니다.");
         flash.addAttribute("date", date.toString());
-        return "redirect:/my-leave#day-details";
+        return "redirect:/leave#day-details";
     }
 
     @ExceptionHandler(BusinessException.class)
@@ -61,10 +61,7 @@ public class AttendanceController {
 
     private String redirectToLeaveCalendar(String message, HttpServletRequest request, RedirectAttributes flash) {
         flash.addFlashAttribute("error", message);
-        String date = request.getParameter("date");
-        if (date != null && date.matches(DATE_PATTERN)) {
-            flash.addAttribute("date", date);
-        }
-        return "redirect:/my-leave#day-details";
+        RequestPaths.findPathVariable(request, "date").ifPresent(date -> flash.addAttribute("date", date));
+        return "redirect:/leave#day-details";
     }
 }
