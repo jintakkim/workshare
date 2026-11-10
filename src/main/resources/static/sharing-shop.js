@@ -10,7 +10,6 @@
     );
     const live = document.querySelector("[data-day-live]");
     let active = -1,
-        current = null,
         serverOffset = 0,
         refreshTimer,
         scrollTimer,
@@ -64,8 +63,8 @@
         section.append(heading, createMemberList(people));
         return section;
     }
-    function render(day) {
-        const content = cards[active].querySelector("[data-day-content]");
+    function render(day, index = active) {
+        const content = cards[index].querySelector("[data-day-content]");
         content.replaceChildren();
         if (day.phase === "OFF") {
             const off = createElement("div", "day-off");
@@ -150,13 +149,17 @@
         tick();
     }
     function tick() {
-        const counter =
-            active >= 0 && cards[active].querySelector(".day-countdown");
-        if (!counter || !current) return;
+        for (const card of cards) {
+            const counter = card.querySelector(".day-countdown");
+            const day = cache.get(card.dataset.date);
+            if (counter && day) updateCountdown(counter, day);
+        }
+    }
+    function updateCountdown(counter, day) {
         let seconds = Math.max(
             0,
             Math.ceil(
-                (Date.parse(current.refreshAt) - (Date.now() + serverOffset)) /
+                (Date.parse(day.refreshAt) - (Date.now() + serverOffset)) /
                     1000,
             ),
         );
@@ -175,6 +178,36 @@
         if (!document.hidden)
             refreshTimer = setTimeout(loadActive, Math.max(0, delay));
     }
+    async function fetchDay(date, signal) {
+        const response = await fetch(
+            deck.dataset.apiBase + encodeURIComponent(date),
+            {
+                signal,
+                cache: "no-store",
+                credentials: "same-origin",
+                headers: { Accept: "application/json" },
+            },
+        );
+        if (!response.ok)
+            throw new Error(
+                response.status === 401
+                    ? "로그인 후 다시 확인해주세요."
+                    : "결과를 불러오지 못했어요.",
+            );
+        return response.json();
+    }
+    function prefetchNeighbors(index) {
+        for (const neighbor of [index - 1, index + 1]) {
+            const card = cards[neighbor];
+            if (!card || cache.has(card.dataset.date)) continue;
+            fetchDay(card.dataset.date)
+                .then((day) => {
+                    cache.set(card.dataset.date, day);
+                    if (neighbor !== active) render(day, neighbor);
+                })
+                .catch(() => {});
+        }
+    }
     async function loadActive() {
         if (active < 0 || document.hidden) return;
         clearTimeout(refreshTimer);
@@ -184,30 +217,15 @@
             date = cards[index].dataset.date,
             requestStarted = Date.now();
         try {
-            const response = await fetch(
-                deck.dataset.apiBase + encodeURIComponent(date),
-                {
-                    signal: controller.signal,
-                    cache: "no-store",
-                    credentials: "same-origin",
-                    headers: { Accept: "application/json" },
-                },
-            );
-            if (!response.ok)
-                throw new Error(
-                    response.status === 401
-                        ? "로그인 후 다시 확인해주세요."
-                        : "결과를 불러오지 못했어요.",
-                );
-            const day = await response.json();
+            const day = await fetchDay(date, controller.signal);
             if (active !== index) return;
             serverOffset =
                 Date.parse(day.serverNow) +
                 (Date.now() - requestStarted) / 2 -
                 Date.now();
-            current = day;
             cache.set(date, day);
             render(day);
+            prefetchNeighbors(index);
             if (day.phase === "WAITING")
                 schedule(
                     Math.min(
@@ -237,7 +255,6 @@
     function activate(index) {
         if (index === active) return;
         active = index;
-        current = null;
         retries = 0;
         controller?.abort();
         clearTimeout(refreshTimer);
@@ -252,10 +269,10 @@
         document.querySelector("[data-day-next]").disabled =
             index === cards.length - 1;
         const cached = cache.get(cards[index].dataset.date);
-        if (cached && ["READY", "OFF", "MISSING"].includes(cached.phase)) {
-            current = cached;
-            render(cached);
-        } else loadActive();
+        if (cached) render(cached);
+        if (cached && ["READY", "OFF", "MISSING"].includes(cached.phase))
+            prefetchNeighbors(index);
+        else loadActive();
     }
     function center(index, behavior = "smooth") {
         index = Math.max(0, Math.min(cards.length - 1, index));
