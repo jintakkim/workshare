@@ -16,6 +16,8 @@ import java.time.LocalDate;
 @Getter
 public class Employee {
     private static final int SOCIAL_SERVICE_MONTHS = 21;
+    private static final int DEFAULT_DAILY_TRANSPORT_FEE = 3000;
+    private static final int MAX_DAILY_TRANSPORT_FEE = 100_000;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,6 +42,9 @@ public class Employee {
     @Column(nullable = false, length = 40)
     private WorkGroupType workGroup;
 
+    @Column(nullable = false)
+    private int dailyTransportFee = DEFAULT_DAILY_TRANSPORT_FEE;
+
     public Employee(
             String name,
             String passwordHash,
@@ -55,6 +60,13 @@ public class Employee {
 
     public void changeWorkGroup(WorkGroupType workGroup) {
         this.workGroup = workGroup;
+    }
+
+    public void changeDailyTransportFee(Integer dailyTransportFee) {
+        if (dailyTransportFee == null || dailyTransportFee < 0 || dailyTransportFee > MAX_DAILY_TRANSPORT_FEE) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "하루 교통비는 0원부터 100,000원 사이로 입력해주세요.");
+        }
+        this.dailyTransportFee = dailyTransportFee;
     }
 
     public void changePasswordHash(String passwordHash) {

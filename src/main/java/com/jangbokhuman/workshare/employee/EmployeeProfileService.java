@@ -33,6 +33,14 @@ public class EmployeeProfileService {
         applicationEventPublisher.publishEvent(new EmployeeServicePeriodChanged(employeeId));
     }
 
+    @Transactional
+    public void changeDailyTransportFee(Long employeeId, Integer dailyTransportFee) {
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "직원이 없습니다."));
+        employee.changeDailyTransportFee(dailyTransportFee);
+        employeeRepository.save(employee);
+    }
+
     public void savePhoto(Long employeeId, MultipartFile file) {
         validateEmployeeExists(employeeId);
         validatePhotoSize(file);

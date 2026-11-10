@@ -5,6 +5,7 @@ import com.jangbokhuman.workshare.common.BusinessException;
 import com.jangbokhuman.workshare.config.AuthenticatedUser;
 import com.jangbokhuman.workshare.attendance.Attendance;
 import com.jangbokhuman.workshare.attendance.LeaveCalendarService;
+import com.jangbokhuman.workshare.attendance.LeaveHistoryService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,6 +24,7 @@ import java.time.LocalDate;
 @RequiredArgsConstructor
 public class LeaveDashboardController {
     private final LeaveCalendarService leaveCalendarService;
+    private final LeaveHistoryService leaveHistoryService;
     private final WorkTime workTime;
 
     @GetMapping("/")
@@ -41,7 +43,10 @@ public class LeaveDashboardController {
                 leaveCalendarService.getCalendar(date == null ? workTime.getToday() : date, authentication.getEmployeeId())
         );
         model.addAttribute("admin", authentication.isAdmin());
-        model.addAttribute("attendances", Attendance.values());
+        model.addAttribute("attendances", Attendance.getEmployeeChoices());
+        if (authentication.getEmployeeId() != null) {
+            model.addAttribute("leaveHistory", leaveHistoryService.getHistory(authentication.getEmployeeId()));
+        }
         model.addAttribute("section", "leave");
         return "index";
     }

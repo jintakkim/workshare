@@ -1,22 +1,37 @@
-<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#495d3f"><title>프로필 · 장복인간</title><link th:replace="~{fragments/site-layout :: icon}"><link rel="stylesheet" th:href="@{/style.css}"><script defer th:src="@{/admin.js}"></script><script defer th:src="@{/partial-nav.js}"></script><script defer th:src="@{/service-period.js}"></script></head><body class="app-page admin-page"><th:block th:if="${management}"><header th:replace="~{admin :: adminHeader}"></header><dialog th:replace="~{admin :: adminMenu}"></dialog></th:block>
+<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#495d3f"><title>프로필 · 장복인간</title><link th:replace="~{fragments/site-layout :: icon}"><link rel="stylesheet" th:href="@{/style.css}"><script defer th:src="@{/admin.js}"></script><script defer th:src="@{/partial-nav.js}"></script><script defer th:src="@{/service-period.js}"></script><script defer th:src="@{/service-progress.js}"></script></head><body class="app-page admin-page"><th:block th:if="${management}"><header th:replace="~{admin :: adminHeader}"></header><dialog th:replace="~{admin :: adminMenu}"></dialog></th:block>
 <th:block th:if="${!management}"><header th:replace="~{fragments/staff-navigation :: header}"></header><dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog></th:block><main th:replace="~{fragments/site-layout :: page('admin-shell', ~{::pageContent})}"><th:block th:fragment="pageContent">
   <a class="profile-back" th:href="${management} ? @{/admin/employees} : @{/employees}">← 직원 목록</a>
   <div th:if="${success != null and servicePeriodFeedback != true}" class="notice" role="status" th:text="${success}"></div>
   <div th:if="${warning}" class="notice danger" role="status" th:text="${warning}"></div>
   <div th:if="${error != null and servicePeriodFeedback != true}" class="notice danger" role="alert" th:text="${error}"></div>
   <div class="profile-layout">
-    <section class="card profile-summary"><span class="profile-avatar profile-avatar-large"><span th:text="${#strings.substring(employee.name,0,1)}"></span><img th:if="${employee.photoVersion != null}" th:src="@{/employees/{id}/photo(id=${employee.id},v=${employee.photoVersion})}" alt="프로필 사진" decoding="async"></span><p class="eyebrow">함께 일하는 사람</p><h1 th:text="${employee.name}"></h1><p class="employee-group" th:text="${employee.workGroupName}"></p><p class="profile-meta" th:text="${'함께한 시작 · ' + employee.activeFrom}"></p><p class="profile-meta" th:if="${employee.excludedByAdmin}" th:text="${'업무 제외일 · ' + employee.inactiveFrom}"></p>
+    <section class="card profile-summary"><span class="profile-avatar profile-avatar-large"><span th:text="${#strings.substring(employee.name,0,1)}"></span><img th:if="${employee.photoVersion != null}" th:src="@{/employees/{id}/photo(id=${employee.id},v=${employee.photoVersion})}" alt="프로필 사진" decoding="async"></span><p class="eyebrow">함께 일하는 사람</p><h1 th:text="${employee.name}"></h1><p class="employee-group" th:text="${employee.workGroupName}"></p><p class="profile-rank"><svg th:replace="~{fragments/rank-insignia :: insignia(${employee.serviceStatus.rank})}"></svg><span th:text="${employee.serviceStatus.rankLabel}"></span></p><p class="profile-meta" th:text="${'함께한 시작 · ' + #temporals.format(employee.activeFrom, 'yyyy-MM-dd')}"></p><p class="profile-meta" th:if="${employee.excludedByAdmin}" th:text="${'업무 제외일 · ' + #temporals.format(employee.inactiveFrom, 'yyyy-MM-dd')}"></p>
       <form th:if="${canEditPhoto}" th:action="${management} ? @{/admin/employees/{id}/photo(id=${employee.id})} : @{/employees/{id}/photo(id=${employee.id})}" method="post" enctype="multipart/form-data" class="stack photo-form"><input type="hidden" name="_method" value="put"><label>프로필 사진<input type="file" name="photo" accept="image/jpeg,image/png,image/heic,image/heif,.heic,.heif" required><small class="muted">JPG·PNG·HEIC(HEIF), 2MB 이하</small></label><button class="button" type="submit">사진 저장</button></form>
       <a th:if="${management}" class="button profile-leave-link" th:href="@{/admin/leave(employeeId=${employee.id})}">이 직원의 휴가 일정 →</a>
     </section>
     <div class="profile-content">
+      <section class="card service-progress" data-service-progress
+               th:attr="data-start=${employee.serviceStatus.startEpochMilli},data-end=${employee.serviceStatus.endEpochMilli}">
+        <div class="section-heading">
+          <h2>복무 현황</h2>
+          <span class="badge working service-dday" th:text="${employee.serviceStatus.dayCountLabel}">D-100</span>
+        </div>
+        <p class="service-progress-value"><strong data-service-percent th:text="${#numbers.formatDecimal(employee.serviceStatus.progressPercent, 1, 7)}">0.0000000</strong>%</p>
+        <div class="service-progress-bar" aria-hidden="true">
+          <span data-service-fill th:style="${'width:' + employee.serviceStatus.progressPercent + '%'}"></span>
+        </div>
+        <p class="service-progress-dates">
+          <span th:text="${'소집 ' + #temporals.format(employee.serviceStatus.serviceStartDate, 'yyyy.M.d')}"></span>
+          <span th:text="${'소집해제 ' + #temporals.format(employee.serviceStatus.serviceEndDate, 'yyyy.M.d')}"></span>
+        </p>
+      </section>
       <section th:if="${canChangeServicePeriod or management or servicePeriodFeedback == true}" class="card" id="service-period">
         <h2>복무 기간</h2>
         <div th:if="${servicePeriodFeedback == true and success != null}" class="notice" role="status" th:text="${success}"></div>
         <div th:if="${servicePeriodFeedback == true and error != null}" class="notice danger" role="alert" th:text="${error}"></div>
-        <p th:if="${management}" th:text="${'소집일 · ' + employee.activeFrom}"></p>
+        <p th:if="${management}" th:text="${'소집일 · ' + #temporals.format(employee.activeFrom, 'yyyy-MM-dd')}"></p>
         <p th:unless="${employee.excludedByAdmin}"><strong>소집해제 예정일</strong> <time th:datetime="${employee.serviceEndDate()}" th:text="${employee.serviceEndDate()}"></time></p>
-        <form th:if="${canChangeServicePeriod}" data-swap="#service-period" th:action="@{/employees/{id}/service-period(id=${employee.id})}" method="post" class="stack"><input type="hidden" name="_method" value="put">
+        <form th:if="${canChangeServicePeriod}" data-swap="#service-period, [data-service-progress], .profile-rank" th:action="@{/employees/{id}/service-period(id=${employee.id})}" method="post" class="stack"><input type="hidden" name="_method" value="put">
           <label>소집일 <small class="muted">첫 복무일</small>
             <input type="date" name="serviceStartDate" th:value="${#temporals.format(employee.activeFrom, 'yyyy-MM-dd')}" required data-service-start>
           </label>
@@ -45,7 +60,19 @@
         </div>
         <p th:if="${management}" class="small muted">나눔가게 등 활동 담당자는 <a th:href="@{/admin/activities}">활동 메뉴</a>에서 변경합니다.</p>
       </section>
-      <section th:if="${management}" class="card"><h2>근무 정보</h2><p class="small muted">직군 변경은 즉시 적용되며 확정된 배정은 유지합니다.</p><p class="small muted" th:text="${'인원 제외 적용일 · ' + effectiveDate}"></p><form th:if="${!employee.excludedByAdmin}" th:action="@{/admin/employees/{id}/work-group(id=${employee.id})}" method="post" class="stack"><input type="hidden" name="_method" value="put"><label>직군<select name="workGroupCode" required><option th:if="${employee.workGroupCode == 'UNCLASSIFIED'}" value="" disabled selected>직군 선택</option><option th:each="g : ${groups}" th:value="${g.name()}" th:text="${g.label}" th:selected="${g.name() == employee.workGroupCode}"></option></select></label>
+      <section th:if="${management and !employee.excludedByAdmin}" class="card" id="training-period">
+        <h2>교육·훈련 기간</h2>
+        <p class="small muted">훈련소나 직무교육처럼 복지관에 나오지 않는 기간이에요. 그동안은 봉급만 계산하고 교통비·식비는 빠지며, 나눔가게 배정에서도 제외돼요.</p>
+        <form th:action="@{/admin/employees/{id}/trainings(id=${employee.id})}" method="post" class="stack training-form">
+          <div class="training-dates">
+            <label>시작일<input type="date" name="startDate" required></label>
+            <label>종료일<input type="date" name="endDate" required></label>
+          </div>
+          <button class="button" type="submit">교육·훈련으로 등록</button>
+        </form>
+        <p class="small muted">주말과 휴일은 빼고 등록해요. 잘못 넣은 날은 휴가 일정에서 정상 출근으로 바꾸면 돼요.</p>
+      </section>
+      <section th:if="${management}" class="card"><h2>근무 정보</h2><p class="small muted">직군 변경은 즉시 적용되며 확정된 배정은 유지합니다.</p><p class="small muted" th:text="${'인원 제외 적용일 · ' + #temporals.format(effectiveDate, 'yyyy-MM-dd')}"></p><form th:if="${!employee.excludedByAdmin}" th:action="@{/admin/employees/{id}/work-group(id=${employee.id})}" method="post" class="stack"><input type="hidden" name="_method" value="put"><label>직군<select name="workGroupCode" required><option th:if="${employee.workGroupCode == 'UNCLASSIFIED'}" value="" disabled selected>직군 선택</option><option th:each="g : ${groups}" th:value="${g.name()}" th:text="${g.label}" th:selected="${g.name() == employee.workGroupCode}"></option></select></label>
         <div th:if="${!workGroupChangeImpacts.isEmpty()}" class="notice danger">
           <strong>직군 변경 시 자동 탈퇴</strong>
           <p th:each="impact : ${workGroupChangeImpacts}"

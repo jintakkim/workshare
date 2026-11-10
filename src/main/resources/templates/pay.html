@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>내 월급 조회 · 장복인간</title>
+  <link th:replace="~{fragments/site-layout :: icon}">
+  <link rel="stylesheet" th:href="@{/style.css}">
+  <script defer th:src="@{/admin.js}"></script>
+  <script defer th:src="@{/partial-nav.js}"></script>
+</head>
+<body class="app-page admin-page">
+<header th:replace="~{fragments/staff-navigation :: header}"></header>
+<dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog>
+<main th:replace="~{fragments/site-layout :: page('admin-shell', ~{::pageContent})}">
+<th:block th:fragment="pageContent">
+<div class="pay-page">
+  <div class="pane-heading">
+    <div>
+      <p class="eyebrow">나만 볼 수 있어요</p>
+      <h1>내 월급 조회</h1>
+      <p>매달 10일에 지난달 근무분 봉급과 교통비·식비를 받아요.</p>
+    </div>
+  </div>
+  <div class="flash-messages" aria-live="polite">
+    <div th:if="${success}" class="notice" role="status" th:text="${success}"></div>
+    <div th:if="${error}" class="notice danger" role="alert" th:text="${error}"></div>
+  </div>
+
+  <section class="card pay-summary">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow" th:text="${payslip.workMonth.monthValue + '월 근무분'}">10월 근무분</p>
+        <h2 th:text="${#temporals.format(payslip.payday, 'M월 d일 (E)') + ' 지급'}">11월 10일 지급</h2>
+      </div>
+      <nav class="month-nav" aria-label="지급월 이동">
+        <a class="icon-button" data-swap=".pay-page" th:if="${payslip.hasPreviousMonth()}"
+           th:href="@{/pay(month=${payslip.payMonth.minusMonths(1)})}" aria-label="이전 지급월">‹</a>
+        <a class="button subtle" data-swap=".pay-page" th:href="@{/pay}" th:if="${payslip.payMonth != nextPayMonth}">다음 지급</a>
+        <a class="icon-button" data-swap=".pay-page" th:if="${payslip.hasNextMonth()}"
+           th:href="@{/pay(month=${payslip.payMonth.plusMonths(1)})}" aria-label="다음 지급월">›</a>
+      </nav>
+    </div>
+    <p class="small muted" th:unless="${payslip.inService}">이 달은 복무 기간이 아니라 지급액이 없어요.</p>
+    <th:block th:if="${payslip.inService}">
+      <p class="pay-total">
+        <span>예상 수령액</span>
+        <strong th:text="${#numbers.formatInteger(payslip.total, 1, 'COMMA') + '원'}">1,380,000원</strong>
+      </p>
+      <dl class="pay-lines">
+        <div>
+          <dt>
+            <span>봉급</span>
+            <small th:text="${payslip.rankLabel + (payslip.prorated ? ' · ' + payslip.servedDays + '/' + payslip.daysInMonth + '일 일할' : '')}"></small>
+          </dt>
+          <dd th:text="${#numbers.formatInteger(payslip.salary, 1, 'COMMA') + '원'}"></dd>
+        </div>
+        <div>
+          <dt>
+            <span>교통비</span>
+            <small th:text="${payslip.transportDays + '일 × ' + #numbers.formatInteger(payslip.dailyTransportFee, 1, 'COMMA') + '원'}"></small>
+          </dt>
+          <dd th:text="${#numbers.formatInteger(payslip.transportTotal, 1, 'COMMA') + '원'}"></dd>
+        </div>
+        <div>
+          <dt>
+            <span>식비</span>
+            <small th:text="${payslip.mealDays + '일 × ' + #numbers.formatInteger(payslip.dailyMeal, 1, 'COMMA') + '원'}"></small>
+          </dt>
+          <dd th:text="${#numbers.formatInteger(payslip.mealTotal, 1, 'COMMA') + '원'}"></dd>
+        </div>
+      </dl>
+      <p class="small muted" th:if="${payslip.unpaidSickDays > 0}"
+         th:text="${'병가가 복무 기간 통산 30일을 넘어 ' + payslip.unpaidSickDays + '일은 봉급에서 빠졌어요.'}"></p>
+      <p class="small muted" th:if="${payslip.includesFutureDays}">아직 지나지 않은 날은 정상 출근으로 계산했어요.</p>
+    </th:block>
+  </section>
+
+  <section class="card" th:if="${payslip.inService}">
+    <h2>빠지는 날</h2>
+    <p class="small muted" th:if="${payslip.daysOff.isEmpty()}">이 달은 휴가나 교육으로 빠지는 날이 없어요.</p>
+    <ul class="pay-days-off" th:unless="${payslip.daysOff.isEmpty()}">
+      <li th:each="day : ${payslip.daysOff}">
+        <span th:text="${#temporals.format(day.date, 'M월 d일 (E)')}"></span>
+        <span class="badge" th:text="${day.attendance.label}"></span>
+        <small th:text="${day.effect}"></small>
+      </li>
+    </ul>
+    <p class="detail-note">반차는 교통비가 나와요. 오전 반차는 점심 전에 출근하지 않아 식비가 빠져요. 연차·병가·특별휴가·교육·훈련은 교통비와 식비가 모두 빠지고, 봉급은 그대로예요.</p>
+  </section>
+
+  <section class="card">
+    <h2>하루 교통비</h2>
+    <form th:action="@{/pay/transport-fee}" method="post" class="pay-transport" data-swap=".pay-page">
+      <input type="hidden" name="_method" value="put">
+      <input type="hidden" name="month" th:value="${payslip.payMonth}">
+      <label>
+        <span class="sr-only">하루 교통비</span>
+        <input type="number" name="dailyTransportFee" min="0" max="100000" step="10" inputmode="numeric"
+               th:value="${payslip.dailyTransportFee}" required>
+        <span class="pay-unit">원</span>
+      </label>
+      <button class="button" type="submit">저장</button>
+    </form>
+    <p class="small muted" th:text="${'기본 3,000원이에요. 실제로 받는 금액이 다르면 바꿔주세요. 식비는 하루 ' + #numbers.formatInteger(payslip.dailyMeal, 1, 'COMMA') + '원으로 정해져 있어요.'}"></p>
+  </section>
+
+  <p class="detail-note">예상 금액이에요. 실제 지급액은 복지관 정산에 따라 조금 다를 수 있어요.</p>
+</div>
+</th:block>
+</main>
+</body>
+</html>

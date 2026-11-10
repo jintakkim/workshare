@@ -1,5 +1,6 @@
 package com.jangbokhuman.workshare.web;
 
+import com.jangbokhuman.workshare.attendance.LeaveRequestService;
 import com.jangbokhuman.workshare.common.BusinessException;
 import com.jangbokhuman.workshare.common.RequestPaths;
 import com.jangbokhuman.workshare.config.AuthenticatedUser;
@@ -10,17 +11,20 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,6 +34,7 @@ public class EmployeeManagementController {
     private final RosterService rosterService;
     private final EmployeeProfileService employeeProfileService;
     private final EmployeeProfileModel employeeProfileModel;
+    private final LeaveRequestService leaveRequestService;
 
     @GetMapping("/admin/employees/{id}")
     public String showEmployeeManagement(@PathVariable Long id, @AuthenticationPrincipal AuthenticatedUser auth, Model model) {
@@ -52,6 +57,18 @@ public class EmployeeManagementController {
             flash.addFlashAttribute("warning", "직군 변경으로 " + String.join(", ", removedActivityNames) + "에서 자동 탈퇴했습니다.");
         }
         return "redirect:/admin/employees/" + id;
+    }
+
+    @PostMapping("/admin/employees/{id}/trainings")
+    public String saveTrainingDays(
+            @PathVariable Long id,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            RedirectAttributes flash
+    ) {
+        int savedDays = leaveRequestService.saveTrainingDays(id, startDate, endDate);
+        flash.addFlashAttribute("success", "교육·훈련 " + savedDays + "일을 등록했습니다.");
+        return "redirect:/admin/employees/" + id + "#training-period";
     }
 
     @ExceptionHandler(BusinessException.class)

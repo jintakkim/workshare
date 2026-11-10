@@ -55,6 +55,14 @@ app:
   cafeteria-support-cutoff: '08:49'
   allocation-time: '08:49:10'
   allocation-result-time: '08:50'
+  # 2026년 사회복무요원 월 보수(소집월을 1개월째로 이병 1–2, 일병 3–8, 상병 9–14, 병장 15개월부터)
+  service-pay:
+    monthly-pay:
+      PRIVATE: 750000
+      PRIVATE_FIRST_CLASS: 900000
+      CORPORAL: 1200000
+      SERGEANT: 1500000
+    daily-meal: 9000
   # 예: 5명일 때 기본 방향을 오전 2명, 오후 3명으로 두려면 아래 예시로 교체
   # sharing-shop-quotas:
   #   5:

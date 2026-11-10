@@ -63,6 +63,8 @@ public class SecurityConfiguration {
                                         .hasRole("STAFF")
                                         .requestMatchers(
                                                 "/employees/me",
+                                                "/pay",
+                                                "/pay/**",
                                                 "/cafeteria-support",
                                                 "/cafeteria-support/**")
                                         .hasRole("STAFF")

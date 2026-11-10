@@ -20,6 +20,11 @@ import java.util.Map;
 @Transactional
 @RequiredArgsConstructor
 public class RosterService {
+    private static final Comparator<EmployeeView> BY_RANK_THEN_SERVICE_START = Comparator
+            .comparing((EmployeeView view) -> view.serviceStatus().rank()).reversed()
+            .thenComparing(EmployeeView::activeFrom)
+            .thenComparing(EmployeeView::name);
+
     private final EmployeeRepository employeeRepository;
     private final WorkTime workTime;
     private final PasswordEncoder passwordEncoder;
@@ -96,12 +101,12 @@ public class RosterService {
         Map<Long, Long> photoVersions = employeePhotoRepository.findPhotoVersionsByEmployeeId();
         Map<Long, List<String>> activityNamesByEmployeeId = employeeActivityReader.getActivityNamesByEmployeeId();
         return employeeRepository.findAll().stream()
-                .sorted(Comparator.comparing(Employee::getName))
                 .map(employee -> createEmployeeView(
                         employee,
                         photoVersions.get(employee.getId()),
                         activityNamesByEmployeeId.getOrDefault(employee.getId(), List.of()))
                 )
+                .sorted(BY_RANK_THEN_SERVICE_START)
                 .toList();
     }
 
@@ -126,7 +131,8 @@ public class RosterService {
                 group == null ? "UNCLASSIFIED" : group.name(),
                 group == null ? "직군 미지정" : group.getLabel(),
                 activityNames,
-                photoVersion);
+                photoVersion,
+                ServiceStatus.evaluate(employee.getActiveFrom(), employee.getInactiveFrom(), workTime.getInstant(), workTime.getZone()));
     }
 
     public LocalDate getRosterChangeEffectiveDate() {
@@ -142,7 +148,8 @@ public class RosterService {
             String workGroupCode,
             String workGroupName,
             List<String> activityNames,
-            Long photoVersion
+            Long photoVersion,
+            ServiceStatus serviceStatus
     ) {
         public boolean hasPhoto() {
             return photoVersion != null;

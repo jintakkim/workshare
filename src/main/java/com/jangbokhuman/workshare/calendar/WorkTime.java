@@ -22,6 +22,10 @@ public class WorkTime {
         return clock.instant();
     }
 
+    public ZoneId getZone() {
+        return workSettings.zone();
+    }
+
     public LocalDate getToday() {
         return getNow().toLocalDate();
     }

@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+<svg th:fragment="insignia(rank)" class="rank-insignia" viewBox="0 0 16 22" role="img"
+     th:attr="aria-label=${rank.label + ' 계급장'}">
+  <rect th:each="stripe : ${#numbers.sequence(1, rank.stripes)}"
+        x="1" th:attr="y=${1 + (stripe - 1) * 5}" width="14" height="3" rx="1"></rect>
+</svg>
+</body>
+</html>

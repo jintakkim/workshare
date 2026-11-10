@@ -492,3 +492,50 @@ body:has(.admin-menu[open]) { overflow:hidden; }
 /* Support rosters and quota settings reuse the small card controls. */
 .support-toolbar{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:14px 0}.support-toolbar label{flex:1;min-width:140px}.support-setting{margin:20px 0}.support-month{margin-top:20px}.support-day{border-top:1px solid var(--line)}.support-day summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 0}.support-day summary::-webkit-details-marker{display:none}.support-day summary small{display:block;color:var(--muted);margin-top:6px;line-height:1.5}.support-count{white-space:nowrap;font-size:12px;color:#607851}.support-count.mismatch{color:#a45143}.support-off{opacity:.5}.support-day-editor{padding:0 0 18px}.support-save{position:sticky;bottom:0;padding:14px 0;background:#eef1e8ed}.support-save button{width:100%}.quota-rule{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:16px 0;font-size:14px}.quota-rule span{color:var(--muted)}.exchange-card{padding:18px 0;border-top:1px solid var(--line)}.exchange-card h3{line-height:1.6}.exchange-actions{display:flex;gap:10px;margin-top:14px}.exchange-actions form{flex:1}.exchange-actions button{width:100%}.admin-shell>section.card+section.card{margin-top:20px}.excluded-roster .day-member-attendance{color:#9a7046}@media(max-width:400px){.support-toolbar{display:grid;grid-template-columns:1fr}.quota-rule{font-size:12px}}
 .support-conflict { display:block; color:#b4493a; font-size:11px; }
+
+/* Rank, service progress, pay and leave history: phone layout first. */
+.rank-insignia { width:18px; height:22px; flex-shrink:0; padding:3px 4px; border-radius:4px; background:#3d4a2b; fill:#e3d79c; box-sizing:border-box; }
+.profile-rank, .employee-rank { display:inline-flex; align-items:center; gap:6px; margin-top:6px; color:#4f5f3a; font-size:13px; font-weight:600; }
+.employee-rank { margin-top:2px; font-size:12px; }
+.employee-rank .rank-insignia { width:15px; height:18px; padding:2px 3px; }
+.service-progress .section-heading { margin-bottom:6px; }
+.service-dday { font-size:12px; padding:5px 10px; }
+.service-progress-value { margin:6px 0 10px; color:var(--muted); font-size:14px; }
+.service-progress-value strong { color:var(--ink); font-size:30px; font-variant-numeric:tabular-nums; letter-spacing:-.5px; }
+.service-progress-bar { height:12px; border-radius:999px; background:var(--bg); overflow:hidden; }
+.service-progress-bar span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg, #8aa36c, var(--green)); }
+.service-progress-dates { display:flex; justify-content:space-between; gap:8px; margin-top:8px; color:var(--muted); font-size:12px; }
+.pay-page, .leave-history { max-width:680px; margin-inline:auto; }
+.pay-page>section.card+section.card { margin-top:16px; }
+.pay-summary .section-heading { flex-wrap:wrap; gap:10px; }
+.pay-summary h2 { white-space:nowrap; }
+.pay-summary .month-nav { margin-left:auto; }
+.month-nav .button { white-space:nowrap; }
+.pay-total { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin:14px 0 6px; padding:16px; border-radius:12px; background:var(--light); }
+.pay-total span { color:var(--muted); font-size:13px; }
+.pay-total strong { color:var(--green); font-size:26px; font-variant-numeric:tabular-nums; }
+.pay-lines { margin:0; }
+.pay-lines>div { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
+.pay-lines dt { display:grid; gap:2px; font-size:14px; }
+.pay-lines dt small { color:var(--muted); font-size:12px; font-weight:400; }
+.pay-lines dd { margin:0; font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; }
+.pay-days-off, .leave-history-detail ul, .leave-counts { list-style:none; margin:10px 0 0; padding:0; }
+.pay-days-off li, .leave-history-detail li { display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid var(--line); font-size:13px; }
+.pay-days-off small { margin-left:auto; color:var(--muted); }
+.pay-transport { display:flex; align-items:center; gap:10px; margin:10px 0 8px; }
+.pay-transport label { position:relative; flex:1; }
+.pay-transport input { width:100%; min-height:44px; padding:10px 34px 10px 12px; border:1px solid #dce3d8; border-radius:9px; font-size:16px; }
+.pay-unit { position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:13px; }
+.pay-transport .button { min-height:44px; }
+.leave-history { margin-top:16px; }
+.leave-counts { display:grid; grid-template-columns:repeat(auto-fill, minmax(96px, 1fr)); gap:8px; }
+.leave-counts li { display:grid; gap:2px; padding:10px 12px; border-radius:10px; background:var(--bg); font-size:12px; color:var(--muted); }
+.leave-counts strong { color:var(--ink); font-size:18px; }
+.leave-history-detail { margin-top:12px; }
+.leave-history-detail summary { cursor:pointer; color:#526446; font-size:13px; padding:6px 0; }
+.leave-history-detail li.is-upcoming { color:var(--muted); }
+.leave-history-detail li small { margin-left:auto; color:var(--green); font-weight:600; }
+.training-dates { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+@media (min-width:761px) {
+  .service-progress-value strong { font-size:36px; }
+}
