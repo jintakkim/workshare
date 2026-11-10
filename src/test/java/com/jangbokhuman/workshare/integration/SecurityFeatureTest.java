@@ -65,7 +65,7 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
         mockMvc.perform(get("/login")).andExpect(status().isOk());
         mockMvc.perform(get("/leave").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("내 휴가 일정")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("내 일정")));
         mockMvc.perform(get("/admin").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/admin/leave").with(testUser("admin", "ADMIN")))

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>전체 휴가 일정 · 장복인간</title>
+  <title>전체 일정 · 장복인간</title>
   <link th:replace="~{fragments/site-layout :: icon}"><link rel="stylesheet" th:href="@{/style.css}">
   <script defer th:src="@{/admin.js}"></script><script defer th:src="@{/partial-nav.js}"></script>
 </head>
@@ -13,7 +13,7 @@
 <main th:replace="~{fragments/site-layout :: page('shell', ~{::pageContent})}"><th:block th:fragment="pageContent">
   <section class="intro">
     <div>
-      <h1>전체 휴가 일정</h1>
+      <h1>전체 일정</h1>
       <p class="muted">날짜를 선택하면 그날의 직원별 연차·병가·반차를 볼 수 있어요.</p>
     </div>
   </section>
@@ -41,7 +41,7 @@
     <aside class="day-panel" id="team-leave-details" aria-labelledby="team-leave-date">
       <section class="card">
         <div class="section-heading">
-          <h2 id="team-leave-date" th:text="${#temporals.format(view.selectedDate, 'M월 d일') + ' 휴가 일정'}"></h2>
+          <h2 id="team-leave-date" th:text="${#temporals.format(view.selectedDate, 'M월 d일') + ' 직원 일정'}"></h2>
           <span class="badge leave" th:text="${view.selectedLeaves.size() + '명'}"></span>
         </div>
         <p class="small muted" th:if="${view.selectedLeaves.isEmpty()}">등록된 휴가나 반차가 없어요.</p>

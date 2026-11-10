@@ -30,7 +30,7 @@
   <section class="card pay-summary">
     <div class="section-heading">
       <div>
-        <p class="eyebrow" th:text="${payslip.workMonth.monthValue + '월 근무분'}">10월 근무분</p>
+        <p class="pay-work-month" th:text="${payslip.workMonth.monthValue + '월 근무분'}">10월 근무분</p>
         <h2 th:text="${#temporals.format(payslip.payday, 'M월 d일 (E)') + ' 지급'}">11월 10일 지급</h2>
       </div>
       <nav class="month-nav" aria-label="지급월 이동">

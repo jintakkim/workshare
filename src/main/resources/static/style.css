@@ -507,6 +507,7 @@ body:has(.admin-menu[open]) { overflow:hidden; }
 .service-progress-dates { display:flex; justify-content:space-between; gap:8px; margin-top:8px; color:var(--muted); font-size:12px; }
 .pay-page, .leave-history { max-width:680px; margin-inline:auto; }
 .pay-page>section.card+section.card { margin-top:16px; }
+.pay-work-month { margin-bottom:4px; color:var(--green); font-size:15px; font-weight:700; }
 .pay-summary .section-heading { flex-wrap:wrap; gap:10px; }
 .pay-summary h2 { white-space:nowrap; }
 .pay-summary .month-nav { margin-left:auto; }
