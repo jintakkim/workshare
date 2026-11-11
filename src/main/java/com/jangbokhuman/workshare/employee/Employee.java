@@ -88,6 +88,9 @@ public class Employee {
         if (serviceStartDate == null) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "소집일을 선택해주세요.");
         }
+        if (serviceStartDate.isAfter(today)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "소집일은 오늘 이후 날짜로 선택할 수 없어요. 실제로 처음 복무한 날을 넣어주세요.");
+        }
         LocalDate serviceEndDate = enteredServiceEndDate == null
                 ? calculateInactiveFrom(serviceStartDate).minusDays(1)
                 : enteredServiceEndDate;

@@ -3,17 +3,23 @@ package com.jangbokhuman.workshare.integration;
 import com.jangbokhuman.workshare.activity.Activity;
 import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportAssignment;
 import com.jangbokhuman.workshare.attendance.Attendance;
+import com.jangbokhuman.workshare.common.BusinessException;
+import com.jangbokhuman.workshare.employee.EmployeeProfileService;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.LocalDate;
 import java.util.List;
 
 @DisplayName("식당지원 명단 정리와 휴가 겹침 경고")
 class CafeteriaSupportRosterCleanupFeatureTest extends BusinessFeatureTestSupport {
+    @Autowired EmployeeProfileService employeeProfileService;
+
     private static final LocalDate TOMORROW = TODAY.plusDays(1);
 
     @Test
@@ -70,6 +76,20 @@ class CafeteriaSupportRosterCleanupFeatureTest extends BusinessFeatureTestSuppor
 
         assertThat(rosterReader.getRosterOn(Activity.SHARING_SHOP, TOMORROW).warnings())
                 .anySatisfy(warning -> assertThat(warning).contains("정하늘 님은 연차"));
+    }
+
+    @Test
+    @DisplayName("소집일을 미래로 잘못 넣으면 거절하고, 이미 잡힌 식당지원 일정은 그대로 둔다")
+    void rejectsFutureServiceStartWithoutDroppingSupport() {
+        register("홍길동");
+        requireCafeteriaWorkers(1);
+        supportOn(TOMORROW, "홍길동");
+
+        assertThatThrownBy(() -> employeeProfileService.changeServicePeriod(employeeId("홍길동"), LocalDate.of(2026, 12, 18), null))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("오늘 이후");
+
+        assertThat(findSupportEmployeeIds(TOMORROW)).containsExactly(employeeId("홍길동"));
     }
 
     private List<Long> findSupportEmployeeIds(LocalDate date) {

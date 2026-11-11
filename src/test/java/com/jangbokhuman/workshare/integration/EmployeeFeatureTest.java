@@ -135,7 +135,7 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
     void serviceEndsOnTheLastDayWhenTheAnniversaryDayIsMissing() {
         Employee employee = new Employee("홍길동", "unused", LocalDate.of(2026, 5, 31), WorkGroupType.GENERAL);
         assertThat(employee.getInactiveFrom()).isEqualTo(LocalDate.of(2028, 3, 1));
-        employee.changeServicePeriod(LocalDate.of(2027, 5, 31), null, TODAY);
+        employee.changeServicePeriod(LocalDate.of(2027, 5, 31), null, LocalDate.of(2027, 6, 1));
         assertThat(employee.getInactiveFrom()).isEqualTo(LocalDate.of(2029, 3, 1));
     }
 

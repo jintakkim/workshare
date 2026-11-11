@@ -33,7 +33,7 @@
         <p th:unless="${employee.excludedByAdmin}"><strong>소집해제 예정일</strong> <time th:datetime="${employee.serviceEndDate()}" th:text="${employee.serviceEndDate()}"></time></p>
         <form th:if="${canChangeServicePeriod}" data-swap="#service-period, [data-service-progress], .profile-rank" th:action="@{/employees/{id}/service-period(id=${employee.id})}" method="post" class="stack"><input type="hidden" name="_method" value="put">
           <label>소집일 <small class="muted">첫 복무일</small>
-            <input type="date" name="serviceStartDate" th:value="${#temporals.format(employee.activeFrom, 'yyyy-MM-dd')}" required data-service-start>
+            <input type="date" name="serviceStartDate" th:value="${#temporals.format(employee.activeFrom, 'yyyy-MM-dd')}" th:max="${#temporals.format(today, 'yyyy-MM-dd')}" required data-service-start>
           </label>
           <label>소집해제일
             <input type="date" name="serviceEndDate" th:min="${#temporals.format(today, 'yyyy-MM-dd')}"
