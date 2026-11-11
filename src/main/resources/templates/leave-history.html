@@ -24,7 +24,6 @@
   <section class="card leave-history" aria-labelledby="leave-history-title">
     <div class="section-heading">
       <h2 id="leave-history-title">종류별 사용</h2>
-      <span class="badge" th:text="${'연차 ' + #numbers.formatDecimal(leaveHistory.annualLeaveDays, 1, 1) + '일 사용'}">연차 3.5일 사용</span>
     </div>
     <p class="small muted" th:if="${leaveHistory.entries.isEmpty()}">아직 사용한 휴가가 없어요.</p>
     <ul class="leave-counts" th:unless="${leaveHistory.entries.isEmpty()}">
