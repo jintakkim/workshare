@@ -15,6 +15,7 @@
   <div class="menu-heading"><div><p class="eyebrow">장복인간</p><h2 id="menu-title">관리 메뉴</h2></div><button class="menu-close" type="button" aria-label="관리 메뉴 닫기">×</button></div>
   <nav aria-label="관리 기능">
     <a th:href="@{/admin/leave}" th:classappend="${section == 'leave' ? 'active' : ''}" th:attr="aria-current=${section == 'leave' ? 'page' : null}"><span>휴가 일정<small>연차·병가·반차 등록</small></span><span aria-hidden="true">→</span></a>
+    <a th:href="@{/leave/team}" th:classappend="${section == 'team-leave' ? 'active' : ''}" th:attr="aria-current=${section == 'team-leave' ? 'page' : null}"><span>전체 일정<small>날짜별 직원 휴가 확인</small></span><span aria-hidden="true">→</span></a>
     <a th:href="@{/admin/employees}" th:classappend="${section == 'employees' ? 'active' : ''}" th:attr="aria-current=${section == 'employees' ? 'page' : null}"><span>직원<small>계정과 직군 관리</small></span><span aria-hidden="true">→</span></a>
     <a th:href="@{/admin/holidays}" th:classappend="${section == 'holidays' ? 'active' : ''}" th:attr="aria-current=${section == 'holidays' ? 'page' : null}"><span>휴일<small>복지관이 쉬는 날</small></span><span aria-hidden="true">→</span></a>
     <a th:href="@{/admin/sharing-shop}" th:classappend="${section == 'sharing' ? 'active' : ''}" th:attr="aria-current=${section == 'sharing' ? 'page' : null}"><span>나눔가게 활동<small>오늘의 참여 현황과 오전·오후 배정</small></span><span aria-hidden="true">→</span></a>

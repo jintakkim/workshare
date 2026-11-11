@@ -162,7 +162,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(today).contains("전체 일정", "11월 4일 직원 일정", "2026년 11월 4일 · 휴가 4명")
-                .doesNotContain("홍길동", "정상 출근", "action=\"/leave/");
+                .doesNotContain("홍길동", "정상 출근", "action=\"/leave/", "id=\"admin-menu\"");
         leaves.forEach((name, attendance) -> assertThat(today)
                 .containsPattern("<strong>" + name + "</strong>\\s*<span class=\"badge (leave|half)\">" + attendance.getLabel() + "</span>"));
 
@@ -170,7 +170,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                         .param("date", TODAY.plusDays(1).toString()))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(tomorrow).contains("11월 5일 직원 일정", "<strong>홍길동</strong>")
+        assertThat(tomorrow).contains("11월 5일 직원 일정", "<strong>홍길동</strong>", "id=\"admin-menu\"", "날짜별 직원 휴가 확인")
                 .doesNotContain("김민수", "이서연", "박지훈", "정하늘");
         mockMvc.perform(get("/leave/team").with(testUser("홍길동", "STAFF")).param("date", "2026-12-01"))
                 .andExpect(status().isOk())

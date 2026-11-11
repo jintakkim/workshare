@@ -8,8 +8,8 @@
   <script defer th:src="@{/admin.js}"></script><script defer th:src="@{/partial-nav.js}"></script>
 </head>
 <body class="app-page admin-page">
-<header th:replace="~{fragments/staff-navigation :: header}"></header>
-<dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog>
+<th:block th:if="${admin}"><header th:replace="~{admin :: adminHeader}"></header><dialog th:replace="~{admin :: adminMenu}"></dialog></th:block>
+<th:block th:if="${!admin}"><header th:replace="~{fragments/staff-navigation :: header}"></header><dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog></th:block>
 <main th:replace="~{fragments/site-layout :: page('shell', ~{::pageContent})}"><th:block th:fragment="pageContent">
   <section class="intro">
     <div>
