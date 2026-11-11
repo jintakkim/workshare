@@ -153,7 +153,7 @@ public class CafeteriaSupportQueryService {
         return new Day(
                 date,
                 working,
-                working && cafeteriaSupportDeadline.canChange(date),
+                working && cafeteriaSupportDeadline.canEditRoster(date),
                 getRequiredWorkersOn(requirements, date),
                 assigned.stream().map(Employee::getId).toList(),
                 selectable,

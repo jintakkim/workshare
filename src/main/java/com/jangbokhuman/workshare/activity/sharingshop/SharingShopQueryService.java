@@ -116,23 +116,49 @@ public class SharingShopQueryService {
             warnings.addAll(shiftTasks.getWarnings());
         }
         if (resultReleased && !date.isBefore(workTime.getToday())) {
-            warnings.addAll(getLateLeaveWarnings(roster, shiftTasks));
+            warnings.addAll(getLateChangeWarnings(roster, shiftTasks));
         }
         return warnings;
     }
 
-    private List<String> getLateLeaveWarnings(RosterReader.DayRoster roster, ShiftTasks shiftTasks) {
-        Map<Long, Attendance> currentAttendance = Stream.concat(
-                        roster.workers().stream(),
-                        roster.excluded().stream().map(RosterReader.ExcludedWorker::worker)
-                )
+    // Assignments stay fixed after the draw, so a later leave or another activity taking an assignee is only flagged.
+    private List<String> getLateChangeWarnings(RosterReader.DayRoster roster, ShiftTasks shiftTasks) {
+        Map<Long, String> exclusionReasons = roster.excluded().stream()
+                .collect(Collectors.toMap(excluded -> excluded.worker().id(), RosterReader.ExcludedWorker::reason, (first, second) -> first));
+        Map<Long, Attendance> currentAttendance = roster.workers().stream()
                 .collect(Collectors.toMap(Worker::id, Worker::attendance, (first, second) -> first));
         return Stream.concat(shiftTasks.morning().stream(), shiftTasks.evening().stream())
                 .flatMap(task -> task.assignees().stream()
-                        .filter(assignee -> !currentAttendance.getOrDefault(assignee.employeeId(), Attendance.WORK).canWork(task.period()))
-                        .map(assignee -> task.period().getLabel() + " 담당 " + assignee.name() + " 님이 "
-                                + currentAttendance.get(assignee.employeeId()).getLabel() + "예요. 대신할 사람을 정해주세요."))
+                        .map(assignee -> describeLateChange(task.period(), assignee, exclusionReasons, currentAttendance))
+                        .flatMap(Optional::stream))
                 .toList();
+    }
+
+    private static String getDirectionParticle(String word) {
+        char last = word.charAt(word.length() - 1);
+        if (last < 0xAC00 || last > 0xD7A3) {
+            return "로";
+        }
+        int finalConsonant = (last - 0xAC00) % 28;
+        return finalConsonant == 0 || finalConsonant == 8 ? "로" : "으로";
+    }
+
+    private Optional<String> describeLateChange(
+            WorkPeriod period,
+            SharingShopTaskReader.AssigneeView assignee,
+            Map<Long, String> exclusionReasons,
+            Map<Long, Attendance> currentAttendance
+    ) {
+        String prefix = period.getLabel() + " 담당 " + assignee.name() + " 님이 ";
+        if (exclusionReasons.containsKey(assignee.employeeId())) {
+            String reason = exclusionReasons.get(assignee.employeeId());
+            return Optional.of(prefix + reason + getDirectionParticle(reason) + " 빠졌어요. 대신할 사람을 정해주세요.");
+        }
+        Attendance attendance = currentAttendance.getOrDefault(assignee.employeeId(), Attendance.WORK);
+        if (!attendance.canWork(period)) {
+            return Optional.of(prefix + attendance.getLabel() + "예요. 대신할 사람을 정해주세요.");
+        }
+        return Optional.empty();
     }
 
     private List<Member> toMembers(Stream<Worker> workers, Map<Long, Long> photoVersions) {

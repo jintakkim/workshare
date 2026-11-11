@@ -155,6 +155,36 @@ class ServiceRecordFeatureTest extends BusinessFeatureTestSupport {
                 .contains("오후 담당 " + eveningAssignee.name() + " 님이 오후 반차예요. 대신할 사람을 정해주세요.");
     }
 
+    @Test
+    @DisplayName("관리자는 배정이 저장된 뒤 오늘·지난 식당지원표를 실제로 간 사람으로 고치고, 그 사람이 담당이면 카드에 경고한다")
+    void adminRecordsSameDayCafeteriaSubstitute() {
+        for (String name : List.of("홍길동", "김민수", "이서연", "박지훈")) {
+            registerServingSince(name, LocalDate.of(2025, 11, 16));
+        }
+        requireCafeteriaWorkers(1);
+        supportOn(TODAY, "홍길동");
+        now("08:49:05");
+        assertThatThrownBy(() -> supportOn(TODAY, "김민수"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("배정이 저장되면");
+
+        now("10:00");
+        dailyAllocationService.allocateTodayIfDue();
+        SharingShopTaskReader.AssigneeView substitute = task(sharingShopTasks(TODAY), "MORNING").assignees().getFirst();
+        supportOn(TODAY, substitute.name());
+        supportOn(TODAY.minusDays(1), "이서연");
+
+        assertThat(cafeteriaSupportAssignmentRepository.findByWorkDate(TODAY))
+                .extracting(assignment -> assignment.getEmployeeId())
+                .containsExactly(substitute.employeeId());
+        assertThat(cafeteriaSupportAssignmentRepository.findByWorkDate(TODAY.minusDays(1))).hasSize(1);
+        assertThat(task(sharingShopTasks(TODAY), "MORNING").assignees())
+                .extracting(SharingShopTaskReader.AssigneeView::employeeId)
+                .contains(substitute.employeeId());
+        assertThat(sharingShopQueryService.getDay(TODAY, substitute.employeeId()).warnings())
+                .contains("오전 담당 " + substitute.name() + " 님이 식당지원으로 빠졌어요. 대신할 사람을 정해주세요.");
+    }
+
     private Long registerServingSince(String name, LocalDate serviceStartDate) {
         register(name);
         Long id = employeeId(name);

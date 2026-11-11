@@ -4,7 +4,7 @@ import com.jangbokhuman.workshare.common.BusinessException;
 import com.jangbokhuman.workshare.common.ErrorCode;
 import com.jangbokhuman.workshare.calendar.BusinessCalendar;
 import com.jangbokhuman.workshare.calendar.WorkScheduleDeadlineValidator;
-import com.jangbokhuman.workshare.calendar.LeaveChangeWindow;
+import com.jangbokhuman.workshare.calendar.ScheduleRecordWindow;
 import com.jangbokhuman.workshare.calendar.WorkTime;
 import com.jangbokhuman.workshare.employee.Employee;
 
@@ -19,7 +19,7 @@ import java.time.LocalDate;
 public class LeaveRequestValidator {
     private final WorkScheduleDeadlineValidator workScheduleDeadlineValidator;
     private final BusinessCalendar businessCalendar;
-    private final LeaveChangeWindow leaveChangeWindow;
+    private final ScheduleRecordWindow scheduleRecordWindow;
     private final WorkTime workTime;
 
     public void validateLeaveRequest(Employee employee, LocalDate workDate) {
@@ -29,7 +29,7 @@ public class LeaveRequestValidator {
     }
 
     private void validateLeaveDeadline(LocalDate workDate) {
-        if (workDate != null && leaveChangeWindow.canChangeLeaveOn(workDate)) {
+        if (workDate != null && scheduleRecordWindow.canChangeLeaveOn(workDate)) {
             return;
         }
         if (workDate != null && workDate.equals(workTime.getToday())) {

@@ -58,7 +58,7 @@ public class CafeteriaSupportScheduleService {
         if (!YearMonth.from(date).equals(month)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "선택한 달의 날짜만 변경할 수 있습니다.");
         }
-        cafeteriaSupportDeadline.validateChange(date);
+        cafeteriaSupportDeadline.validateRosterEdit(date);
         if (!workingDays.contains(date)) {
             throw new BusinessException(ErrorCode.NOT_ALLOWED, "주말·휴일에는 지원을 등록하지 않습니다.");
         }

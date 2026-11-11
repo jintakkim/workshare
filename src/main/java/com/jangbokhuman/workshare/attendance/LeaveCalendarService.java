@@ -4,7 +4,7 @@ import com.jangbokhuman.workshare.calendar.BusinessCalendar;
 import com.jangbokhuman.workshare.calendar.CalendarMonth;
 import com.jangbokhuman.workshare.calendar.Holiday;
 import com.jangbokhuman.workshare.calendar.HolidayRepository;
-import com.jangbokhuman.workshare.calendar.LeaveChangeWindow;
+import com.jangbokhuman.workshare.calendar.ScheduleRecordWindow;
 import com.jangbokhuman.workshare.calendar.WorkTime;
 import com.jangbokhuman.workshare.config.WorkSettings;
 import com.jangbokhuman.workshare.employee.Employee;
@@ -32,7 +32,7 @@ public class LeaveCalendarService {
     private final HolidayRepository holidayRepository;
     private final BusinessCalendar businessCalendar;
     private final WorkTime workTime;
-    private final LeaveChangeWindow leaveChangeWindow;
+    private final ScheduleRecordWindow scheduleRecordWindow;
     private final WorkSettings workSettings;
 
     public LeaveCalendar getCalendar(LocalDate selectedDate, Long employeeId) {
@@ -82,7 +82,7 @@ public class LeaveCalendarService {
     }
 
     private boolean canChangeLeave(Optional<Employee> employee, LocalDate date) {
-        return leaveChangeWindow.canChangeLeaveOn(date)
+        return scheduleRecordWindow.canChangeLeaveOn(date)
                 && employee.map(found -> found.isActiveOn(date)).orElse(false);
     }
 

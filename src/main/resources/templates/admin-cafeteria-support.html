@@ -51,7 +51,7 @@
           <a class="icon-button" data-swap=".schedule-page" th:href="@{/admin/cafeteria-support(month=${view.month.plusMonths(1)})}" aria-label="다음 달">›</a>
         </nav>
       </div>
-      <p class="small muted" th:text="${'날짜를 눌러 직원을 고르고 한 번에 저장하세요. 당일 ' + #temporals.format(view.cutoff, 'HH:mm') + '부터는 변경할 수 없어요.'}"></p>
+      <p class="small muted" th:text="${'날짜를 눌러 직원을 고르고 한 번에 저장하세요. 당일 ' + #temporals.format(view.cutoff, 'HH:mm') + '부터 그날 배정이 저장될 때까지만 잠시 막히고, 그 뒤에는 실제로 간 사람으로 고칠 수 있어요.'}"></p>
       <div class="support-day" th:each="day : ${view.days}"
            th:classappend="${(!day.working ? ' support-off' : '') + (!day.editable ? ' is-locked' : '')}">
         <details name="support-days">

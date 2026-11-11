@@ -6,19 +6,23 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 
-// Leave before the cutoff feeds the daily draw. Once the day's draw is saved, later leave is only a record,
-// so today reopens; past days stay open for the same reason.
+// Changes before a day's cutoff feed that day's draw. Once the day is settled (past, or every activity saved
+// today's draw), later changes only correct the record and never run the draw again.
 @Component
 @RequiredArgsConstructor
-public class LeaveChangeWindow {
+public class ScheduleRecordWindow {
     private final WorkTime workTime;
     private final DailyAllocationStatus dailyAllocationStatus;
 
-    public boolean canChangeLeaveOn(LocalDate workDate) {
+    public boolean isSettled(LocalDate workDate) {
         LocalDate today = workTime.getToday();
-        if (workDate.isBefore(today) || workTime.isBeforeScheduleChangeDeadline(workDate)) {
+        if (workDate.isBefore(today)) {
             return true;
         }
         return workDate.equals(today) && dailyAllocationStatus.isAllocationComplete(today);
+    }
+
+    public boolean canChangeLeaveOn(LocalDate workDate) {
+        return workTime.isBeforeScheduleChangeDeadline(workDate) || isSettled(workDate);
     }
 }
