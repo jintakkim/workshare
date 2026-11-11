@@ -14,10 +14,30 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import java.util.List;
 
 @DisplayName("직원별 나눔가게 시간대 선호도")
 class SharingShopTimePreferenceFeatureTest extends BusinessFeatureTestSupport {
+    @Test
+    @DisplayName("나눔가게에 가입하지 않은 직원에게는 시간대 선호도를 보여주지 않는다")
+    void hidesTimePreferenceFromStaffOutsideTheSharingShop() throws Exception {
+        register("홍길동");
+        registerRestaurant("김민수");
+
+        String member = mockMvc.perform(get("/sharing-shop").with(testUser("홍길동", "STAFF")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(member).contains("나눔가게 시간대 선호도", "name=\"timePreference\"");
+
+        String outsider = mockMvc.perform(get("/sharing-shop").with(testUser("김민수", "STAFF")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(outsider).doesNotContain("시간대 선호도", "name=\"timePreference\"", "나눔가게 담당 직원으로 등록되어 있지 않습니다.");
+    }
+
     @Test
     @DisplayName("시간대 선호도는 날짜가 바뀌어도 유지되며 변경 후 다음 추첨에 반영하고 확정 배정은 유지한다")
     void employeeTimePreferencePersistsAcrossDaysAndOnlyAffectsFutureDraws() {

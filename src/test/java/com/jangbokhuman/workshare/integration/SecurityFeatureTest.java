@@ -139,8 +139,8 @@ class SecurityFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(
                         content()
                                 .string(
-                                        org.hamcrest.Matchers.containsString(
-                                                "나눔가게 담당 직원으로 등록되어 있지 않습니다.")));
+                                        org.hamcrest.Matchers.not(
+                                                org.hamcrest.Matchers.containsString("시간대 선호도"))));
         mockMvc.perform(
                         put("/leave/" + TODAY.toString())
                                 .with(testUser("강수진", "STAFF"))

@@ -30,13 +30,13 @@
 </dialog>
 <div th:if="${success}" class="notice" role="status" th:text="${success}"></div>
 <div th:if="${error}" class="notice danger" role="alert" th:text="${error}"></div>
-<details th:if="${!admin}" class="panel-disclosure sharing-preference">
+<details th:if="${!admin and timePreferenceSettings.canChange}" class="panel-disclosure sharing-preference">
   <summary>
     나눔가게 시간대 선호도
     <span class="sharing-preference-arrow" aria-hidden="true"></span>
   </summary>
   <p class="small muted">직원별로 저장되며, 변경한 선호도는 다음 추첨부터 반영됩니다.</p>
-  <form th:if="${timePreferenceSettings.canChange}" th:action="@{/sharing-shop/time-preference}" method="post" class="stack"><input type="hidden" name="_method" value="put">
+  <form th:action="@{/sharing-shop/time-preference}" method="post" class="stack"><input type="hidden" name="_method" value="put">
     <label>선호 시간대
       <select name="timePreference" aria-label="나눔가게 선호 시간대">
         <option th:each="choice : ${timePreferenceChoices}" th:value="${choice}" th:text="${choice.label}" th:selected="${choice == timePreferenceSettings.timePreference}"></option>
@@ -44,7 +44,6 @@
     </label>
     <button class="primary" type="submit">나눔가게 시간대 선호도 저장</button>
   </form>
-  <p th:unless="${timePreferenceSettings.canChange}" class="small muted sharing-preference-unavailable" th:text="${timePreferenceSettings.reason}"></p>
 </details>
 <div class="day-navigation"><button type="button" class="icon-button" data-day-prev aria-label="이전 날짜">‹</button><button type="button" class="button subtle" data-day-today>오늘로</button><button type="button" class="icon-button" data-day-next aria-label="다음 날짜">›</button></div><div class="day-deck" tabindex="0" aria-label="날짜별 나눔가게 활동 카드" aria-roledescription="캐러셀" th:attr="data-today=${#temporals.format(today,'yyyy-MM-dd')},data-result-time=${#temporals.format(allocationResultTime, 'HH:mm')},data-api-base=@{/api/sharing-shop/days/},data-photo-base=@{/employees/}"><article class="day-card" th:each="date : ${dates}" th:attr="data-date=${#temporals.format(date,'yyyy-MM-dd')},aria-label=${#temporals.format(date,'M월 d일 E요일')}" th:classappend="${date == today ? 'is-today' : ''}"><div class="day-card-heading"><div><p class="eyebrow" th:text="${#temporals.format(date,'yyyy년 M월')}"></p><h2 th:text="${#temporals.format(date,'d일 E요일')}"></h2></div><span class="badge working" th:if="${date == today}">오늘</span></div><div class="day-card-body" data-day-content><p class="day-loading" role="status">참여 현황을 불러오고 있어요.</p></div></article></div><p class="day-live-status sr-only" aria-live="polite" data-day-live></p><p class="sharing-note" th:text="${'휴가는 그날 ' + #temporals.format(leaveCutoff, 'HH:mm') + ' 전까지 넣어야 그날 배정에 반영돼요.'}">휴가는 그날 08:49 전까지 넣어야 그날 배정에 반영돼요.</p>
 </th:block></main></body></html>
