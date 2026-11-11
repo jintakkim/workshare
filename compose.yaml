@@ -17,6 +17,11 @@ services:
       APP_REMEMBER_ME_KEY: ${APP_REMEMBER_ME_KEY:?Set APP_REMEMBER_ME_KEY}
       SERVER_SERVLET_SESSION_COOKIE_SECURE: ${SERVER_SERVLET_SESSION_COOKIE_SECURE:-false}
       SERVER_FORWARD_HEADERS_STRATEGY: ${SERVER_FORWARD_HEADERS_STRATEGY:-none}
+      ERROR_LOG_DIR: /app/logs
+      APP_INSTANCE_NAME: ${APP_INSTANCE_NAME:-workshare}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    volumes:
+      - app-logs:/app/logs
     ports:
       - "127.0.0.1:${PORT:-8080}:8080"
   mysql:
@@ -43,3 +48,4 @@ services:
       start_period: 30s
 volumes:
   mysql-data:
+  app-logs:

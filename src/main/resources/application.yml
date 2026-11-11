@@ -56,6 +56,7 @@ app:
   allocation-time: '08:49:10'
   allocation-result-time: '08:50'
   # 2026년 사회복무요원 월 보수(소집월을 1개월째로 이병 1–2, 일병 3–8, 상병 9–14, 병장 15개월부터)
+  error-log-directory: ${ERROR_LOG_DIR:logs}
   service-pay:
     monthly-pay:
       PRIVATE: 750000
@@ -72,6 +73,19 @@ app:
   admin-username: ${APP_ADMIN_USERNAME:admin}
   admin-password: ${APP_ADMIN_PASSWORD:}
   remember-me-key: ${APP_REMEMBER_ME_KEY:}
+# 오류 모음과 알림. SENTRY_DSN이 비어 있으면 Sentry로 보내지 않고 오류는 로그 파일에만 남는다.
+sentry:
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:production}
+  server-name: ${APP_INSTANCE_NAME:workshare}
+  send-default-pii: false
+  in-app-includes:
+    - com.jangbokhuman.workshare
+  context-tags:
+    - request
+  logging:
+    minimum-event-level: error
+    minimum-breadcrumb-level: info
 management:
   endpoints:
     web:

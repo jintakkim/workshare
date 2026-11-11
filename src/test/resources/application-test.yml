@@ -6,3 +6,5 @@ spring:
     password: ''
   flyway:
     locations: classpath:db/migration
+app:
+  error-log-directory: target/test-logs

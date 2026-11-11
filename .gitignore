@@ -8,3 +8,4 @@ compose.override.yaml
 .tools/
 backups/
 workshare-backup.sql
+logs/

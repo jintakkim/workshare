@@ -47,8 +47,16 @@
 | `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD` | DB 비밀번호 |
 | `APP_ADMIN_PASSWORD` | 관리자 로그인 비밀번호(12자 이상). 아이디는 `admin` |
 | `APP_REMEMBER_ME_KEY` | 자동 로그인 서명 키(32자 이상). 바꾸면 모든 자동 로그인이 풀립니다 |
+| `SENTRY_DSN` | 선택. Sentry 프로젝트 DSN. 넣으면 오류가 Sentry에 모이고 새 오류마다 메일이 옵니다 |
+| `APP_INSTANCE_NAME` | 선택. Sentry에 표시할 서버 이름(기본 `workshare`) |
 
 관리자로 로그인해 직원을 등록하면 직원은 한글 이름으로 로그인합니다.
+
+오류(ERROR 로그)는 Sentry와 별개로 서버의 `app-logs` 볼륨에 하루 한 파일씩 30일 동안 남습니다. 배포해도 지워지지 않습니다.
+
+```bash
+docker compose exec app tail -n 200 /app/logs/error.log
+```
 
 HTTPS 뒤에서 운영하면 `.env`에 `SERVER_SERVLET_SESSION_COOKIE_SECURE=true`와 `SERVER_FORWARD_HEADERS_STRATEGY=framework`를 추가합니다.
 

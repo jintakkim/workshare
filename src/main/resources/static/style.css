@@ -553,9 +553,3 @@ body:has(.admin-menu[open]) { overflow:hidden; }
 .dialog-actions { display:flex; gap:10px; }
 .dialog-actions .button { flex:1; }
 .work-group-dialog [hidden] { display:none; }
-.work-group-current { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:12px 0; }
-.work-group-current p { display:grid; gap:2px; margin:0; }
-.work-group-dialog h2 { margin:0; }
-.dialog-actions { display:flex; gap:10px; }
-.dialog-actions .button { flex:1; }
-.work-group-dialog [hidden] { display:none; }
