@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"><body>
+<section th:fragment="section" class="card profile-messages" data-profile-messages
+         th:attr="data-poll-url=@{/employees/{id}/messages(id=${recipientId})}" aria-labelledby="profile-messages-title">
+  <h2 id="profile-messages-title">한마디</h2>
+  <div class="flash-messages message-flash" aria-live="polite">
+    <div th:if="${messageNotice}" class="notice" role="status" th:text="${messageNotice}"></div>
+    <div th:if="${messageError}" class="notice danger" role="alert" th:text="${messageError}"></div>
+  </div>
+  <form th:if="${canWriteMessage}" class="message-composer" data-swap=".profile-messages" method="post"
+        th:action="@{/employees/{id}/messages(id=${recipientId})}">
+    <textarea name="content" rows="3" maxlength="500" required data-message-input
+              th:placeholder="${recipientName + ' 님에게 한마디 남겨 주세요'}" aria-label="한마디"></textarea>
+    <div class="message-composer-bar">
+      <label class="message-anonymous"><input type="checkbox" name="anonymous" value="true"><span>익명으로</span></label>
+      <span class="message-counter" data-message-counter>0 / 500</span>
+      <button class="primary" type="submit" data-message-submit disabled>남기기</button>
+    </div>
+  </form>
+  <div th:replace="~{fragments/profile-messages :: list}"></div>
+</section>
+
+<div th:fragment="list" class="message-list" data-message-list>
+  <p th:if="${messages.isEmpty()}" class="small muted message-empty">아직 남긴 한마디가 없어요.</p>
+  <article th:each="message : ${messages}" class="message" th:classappend="${message.mine ? 'is-mine' : ''}">
+    <header class="message-header">
+      <a th:unless="${message.anonymous}" class="message-author" th:href="@{/employees/{id}(id=${message.authorId})}">
+        <span class="profile-avatar message-avatar"><span th:text="${#strings.substring(message.authorName, 0, 1)}"></span><img th:if="${message.authorPhotoVersion != null}" th:src="@{/employees/{id}/photo(id=${message.authorId},v=${message.authorPhotoVersion})}" alt="" decoding="async" loading="lazy"></span>
+        <strong th:text="${message.authorName}"></strong>
+      </a>
+      <span th:if="${message.anonymous}" class="message-author">
+        <span class="profile-avatar message-avatar is-anonymous" aria-hidden="true">?</span>
+        <strong>익명</strong>
+      </span>
+      <span class="message-meta">
+        <time th:datetime="${message.writtenAt}" th:text="${#temporals.format(message.writtenAt, 'M월 d일 a h:mm')}"></time>
+        <span th:if="${message.edited}"> · 수정됨</span>
+        <span th:if="${message.mine}" class="message-mine"> · 내가 쓴 글</span>
+      </span>
+    </header>
+    <p class="message-content" th:text="${message.content}"></p>
+    <div class="message-actions" th:if="${message.mine or message.deletable}">
+      <button th:if="${message.mine}" type="button" class="text-button" data-message-edit>수정</button>
+      <form th:if="${message.deletable}" data-swap=".profile-messages" method="post" data-message-delete
+            th:action="${admin} ? @{/admin/employees/{id}/messages/{messageId}(id=${recipientId},messageId=${message.id})} : @{/employees/{id}/messages/{messageId}(id=${recipientId},messageId=${message.id})}">
+        <input type="hidden" name="_method" value="delete">
+        <button class="text-button" type="submit">삭제</button>
+      </form>
+    </div>
+    <form th:if="${message.mine}" class="message-composer message-edit" hidden data-swap=".profile-messages" method="post"
+          th:action="@{/employees/{id}/messages/{messageId}(id=${recipientId},messageId=${message.id})}">
+      <input type="hidden" name="_method" value="put">
+      <textarea name="content" rows="3" maxlength="500" required data-message-input aria-label="한마디 고치기" th:text="${message.content}"></textarea>
+      <div class="message-composer-bar">
+        <label class="message-anonymous"><input type="checkbox" name="anonymous" value="true" th:checked="${message.anonymous}"><span>익명으로</span></label>
+        <span class="message-counter" data-message-counter></span>
+        <button class="button subtle" type="button" data-message-cancel>취소</button>
+        <button class="primary" type="submit" data-message-submit>저장</button>
+      </div>
+    </form>
+  </article>
+</div>
+</body></html>

@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#495d3f"><title>프로필 · 장복인간</title><link th:replace="~{fragments/site-layout :: icon}"><link rel="stylesheet" th:href="@{/style.css}"><script defer th:src="@{/admin.js}"></script><script defer th:src="@{/partial-nav.js}"></script><script defer th:src="@{/service-period.js}"></script><script defer th:src="@{/service-progress.js}"></script><script defer th:src="@{/photo-upload.js}"></script><script defer th:src="@{/work-group-change.js}"></script></head><body class="app-page admin-page"><th:block th:if="${management}"><header th:replace="~{admin :: adminHeader}"></header><dialog th:replace="~{admin :: adminMenu}"></dialog></th:block>
+<!doctype html><html lang="ko" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#495d3f"><title>프로필 · 장복인간</title><link th:replace="~{fragments/site-layout :: icon}"><link rel="stylesheet" th:href="@{/style.css}"><script defer th:src="@{/admin.js}"></script><script defer th:src="@{/partial-nav.js}"></script><script defer th:src="@{/service-period.js}"></script><script defer th:src="@{/service-progress.js}"></script><script defer th:src="@{/photo-upload.js}"></script><script defer th:src="@{/work-group-change.js}"></script><script defer th:src="@{/profile-messages.js}"></script></head><body class="app-page admin-page"><th:block th:if="${management}"><header th:replace="~{admin :: adminHeader}"></header><dialog th:replace="~{admin :: adminMenu}"></dialog></th:block>
 <th:block th:if="${!management}"><header th:replace="~{fragments/staff-navigation :: header}"></header><dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog></th:block><main th:replace="~{fragments/site-layout :: page('admin-shell', ~{::pageContent})}"><th:block th:fragment="pageContent">
   <a class="profile-back" th:href="${management} ? @{/admin/employees} : @{/employees}">← 직원 목록</a>
   <div th:if="${success != null and servicePeriodFeedback != true}" class="notice" role="status" th:text="${success}"></div>
@@ -60,6 +60,7 @@
         </div>
         <p th:if="${management}" class="small muted">나눔가게 등 활동 담당자는 <a th:href="@{/admin/activities}">활동 메뉴</a>에서 변경합니다.</p>
       </section>
+      <section th:replace="~{fragments/profile-messages :: section}"></section>
       <section th:if="${management and !employee.excludedByAdmin}" class="card" id="training-period">
         <h2>교육·훈련 기간</h2>
         <p class="small muted">훈련소나 직무교육처럼 복지관에 나오지 않는 기간이에요. 그동안은 봉급만 계산하고 교통비·식비는 빠지며, 나눔가게 배정에서도 제외돼요.</p>

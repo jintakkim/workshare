@@ -61,6 +61,12 @@ public class SecurityConfiguration {
                                         .hasAnyRole("STAFF", "ADMIN")
                                         .requestMatchers(HttpMethod.PUT, "/leave/*", "/sharing-shop/time-preference")
                                         .hasRole("STAFF")
+                                        .requestMatchers(HttpMethod.POST, "/employees/*/messages")
+                                        .hasRole("STAFF")
+                                        .requestMatchers(HttpMethod.PUT, "/employees/*/messages/*")
+                                        .hasRole("STAFF")
+                                        .requestMatchers(HttpMethod.DELETE, "/employees/*/messages/*")
+                                        .hasRole("STAFF")
                                         .requestMatchers(
                                                 "/employees/me",
                                                 "/leave/history",

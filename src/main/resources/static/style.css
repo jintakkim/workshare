@@ -557,3 +557,30 @@ body:has(.admin-menu[open]) { overflow:hidden; }
 .is-segmented .choice-button { border-color:#d3ddc9; background:white; }
 .choice-button.is-current { border-color:var(--green); background:var(--green); color:white; }
 .choice-button:not(.is-current):not(:disabled):hover { background:#eaf1e0; }
+/* Profile messages: phone layout first. */
+.profile-messages h2 { margin-bottom:14px; }
+.message-flash .notice { margin:0 0 12px; }
+.message-composer { display:grid; gap:8px; }
+.message-composer textarea { width:100%; min-height:88px; max-height:320px; padding:12px 13px; border:1px solid #d2d9c8; border-radius:12px; background:#fdfef9; color:var(--ink); font:inherit; font-size:16px; line-height:1.6; resize:none; overflow-y:auto; }
+.message-composer textarea:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 3px #276a5326; }
+.message-composer textarea::placeholder { color:#a0a691; font-size:14px; }
+.message-composer-bar { display:flex; align-items:center; gap:10px; }
+.message-composer-bar .primary { width:auto; min-width:84px; }
+.message-anonymous { display:inline-flex; align-items:center; gap:6px; min-height:44px; margin-right:auto; color:#5e7250; font-size:13px; font-weight:600; cursor:pointer; }
+.message-anonymous input { width:18px; height:18px; accent-color:#657e50; }
+.message-counter { color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
+.message-counter.is-near-limit { color:#a45143; }
+.message-list { display:grid; gap:10px; margin-top:16px; }
+.message-empty { padding:8px 0; }
+.message { padding:14px; border:1px solid var(--line); border-radius:14px; background:white; }
+.message.is-mine { border-color:#cbd9bf; background:#fafcf5; }
+.message-header { display:flex; align-items:center; flex-wrap:wrap; gap:6px 10px; margin-bottom:8px; }
+.message-author { display:inline-flex; align-items:center; gap:8px; min-width:0; font-size:14px; }
+.message-avatar { width:32px; height:32px; border-radius:11px; font-size:14px; }
+.message-avatar.is-anonymous { color:#9aa58f; }
+.message-meta { color:var(--muted); font-size:12px; }
+.message-content { white-space:pre-wrap; overflow-wrap:anywhere; font-size:14px; line-height:1.7; }
+.message-actions { display:flex; justify-content:flex-end; gap:14px; margin-top:6px; }
+.message-actions form { margin:0; }
+.message-actions .text-button { min-height:32px; padding:4px 2px; }
+.message [hidden] { display:none; }

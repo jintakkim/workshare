@@ -3,6 +3,7 @@ package com.jangbokhuman.workshare.web;
 import com.jangbokhuman.workshare.activity.ActivityManagementService;
 import com.jangbokhuman.workshare.calendar.WorkTime;
 import com.jangbokhuman.workshare.config.AuthenticatedUser;
+import com.jangbokhuman.workshare.employee.ProfileMessageService;
 import com.jangbokhuman.workshare.employee.RosterService;
 import com.jangbokhuman.workshare.employee.WorkGroupType;
 
@@ -16,6 +17,7 @@ import org.springframework.ui.Model;
 class EmployeeProfileModel {
     private final RosterService rosterService;
     private final ActivityManagementService activityManagementService;
+    private final ProfileMessageService profileMessageService;
     private final WorkTime workTime;
 
     void addProfile(Long id, AuthenticatedUser auth, Model model, boolean management) {
@@ -28,6 +30,10 @@ class EmployeeProfileModel {
         model.addAttribute("canChangePassword", ownProfile);
         model.addAttribute("canChangeServicePeriod", ownProfile && !employee.excludedByAdmin());
         model.addAttribute("today", workTime.getToday());
+        model.addAttribute("recipientId", id);
+        model.addAttribute("recipientName", employee.name());
+        model.addAttribute("messages", profileMessageService.getMessages(id, auth.getEmployeeId(), auth.isAdmin()));
+        model.addAttribute("canWriteMessage", !auth.isAdmin() && !ownProfile);
         model.addAttribute("section", "employees");
         if (management) {
             model.addAttribute("groups", WorkGroupType.values());

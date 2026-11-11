@@ -20,6 +20,7 @@ import com.jangbokhuman.workshare.calendar.HolidayService;
 import com.jangbokhuman.workshare.calendar.WorkPeriod;
 import com.jangbokhuman.workshare.employee.Employee;
 import com.jangbokhuman.workshare.employee.EmployeePhotoRepository;
+import com.jangbokhuman.workshare.employee.ProfileMessageRepository;
 import com.jangbokhuman.workshare.employee.EmployeeRepository;
 import com.jangbokhuman.workshare.employee.RosterService;
 import com.jangbokhuman.workshare.attendance.Attendance;
@@ -79,6 +80,7 @@ abstract class BusinessFeatureTestSupport {
     @Autowired WorkSettings workSettings;
     @Autowired EmployeeRepository employeeRepository;
     @Autowired EmployeePhotoRepository employeePhotoRepository;
+    @Autowired ProfileMessageRepository profileMessageRepository;
     @Autowired LeaveRequestRepository leaveRequestRepository;
     @Autowired SharingShopTimePreferenceRepository sharingShopTimePreferenceRepository;
     @Autowired ActivityManagementService activityManagementService;
@@ -120,6 +122,7 @@ abstract class BusinessFeatureTestSupport {
         leaveRequestRepository.deleteAll();
         holidayRepository.deleteAll();
         employeePhotoRepository.deleteAll();
+        profileMessageRepository.deleteAll();
         employeeRepository.deleteAll();
     }
 
