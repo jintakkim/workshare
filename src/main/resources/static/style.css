@@ -547,3 +547,9 @@ body:has(.admin-menu[open]) { overflow:hidden; }
 .photo-saving-spinner { width:36px; height:36px; border:3px solid var(--light); border-top-color:var(--green); border-radius:50%; animation:photo-saving-spin .8s linear infinite; }
 @keyframes photo-saving-spin { to { transform:rotate(360deg); } }
 @media (prefers-reduced-motion:reduce) { .photo-saving-spinner { animation-duration:2.4s; } }
+.work-group-current { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:12px 0; }
+.work-group-current p { display:grid; gap:2px; margin:0; }
+.work-group-dialog h2 { margin:0; }
+.dialog-actions { display:flex; gap:10px; }
+.dialog-actions .button { flex:1; }
+.work-group-dialog [hidden] { display:none; }

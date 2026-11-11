@@ -66,7 +66,7 @@ public class ActivityManagementService {
                     .map(Activity::getName)
                     .toList();
             if (!activityNames.isEmpty()) {
-                impacts.add(new WorkGroupChangeImpact(workGroup.getLabel(), activityNames));
+                impacts.add(new WorkGroupChangeImpact(workGroup.name(), workGroup.getLabel(), activityNames));
             }
         }
         return impacts;
@@ -78,5 +78,5 @@ public class ActivityManagementService {
 
     public record Detail(String code, String name, String description, List<Candidate> candidates) {}
 
-    public record WorkGroupChangeImpact(String workGroupLabel, List<String> activityNames) {}
+    public record WorkGroupChangeImpact(String workGroupCode, String workGroupLabel, List<String> activityNames) {}
 }
