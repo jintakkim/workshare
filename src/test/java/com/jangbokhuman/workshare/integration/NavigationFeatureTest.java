@@ -117,7 +117,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                             "버그나 건의사항은", "href=\"mailto:support@jangbokhuman.app\"")
                     .doesNotContain("class=\"calendar-grid\"", "하루를 함께 나누는 일", "내 휴가 입력");
             if (role.equals("STAFF")) {
-                assertThat(html).contains("<details class=\"panel-disclosure sharing-preference\">");
+                assertThat(html).contains("<section class=\"sharing-preference\"", "name=\"timePreference\"");
             } else {
                 assertThat(html).doesNotContain("sharing-preference");
             }

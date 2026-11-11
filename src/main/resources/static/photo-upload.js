@@ -43,7 +43,13 @@
         const savingText = form.querySelector("[data-photo-saving-text]");
         let ready = false;
 
-        input.addEventListener("change", () => showPreview(form, input.files[0]));
+        input.addEventListener("change", () => {
+            if (!input.files[0]) {
+                return;
+            }
+            showPreview(form, input.files[0]);
+            form.requestSubmit();
+        });
 
         form.addEventListener("submit", async (event) => {
             if (ready) {

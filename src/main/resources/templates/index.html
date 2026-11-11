@@ -40,9 +40,12 @@
         <div th:if="${!admin && view.myId != null}">
           <form data-swap=".workspace, .flash-messages" th:action="@{/leave/{date}(date=${#temporals.format(view.date, 'yyyy-MM-dd')})}" method="post" class="stack">
             <input type="hidden" name="_method" value="put">
-            <p class="selected-employee" th:text="${view.myName + ' 님의 일정'}"></p><label>근무 상태 · 모든 활동 공통<select name="attendance" th:disabled="${!view.editable}"><option th:each="a : ${attendances}" th:value="${a}" th:text="${a.label}" th:selected="${a == view.attendance}"></option></select></label>
-            <p class="small muted">오전 반차는 오후만, 오후 반차는 오전만 근무합니다. 취소하려면 정상 출근으로 저장하세요.</p>
-            <button class="primary" type="submit" th:disabled="${!view.editable}">근무 상태 저장</button>
+            <p class="selected-employee" th:text="${view.myName + ' 님의 일정'}"></p><div class="choice-buttons" role="group" aria-label="근무 상태 · 모든 활동 공통">
+              <button th:each="a : ${attendances}" type="submit" name="attendance" th:value="${a}"
+                      class="choice-button" th:classappend="${a == view.attendance ? 'is-current' : ''}"
+                      th:attr="aria-pressed=${a == view.attendance}" th:disabled="${!view.editable}" th:text="${a.label}"></button>
+            </div>
+            <p class="small muted">누르면 바로 저장돼요. 오전 반차는 오후만, 오후 반차는 오전만 근무합니다. 취소하려면 정상 출근을 누르세요.</p>
           </form>
           <p class="small muted" th:if="${view.editable}" th:text="${'이 날짜 ' + #temporals.format(view.cutoff, 'HH:mm') + ' 전까지 변경할 수 있어요.'}"></p>
         </div>

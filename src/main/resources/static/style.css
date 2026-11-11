@@ -400,9 +400,8 @@ body:has(.admin-menu[open]) { overflow:hidden; }
 .sharing-shell>.pane-heading { flex-wrap:nowrap; gap:12px; }
 .sharing-shell>.pane-heading>div { min-width:0; }
 .sharing-preference { margin:0 0 28px; }
-.sharing-preference>summary { cursor:pointer; }
-.sharing-preference-arrow { width:9px; height:9px; margin:0 4px 4px 0; border-right:2.5px solid currentColor; border-bottom:2.5px solid currentColor; border-radius:1px; transform:rotate(45deg); transition:transform .2s; }
-.sharing-preference[open] .sharing-preference-arrow { margin:4px 4px 0 0; transform:rotate(-135deg); }
+.sharing-preference-title { margin-bottom:10px; font-size:14px; letter-spacing:0; }
+.sharing-preference .small { margin-top:8px; }
 .allocation-guide-trigger { flex-shrink:0; min-height:44px; white-space:nowrap; }
 .allocation-guide { width:min(520px, calc(100% - 28px)); max-height:calc(100dvh - 32px); padding:22px; border:1px solid var(--line); border-radius:18px; background:var(--paper); color:var(--ink); }
 .allocation-guide::backdrop { background:#25321eb3; }
@@ -553,3 +552,9 @@ body:has(.admin-menu[open]) { overflow:hidden; }
 .work-group-dialog [hidden] { display:none; }
 .support-admin .support-day.is-today .support-date { box-shadow:inset 0 0 0 2px var(--green); border-radius:10px; }
 .schedule-days>li[data-scroll-today], .support-day[data-scroll-today] { scroll-margin:80px 0; }
+.choice-buttons { display:grid; grid-template-columns:repeat(auto-fill, minmax(96px, 1fr)); gap:8px; }
+.choice-buttons.is-segmented { grid-template-columns:repeat(3, minmax(0, 1fr)); gap:0; padding:4px; border-radius:12px; background:var(--light); }
+.choice-button { min-height:44px; padding:8px 10px; border:1px solid #dce3d2; border-radius:9px; background:#fafcf5; color:#495d3f; font-size:13px; font-weight:600; }
+.is-segmented .choice-button { border-color:transparent; background:transparent; }
+.choice-button.is-current { border-color:var(--green); background:var(--green); color:white; }
+.choice-button:not(.is-current):not(:disabled):hover { background:#eaf1e0; }

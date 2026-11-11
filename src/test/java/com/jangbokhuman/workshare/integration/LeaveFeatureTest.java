@@ -231,20 +231,26 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
                                 .with(csrf())
                                 .param("attendance", "SICK_LEAVE"))
                 .andExpect(status().is3xxRedirection());
+        String adminPage = mockMvc.perform(get("/admin/leave").with(testUser("admin", "ADMIN"))
+                        .param("employeeId", String.valueOf(id)).param("date", TODAY.toString()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(adminPage).containsPattern("value=\"SICK_LEAVE\" class=\"choice-button is-current\" aria-pressed=\"true\"")
+                .doesNotContain("근무 상태 저장");
         mockMvc.perform(get("/leave").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
                 .andExpect(
                         content()
                                 .string(
                                         org.hamcrest.Matchers.containsString(
-                                                "value=\"SICK_LEAVE\" selected=\"selected\"")));
+                                                "value=\"SICK_LEAVE\"\n                      class=\"choice-button is-current\"")));
         mockMvc.perform(get("/leave").with(testUser("김민수", "STAFF")))
                 .andExpect(status().isOk())
                 .andExpect(
                         content()
                                 .string(
                                         org.hamcrest.Matchers.containsString(
-                                                "value=\"WORK\" selected=\"selected\"")));
+                                                "value=\"WORK\"\n                      class=\"choice-button is-current\"")));
         now("08:49");
         mockMvc.perform(
                         put("/leave/" + TODAY.toString())
