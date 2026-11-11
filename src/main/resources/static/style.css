@@ -540,3 +540,10 @@ body:has(.admin-menu[open]) { overflow:hidden; }
 @media (min-width:761px) {
   .service-progress-value strong { font-size:36px; }
 }
+.photo-saving { position:fixed; inset:0; z-index:100; display:grid; place-content:center; justify-items:center; gap:10px; padding:24px; background:#fffefaeb; text-align:center; }
+.photo-saving[hidden] { display:none; }
+.photo-saving strong { font-size:17px; }
+.photo-saving small { max-width:260px; color:var(--muted); font-size:13px; line-height:1.6; word-break:keep-all; }
+.photo-saving-spinner { width:36px; height:36px; border:3px solid var(--light); border-top-color:var(--green); border-radius:50%; animation:photo-saving-spin .8s linear infinite; }
+@keyframes photo-saving-spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) { .photo-saving-spinner { animation-duration:2.4s; } }
