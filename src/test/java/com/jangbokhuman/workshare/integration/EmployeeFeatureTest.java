@@ -524,7 +524,7 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(flash().attribute("error", "JPG, PNG 또는 HEIC(HEIF) 사진을 선택해주세요."));
         MockMultipartFile oversized =
                 new org.springframework.mock.web.MockMultipartFile(
-                        "photo", "large.png", "image/png", new byte[2 * 1024 * 1024 + 1]);
+                        "photo", "large.png", "image/png", new byte[15 * 1024 * 1024 + 1]);
         mockMvc.perform(
                         org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                                 .multipart(HttpMethod.PUT, "/employees/" + id + "/photo")
@@ -532,7 +532,7 @@ class EmployeeFeatureTest extends BusinessFeatureTestSupport {
                                 .with(testUser("강수진", "STAFF"))
                                 .with(csrf()))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(flash().attribute("error", "사진은 2MB 이하의 JPG, PNG 또는 HEIC(HEIF) 파일로 선택해주세요."));
+                .andExpect(flash().attribute("error", "사진은 15MB 이하의 JPG, PNG 또는 HEIC(HEIF) 파일로 선택해주세요."));
         assertThat(employeePhotoRepository.findById(id).orElseThrow().getImage())
                 .isEqualTo(response);
     }

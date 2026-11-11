@@ -17,7 +17,7 @@ import java.time.LocalDate;
 @Service
 @RequiredArgsConstructor
 public class EmployeeProfileService {
-    private static final long MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+    private static final long MAX_PHOTO_BYTES = 15 * 1024 * 1024;
 
     private final EmployeeRepository employeeRepository;
     private final EmployeePhotoRepository employeePhotoRepository;
@@ -56,7 +56,7 @@ public class EmployeeProfileService {
 
     private void validatePhotoSize(MultipartFile file) {
         if (file.isEmpty() || file.getSize() > MAX_PHOTO_BYTES) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "사진은 2MB 이하의 JPG, PNG 또는 HEIC(HEIF) 파일로 선택해주세요.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "사진은 15MB 이하의 JPG, PNG 또는 HEIC(HEIF) 파일로 선택해주세요.");
         }
     }
 

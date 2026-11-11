@@ -19,6 +19,7 @@ import java.util.Locale;
 import java.util.Set;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReadParam;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 
@@ -26,7 +27,7 @@ import javax.imageio.stream.ImageInputStream;
 @RequiredArgsConstructor
 class ProfilePhotoConverter {
     private static final int MAX_SIDE = 512;
-    private static final long MAX_PIXELS = 25_000_000;
+    private static final long MAX_PIXELS = 120_000_000;
     private static final Set<String> READABLE_FORMATS = Set.of("JPEG", "PNG");
     private static final Color BACKGROUND = new Color(255, 254, 250);
     private static final String FORMAT_MESSAGE = "JPG, PNG 또는 HEIC(HEIF) 사진을 선택해주세요.";
@@ -35,18 +36,14 @@ class ProfilePhotoConverter {
 
     byte[] convertToJpegThumbnail(byte[] upload) {
         try {
-            BufferedImage original = readImage(convertHeifIfNeeded(upload));
-            return writeJpeg(resize(original));
+            boolean heif = heifThumbnailConverter.supports(upload);
+            byte[] readable = heif ? heifThumbnailConverter.convert(upload, MAX_SIDE) : upload;
+            int orientation = heif ? JpegOrientation.NORMAL : JpegOrientation.read(upload);
+            BufferedImage original = readImage(readable);
+            return writeJpeg(JpegOrientation.apply(resize(original), orientation));
         } catch (IOException error) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "사진을 읽을 수 없습니다. 다른 JPG, PNG 또는 HEIC(HEIF) 파일을 선택해주세요.", error);
         }
-    }
-
-    private byte[] convertHeifIfNeeded(byte[] upload) throws IOException {
-        if (heifThumbnailConverter.supports(upload)) {
-            return heifThumbnailConverter.convert(upload, MAX_SIDE);
-        }
-        return upload;
     }
 
     private BufferedImage readImage(byte[] image) throws IOException {
@@ -54,12 +51,22 @@ class ProfilePhotoConverter {
             ImageReader reader = findReadableReader(input);
             try {
                 reader.setInput(input);
-                validateResolution(reader.getWidth(0), reader.getHeight(0));
-                return reader.read(0);
+                int width = reader.getWidth(0);
+                int height = reader.getHeight(0);
+                validateResolution(width, height);
+                return reader.read(0, createDownsamplingParam(reader, width, height));
             } finally {
                 reader.dispose();
             }
         }
+    }
+
+    // Large phone photos are decoded at reduced resolution so a 50MP image does not fill the heap.
+    private ImageReadParam createDownsamplingParam(ImageReader reader, int width, int height) {
+        ImageReadParam param = reader.getDefaultReadParam();
+        int step = Math.max(1, Math.max(width, height) / (MAX_SIDE * 2));
+        param.setSourceSubsampling(step, step, 0, 0);
+        return param;
     }
 
     private ImageReader findReadableReader(ImageInputStream input) throws IOException {

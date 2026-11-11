@@ -37,8 +37,8 @@ spring:
         enabled: true
   servlet:
     multipart:
-      max-file-size: 2MB
-      max-request-size: 3MB
+      max-file-size: 15MB
+      max-request-size: 16MB
   thymeleaf:
     cache: true
 server:
