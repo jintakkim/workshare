@@ -84,7 +84,7 @@ class PhotoUploadServerTest {
 
         HttpResponse<String> upload = uploadPhoto(photo, "photo.png", "image/png");
 
-        assertThat(upload.headers().firstValue("Location")).hasValue(uri("/employees/" + employeeId).toString());
+        assertThat(upload.headers().firstValue("Location")).hasValue("/employees/" + employeeId);
         assertThat(employeePhotoRepository.existsById(employeeId)).isTrue();
     }
 
@@ -93,7 +93,7 @@ class PhotoUploadServerTest {
     void returnsToTheProfileWhenThePhotoIsTooLarge() throws Exception {
         HttpResponse<String> upload = uploadPhoto(new byte[17 * 1024 * 1024], "huge.jpg", "image/jpeg");
 
-        assertThat(upload.headers().firstValue("Location")).hasValue(uri("/employees/" + employeeId).toString());
+        assertThat(upload.headers().firstValue("Location")).hasValue("/employees/" + employeeId);
         assertThat(get("/employees/" + employeeId).body()).contains("사진은 15MB 이하");
         assertThat(employeePhotoRepository.existsById(employeeId)).isFalse();
     }
@@ -108,6 +108,27 @@ class PhotoUploadServerTest {
         BufferedImage saved = ImageIO.read(new ByteArrayInputStream(get("/employees/" + employeeId + "/photo").bodyAsBytes()));
         assertThat(saved.getWidth()).isEqualTo(200);
         assertThat(saved.getHeight()).isEqualTo(400);
+    }
+
+    @Test
+    @DisplayName("저장 뒤 돌아가는 주소는 상대 경로라 https 화면에서 한 번만 저장된다")
+    void redirectsWithARelativeLocationSoHttpsPagesDoNotPostTwice() throws Exception {
+        String recipientName = "직원" + NAME_SUFFIXES.charAt(NEXT_NAME.getAndIncrement());
+        rosterService.registerEmployee(recipientName, STAFF_PASSWORD, "GENERAL");
+        Long recipientId = employeeRepository.findByName(recipientName).orElseThrow().getId();
+        String form = "content=" + URLEncoder.encode("고마워요", StandardCharsets.UTF_8)
+                + "&_csrf=" + findCsrf(get("/employees/" + recipientId).body());
+
+        HttpResponse<String> response = client.send(
+                HttpRequest.newBuilder(uri("/employees/" + recipientId + "/messages"))
+                        .header("Content-Type", "application/x-www-form-urlencoded")
+                        .POST(HttpRequest.BodyPublishers.ofString(form))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString()
+        );
+
+        assertThat(response.statusCode()).isEqualTo(302);
+        assertThat(response.headers().firstValue("Location")).hasValue("/employees/" + recipientId);
     }
 
     private HttpResponse<String> uploadPhoto(byte[] photo, String fileName, String contentType) throws Exception {

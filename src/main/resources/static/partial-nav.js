@@ -38,7 +38,11 @@
             document.title = page.title;
         };
         if (document.startViewTransition) {
-            await document.startViewTransition(update).updateCallbackDone;
+            const transition = document.startViewTransition(update);
+            // A skipped animation is harmless; the regions are already replaced once updateCallbackDone settles.
+            transition.ready.catch(() => {});
+            transition.finished.catch(() => {});
+            await transition.updateCallbackDone;
         } else {
             update();
         }
@@ -95,6 +99,10 @@
             return;
         }
         event.preventDefault();
+        if (form.dataset.submitting) {
+            return;
+        }
+        form.dataset.submitting = "true";
         const selectors = form.dataset.swap;
         const body = createFormBody(form, event.submitter);
         const buttons = [...form.querySelectorAll("button[type=submit]")];
@@ -105,8 +113,11 @@
                 history.replaceState({ swap: selectors }, "", resultUrl);
             }
         } catch (error) {
-            HTMLFormElement.prototype.submit.call(form);
+            // The request may already have been saved, so sending the form again could save it twice.
+            // Reload instead and let the page show what was stored.
+            location.reload();
         } finally {
+            delete form.dataset.submitting;
             buttons.forEach(button => button.disabled = false);
         }
     });

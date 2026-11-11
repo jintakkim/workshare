@@ -35,7 +35,8 @@
     });
 
     document.addEventListener("keydown", (event) => {
-        if (event.target.matches("[data-message-input]") && event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+        if (event.target.matches("[data-message-input]") && event.key === "Enter" && (event.metaKey || event.ctrlKey)
+                && !event.isComposing && !event.repeat) {
             event.preventDefault();
             if (event.target.value.trim()) {
                 event.target.form.requestSubmit();
