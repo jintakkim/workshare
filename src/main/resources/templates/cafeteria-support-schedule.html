@@ -7,6 +7,7 @@
   <link th:replace="~{fragments/site-layout :: icon}"><link rel="stylesheet" th:href="@{/style.css}">
   <script defer th:src="@{/admin.js}"></script>
   <script defer th:src="@{/partial-nav.js}"></script>
+  <script defer th:src="@{/scroll-to-today.js}"></script>
 </head>
 <body class="app-page admin-page">
 <header th:replace="~{fragments/staff-navigation :: header}"></header>
@@ -41,7 +42,8 @@
       <ul class="schedule-days">
         <li th:each="day : ${week.days}"
             th:with="mine=${myName != null and day.employeeNames.contains(myName)}"
-            th:classappend="${(day.date == today ? ' is-today' : '') + (day.date.isBefore(today) ? ' is-past' : '') + (mine ? ' is-mine' : '')}">
+            th:classappend="${(day.date == today ? ' is-today' : '') + (day.date.isBefore(today) ? ' is-past' : '') + (mine ? ' is-mine' : '')}"
+            th:attr="data-scroll-today=${day.date == today ? 'true' : null}">
           <span class="support-date">
             <strong th:text="${day.date.dayOfMonth}"></strong>
             <span th:text="${#temporals.format(day.date, 'E')}"></span>

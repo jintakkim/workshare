@@ -380,13 +380,19 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(november).contains("2026년 11월", "홍길동", "김민수", "href=\"/cafeteria-support\"", "내 식당지원 일정·교환")
+                .containsOnlyOnce("data-scroll-today")
                 .doesNotContain("이서연", "action=\"/admin/cafeteria-support/");
 
         String december = mockMvc.perform(get("/cafeteria-support/schedule").param("month", "2026-12")
                         .with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(december).contains("2026년 12월", "이서연").doesNotContain("홍길동", "김민수");
+        assertThat(december).contains("2026년 12월", "이서연").doesNotContain("홍길동", "김민수", "data-scroll-today");
+
+        String adminRoster = mockMvc.perform(get("/admin/cafeteria-support").with(testUser("admin", "ADMIN")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(adminRoster).containsOnlyOnce("data-scroll-today").contains("scroll-to-today");
 
         String adminHome = mockMvc.perform(get("/sharing-shop").with(testUser("admin", "ADMIN")))
                 .andExpect(status().isOk())

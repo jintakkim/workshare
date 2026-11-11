@@ -40,6 +40,7 @@ public class CafeteriaSupportAdminController {
     ) {
         YearMonth selectedMonth = month == null ? YearMonth.from(workTime.getToday()) : month;
         model.addAttribute("view", cafeteriaSupportQueryService.getMonth(selectedMonth));
+        model.addAttribute("today", workTime.getToday());
         model.addAttribute("section", "cafeteria-support");
         return "admin-cafeteria-support";
     }
