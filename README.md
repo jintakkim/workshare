@@ -80,5 +80,6 @@ app:
 
 - [업무 규칙](docs/business-rules.md): 권한, 마감, 배정, 식당지원과 교환 규칙
 - [기능 테스트](docs/business-tests.md): 규칙별 테스트 시나리오
+- [변경 기록](docs/changelog.md): 운영 배포 뒤 바뀐 기능·개선·버그 수정
 - [동시 저장과 잠금](docs/concurrency.md), [엔티티와 DB](docs/persistence.md)
 
