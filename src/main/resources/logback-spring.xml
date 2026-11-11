@@ -4,6 +4,7 @@
     <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
 
     <springProperty name="ERROR_LOG_DIR" source="app.error-log-directory" defaultValue="logs"/>
+    <springProperty name="ACCESS_LOG_DAYS" source="app.access-log-days" defaultValue="10"/>
 
     <!-- Errors only, one file per day, kept for 30 days so they survive container replacement on deploy. -->
     <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
@@ -20,6 +21,24 @@
             <charset>UTF-8</charset>
         </encoder>
     </appender>
+
+    <!-- One line per request (who, what, status, time), kept for app.access-log-days days. -->
+    <appender name="ACCESS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${ERROR_LOG_DIR}/access.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${ERROR_LOG_DIR}/access.%d{yyyy-MM-dd, Asia/Seoul}.log</fileNamePattern>
+            <maxHistory>${ACCESS_LOG_DAYS}</maxHistory>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS, Asia/Seoul} %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <logger name="workshare.access" level="INFO" additivity="false">
+        <appender-ref ref="ACCESS_FILE"/>
+    </logger>
 
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>

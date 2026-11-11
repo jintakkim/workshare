@@ -20,6 +20,7 @@ services:
       ERROR_LOG_DIR: /app/logs
       APP_INSTANCE_NAME: ${APP_INSTANCE_NAME:-workshare}
       SENTRY_DSN: ${SENTRY_DSN:-}
+      ACCESS_LOG_DAYS: ${ACCESS_LOG_DAYS:-10}
     volumes:
       - app-logs:/app/logs
     ports:

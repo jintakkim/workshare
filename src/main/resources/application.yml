@@ -57,6 +57,8 @@ app:
   allocation-result-time: '08:50'
   # 2026년 사회복무요원 월 보수(소집월을 1개월째로 이병 1–2, 일병 3–8, 상병 9–14, 병장 15개월부터)
   error-log-directory: ${ERROR_LOG_DIR:logs}
+  # 직원별 요청 기록(access.log) 보관 일수
+  access-log-days: ${ACCESS_LOG_DAYS:10}
   service-pay:
     monthly-pay:
       PRIVATE: 750000
