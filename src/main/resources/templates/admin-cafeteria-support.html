@@ -8,6 +8,7 @@
   <link rel="stylesheet" th:href="@{/style.css}">
   <script defer th:src="@{/admin.js}"></script>
   <script defer th:src="@{/partial-nav.js}"></script>
+  <script defer th:src="@{/cafeteria-support-roster.js}"></script>
 </head>
 <body class="app-page admin-page">
 <header th:replace="~{admin :: adminHeader}"></header>
@@ -60,7 +61,7 @@
               <strong th:text="${day.date.dayOfMonth}"></strong>
               <span th:text="${#temporals.format(day.date, 'E')}"></span>
             </span>
-            <span class="schedule-names">
+            <span class="schedule-names" data-support-names>
               <span class="name-chip is-empty" th:if="${!day.working}">휴무</span>
               <span class="name-chip is-empty" th:if="${day.working and day.names.isEmpty()}">미입력</span>
               <span class="name-chip" th:each="name : ${day.names}"
@@ -68,7 +69,7 @@
                     th:title="${day.onLeaveNames.contains(name) ? '휴가 겹침' : null}"
                     th:text="${day.onLeaveNames.contains(name) ? name + ' · 휴가 겹침' : name}"></span>
             </span>
-            <span class="support-count" th:if="${day.working}"
+            <span class="support-count" th:if="${day.working}" data-support-count th:data-support-required="${day.required}"
                   th:classappend="${day.selected.size() != day.required ? ' mismatch' : ''}"
                   th:text="${day.selected.size() + ' / ' + day.required + '명'}"></span>
           </summary>
@@ -78,7 +79,8 @@
               <legend>지원 직원 선택</legend>
               <label class="check-label choice-chip" th:each="person : ${day.people}">
                 <input type="checkbox" th:name="${'day_' + #temporals.format(day.date, 'yyyy-MM-dd')}"
-                       th:value="${person.id}" th:checked="${person.selected}" th:disabled="${!day.editable}">
+                       th:value="${person.id}" th:checked="${person.selected}" th:disabled="${!day.editable}"
+                       th:data-support-person="${person.name}" th:data-on-leave="${day.onLeaveNames.contains(person.name)}">
                 <span th:text="${person.name}"></span>
               </label>
             </fieldset>
