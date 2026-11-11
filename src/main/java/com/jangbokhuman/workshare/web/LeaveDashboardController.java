@@ -44,11 +44,16 @@ public class LeaveDashboardController {
         );
         model.addAttribute("admin", authentication.isAdmin());
         model.addAttribute("attendances", Attendance.values());
-        if (authentication.getEmployeeId() != null) {
-            model.addAttribute("leaveHistory", leaveHistoryService.getHistory(authentication.getEmployeeId()));
-        }
         model.addAttribute("section", "leave");
         return "index";
+    }
+
+    @GetMapping("/leave/history")
+    public String showLeaveHistory(@AuthenticationPrincipal AuthenticatedUser authentication, Model model) {
+        model.addAttribute("leaveHistory", leaveHistoryService.getHistory(authentication.getEmployeeId()));
+        model.addAttribute("admin", false);
+        model.addAttribute("section", "leave-history");
+        return "leave-history";
     }
 
     @ExceptionHandler(BusinessException.class)

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#495d3f">
+  <title>휴가 사용 내역 · 장복인간</title>
+  <link th:replace="~{fragments/site-layout :: icon}">
+  <link rel="stylesheet" th:href="@{/style.css}">
+  <script defer th:src="@{/admin.js}"></script>
+  <script defer th:src="@{/partial-nav.js}"></script>
+</head>
+<body class="app-page admin-page">
+<header th:replace="~{fragments/staff-navigation :: header}"></header>
+<dialog th:replace="~{fragments/staff-navigation :: menu}"></dialog>
+<main th:replace="~{fragments/site-layout :: page('admin-shell', ~{::pageContent})}"><th:block th:fragment="pageContent">
+<div class="leave-history-page">
+  <div class="pane-heading">
+    <div>
+      <h1>휴가 사용 내역</h1>
+      <p>지금까지 쓴 휴가와 앞으로 잡아 둔 휴가를 모아 봐요.</p>
+    </div>
+  </div>
+  <section class="card leave-history" aria-labelledby="leave-history-title">
+    <div class="section-heading">
+      <h2 id="leave-history-title">종류별 사용</h2>
+      <span class="badge" th:text="${'연차 ' + #numbers.formatDecimal(leaveHistory.annualLeaveDays, 1, 1) + '일 사용'}">연차 3.5일 사용</span>
+    </div>
+    <p class="small muted" th:if="${leaveHistory.entries.isEmpty()}">아직 사용한 휴가가 없어요.</p>
+    <ul class="leave-counts" th:unless="${leaveHistory.entries.isEmpty()}">
+      <li th:each="count : ${leaveHistory.counts}">
+        <span th:text="${count.attendance.label}"></span>
+        <strong th:text="${count.days + (count.attendance.halfDay ? '회' : '일')}"></strong>
+      </li>
+    </ul>
+    <div class="leave-history-detail" th:unless="${leaveHistory.entries.isEmpty()}">
+      <h3 th:text="${'날짜별 내역 ' + leaveHistory.entries.size() + '건'}">날짜별 내역</h3>
+      <ul>
+        <li th:each="entry : ${leaveHistory.entries}" th:classappend="${entry.upcoming ? 'is-upcoming' : ''}">
+          <span th:text="${#temporals.format(entry.date, 'yyyy.M.d (E)')}"></span>
+          <span class="badge" th:text="${entry.attendance.label}"></span>
+          <small th:if="${entry.upcoming}">예정</small>
+        </li>
+      </ul>
+    </div>
+  </section>
+</div>
+</th:block></main>
+</body></html>

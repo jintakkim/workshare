@@ -9,6 +9,7 @@
       <h1>내 일정</h1>
       <p class="muted">날짜를 눌러 나의 연차·병가·반차를 미리 알려주세요.</p>
       <a class="profile-directory-link sharing-shortcut" th:href="@{/sharing-shop}">나눔가게 배정 카드 보기 →</a>
+      <a class="profile-directory-link" th:href="@{/leave/history}">휴가 사용 내역 보기 →</a>
       <a class="profile-directory-link" th:href="@{/employees}">직원 프로필 보기 →</a>
     </div>
     <div class="time-note">
@@ -21,10 +22,10 @@
   <div class="workspace">
     <section class="card calendar-card" aria-label="나의 월별 휴가 달력">
 
-      <div class="section-heading"><div><p class="eyebrow">나의 휴가 달력</p><h2 th:text="${view.month.year + '년 ' + view.month.monthValue + '월'}">2026년 11월</h2></div><nav class="month-nav" aria-label="월 이동"><a class="icon-button" data-swap=".workspace, .flash-messages, .leave-history" th:href="@{/leave(date=${view.previousMonth})}" aria-label="이전 달">‹</a><a class="button subtle" data-swap=".workspace, .flash-messages, .leave-history" th:href="@{/leave}">오늘</a><a class="icon-button" data-swap=".workspace, .flash-messages, .leave-history" th:href="@{/leave(date=${view.nextMonth})}" aria-label="다음 달">›</a></nav></div>
+      <div class="section-heading"><div><p class="eyebrow">나의 휴가 달력</p><h2 th:text="${view.month.year + '년 ' + view.month.monthValue + '월'}">2026년 11월</h2></div><nav class="month-nav" aria-label="월 이동"><a class="icon-button" data-swap=".workspace, .flash-messages" th:href="@{/leave(date=${view.previousMonth})}" aria-label="이전 달">‹</a><a class="button subtle" data-swap=".workspace, .flash-messages" th:href="@{/leave}">오늘</a><a class="icon-button" data-swap=".workspace, .flash-messages" th:href="@{/leave(date=${view.nextMonth})}" aria-label="다음 달">›</a></nav></div>
       <div class="calendar-week" aria-hidden="true"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
       <div class="calendar-grid">
-        <a th:each="cell : ${view.cells}" class="calendar-day" data-swap=".workspace, .flash-messages, .leave-history" th:classappend="${(!cell.inMonth ? ' outside' : '') + (cell.selected ? ' selected' : '') + (cell.off ? ' off' : '') + (cell.today ? ' today' : '')}"
+        <a th:each="cell : ${view.cells}" class="calendar-day" data-swap=".workspace, .flash-messages" th:classappend="${(!cell.inMonth ? ' outside' : '') + (cell.selected ? ' selected' : '') + (cell.off ? ' off' : '') + (cell.today ? ' today' : '')}"
            th:href="@{/leave(date=${cell.date})} + '#day-details'" th:attr="aria-label=${cell.date + (cell.off ? ' 휴무' : ' 근무일')},aria-current=${cell.selected ? 'date' : null}">
           <span class="date-number" th:text="${cell.date.dayOfMonth}">1</span>
           <span class="holiday-name" th:if="${cell.holiday != null}" th:text="${cell.holiday.isBlank() ? '휴일' : cell.holiday}"></span>
@@ -39,7 +40,7 @@
         <p class="eyebrow">선택한 날짜</p><div class="day-title"><h2 th:text="${#temporals.format(view.date, 'M월 d일')}">11월 4일</h2><span class="badge" th:classappend="${view.businessDay ? 'working' : 'closed'}" th:text="${view.businessDay ? '근무일' : '휴무일'}"></span></div>
         <p class="muted" th:if="${!view.businessDay}" th:text="${view.holidayName != null ? (view.holidayName.isBlank() ? '복지관 휴일입니다.' : view.holidayName) : '토요일·일요일은 쉬는 날입니다.'}"></p>
         <div th:if="${!admin && view.myId != null}">
-          <form data-swap=".workspace, .flash-messages, .leave-history" th:action="@{/leave/{date}(date=${#temporals.format(view.date, 'yyyy-MM-dd')})}" method="post" class="stack">
+          <form data-swap=".workspace, .flash-messages" th:action="@{/leave/{date}(date=${#temporals.format(view.date, 'yyyy-MM-dd')})}" method="post" class="stack">
             <input type="hidden" name="_method" value="put">
             <p class="selected-employee" th:text="${view.myName + ' 님의 일정'}"></p><label>근무 상태 · 모든 활동 공통<select name="attendance" th:disabled="${!view.editable}"><option th:each="a : ${attendances}" th:value="${a}" th:text="${a.label}" th:selected="${a == view.attendance}"></option></select></label>
             <p class="small muted">오전 반차는 오후만, 오후 반차는 오전만 근무합니다. 취소하려면 정상 출근으로 저장하세요.</p>
@@ -53,28 +54,5 @@
     </aside>
 
   </div>
-  <section class="card leave-history" th:if="${leaveHistory != null}" aria-labelledby="leave-history-title">
-    <div class="section-heading">
-      <h2 id="leave-history-title">휴가 사용 내역</h2>
-      <span class="badge" th:text="${'연차 ' + #numbers.formatDecimal(leaveHistory.annualLeaveDays, 1, 1) + '일 사용'}">연차 3.5일 사용</span>
-    </div>
-    <p class="small muted" th:if="${leaveHistory.entries.isEmpty()}">아직 사용한 휴가가 없어요.</p>
-    <ul class="leave-counts" th:unless="${leaveHistory.entries.isEmpty()}">
-      <li th:each="count : ${leaveHistory.counts}">
-        <span th:text="${count.attendance.label}"></span>
-        <strong th:text="${count.days + (count.attendance.halfDay ? '회' : '일')}"></strong>
-      </li>
-    </ul>
-    <details class="leave-history-detail" th:unless="${leaveHistory.entries.isEmpty()}">
-      <summary th:text="${'세부 내역 ' + leaveHistory.entries.size() + '건'}">세부 내역</summary>
-      <ul>
-        <li th:each="entry : ${leaveHistory.entries}" th:classappend="${entry.upcoming ? 'is-upcoming' : ''}">
-          <span th:text="${#temporals.format(entry.date, 'yyyy.M.d (E)')}"></span>
-          <span class="badge" th:text="${entry.attendance.label}"></span>
-          <small th:if="${entry.upcoming}">예정</small>
-        </li>
-      </ul>
-    </details>
-  </section>
 </th:block></main>
 </body></html>

@@ -68,7 +68,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
         register("김민수");
         Long id = employeeRepository.findByName("홍길동").orElseThrow().getId();
         for (String page :
-                List.of("/leave", "/sharing-shop", "/leave/team", "/cafeteria-support", "/cafeteria-support/schedule", "/employees", "/employees/" + id)) {
+                List.of("/leave", "/leave/history", "/sharing-shop", "/leave/team", "/cafeteria-support", "/cafeteria-support/schedule", "/employees", "/employees/" + id)) {
             String html =
                     mockMvc.perform(get(page).with(testUser("홍길동", "STAFF")))
                             .andExpect(status().isOk())
@@ -83,6 +83,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                             "href=\"/sharing-shop\"",
                             "href=\"/leave\"",
                             "href=\"/leave/team\"",
+                            "href=\"/leave/history\"",
                             "href=\"/cafeteria-support/schedule\"",
                             "href=\"/employees/me\"",
                             "class=\"support-footer\"",
@@ -176,6 +177,26 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("등록된 휴가나 반차가 없어요.")));
         mockMvc.perform(get("/leave/team")).andExpect(status().is3xxRedirection());
+    }
+
+    @Test
+    @DisplayName("휴가 사용 내역은 내 일정 달력 아래가 아니라 직원 전용 화면에서 본다")
+    void leaveHistoryHasItsOwnStaffPage() throws Exception {
+        register("홍길동");
+        leaveRequestService.save(employeeId("홍길동"), TODAY, Attendance.VACATION);
+
+        String calendar = mockMvc.perform(get("/leave").with(testUser("홍길동", "STAFF")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(calendar).contains("휴가 사용 내역 보기").doesNotContain("leave-history-title");
+
+        String history = mockMvc.perform(get("/leave/history").with(testUser("홍길동", "STAFF")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(history).contains("<h1>휴가 사용 내역</h1>", "날짜별 내역 1건", "aria-current=\"page\"");
+
+        mockMvc.perform(get("/leave/history").with(testUser("admin", "ADMIN")))
+                .andExpect(status().isForbidden());
     }
 
     @Test
