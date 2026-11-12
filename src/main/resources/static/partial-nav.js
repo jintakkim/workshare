@@ -93,8 +93,36 @@
         }
     });
 
+    // A GET form with data-swap behaves like a data-swap link to the URL built from its fields.
+    async function swapSearch(form) {
+        const url = new URL(form.action);
+        url.search = new URLSearchParams(new FormData(form)).toString();
+        const selectors = form.dataset.swap;
+        try {
+            if (!await swap(url.href, selectors)) {
+                return;
+            }
+            history.replaceState({ swap: selectors }, "");
+            history.pushState({ swap: selectors }, "", url.href);
+        } catch (error) {
+            location.assign(url.href);
+        }
+    }
+
+    document.addEventListener("change", event => {
+        const field = event.target.closest("[data-submit-on-change]");
+        if (field?.form) {
+            field.form.requestSubmit();
+        }
+    });
+
     document.addEventListener("submit", async event => {
         const form = event.target.closest("form[data-swap]");
+        if (form && form.method.toLowerCase() === "get") {
+            event.preventDefault();
+            await swapSearch(form);
+            return;
+        }
         if (!form || form.method.toLowerCase() !== "post") {
             return;
         }

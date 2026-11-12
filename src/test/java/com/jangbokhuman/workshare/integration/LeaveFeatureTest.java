@@ -236,7 +236,8 @@ class LeaveFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(adminPage).containsPattern("value=\"SICK_LEAVE\" class=\"choice-button is-current\" aria-pressed=\"true\"")
-                .doesNotContain("근무 상태 저장");
+                .contains("data-submit-on-change")
+                .doesNotContain("근무 상태 저장", "일정 보기</button>", "badge working");
         mockMvc.perform(get("/leave").with(testUser("홍길동", "STAFF")))
                 .andExpect(status().isOk())
                 .andExpect(
