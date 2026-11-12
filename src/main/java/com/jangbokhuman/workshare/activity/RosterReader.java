@@ -40,7 +40,7 @@ public class RosterReader {
                 .filter(worker -> exclusionReasons.containsKey(worker.id()))
                 .map(worker -> new ExcludedWorker(worker, exclusionReasons.get(worker.id())))
                 .toList();
-        return new DayRoster(availableWorkers, excludedWorkers, activityExclusionReader.getWarnings(activity, date));
+        return new DayRoster(availableWorkers, excludedWorkers);
     }
 
     private List<Worker> findRegisteredWorkers(Activity activity, LocalDate date) {
@@ -69,9 +69,5 @@ public class RosterReader {
 
     public record ExcludedWorker(Worker worker, String reason) {}
 
-    public record DayRoster(
-            List<Worker> workers,
-            List<ExcludedWorker> excluded,
-            List<String> warnings
-    ) {}
+    public record DayRoster(List<Worker> workers, List<ExcludedWorker> excluded) {}
 }

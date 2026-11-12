@@ -58,18 +58,29 @@ public class SharingShopStaffing {
         if (facilityIds.isEmpty()) {
             return new FacilityCoverage(0, 0);
         }
-        Set<Long> awayIds = activityExclusionReader.getExclusionsOn(Activity.SHARING_SHOP, workDate).stream()
-                .map(ActivityExclusionReader.ActivityExclusion::employeeId)
-                .collect(Collectors.toSet());
+        // Facility staff kept out of the sharing shop by another activity still count for the periods
+        // they are not away, e.g. cafeteria support in the morning still covers the afternoon facility.
+        Map<Long, ActivityExclusionReader.ActivityExclusion> exclusions = activityExclusionReader
+                .getExclusionsOn(Activity.SHARING_SHOP, workDate).stream()
+                .collect(Collectors.toMap(ActivityExclusionReader.ActivityExclusion::employeeId, exclusion -> exclusion, (first, second) -> first));
         Map<Long, Attendance> attendanceById = leaveRequestRepository.findByWorkDate(workDate).stream()
                 .collect(Collectors.toMap(LeaveRequest::getEmployeeId, LeaveRequest::getAttendance));
-        List<Attendance> attendance = facilityIds.stream()
-                .filter(id -> !awayIds.contains(id))
-                .map(id -> attendanceById.getOrDefault(id, Attendance.WORK))
-                .toList();
-        int morning = (int) attendance.stream().filter(status -> status.canWork(WorkPeriod.MORNING)).count();
-        int evening = (int) attendance.stream().filter(status -> status.canWork(WorkPeriod.EVENING)).count();
-        return new FacilityCoverage(morning, evening);
+        return new FacilityCoverage(
+                countOnDuty(facilityIds, WorkPeriod.MORNING, exclusions, attendanceById),
+                countOnDuty(facilityIds, WorkPeriod.EVENING, exclusions, attendanceById)
+        );
+    }
+
+    private int countOnDuty(
+            Set<Long> facilityIds,
+            WorkPeriod period,
+            Map<Long, ActivityExclusionReader.ActivityExclusion> exclusions,
+            Map<Long, Attendance> attendanceById
+    ) {
+        return (int) facilityIds.stream()
+                .filter(id -> exclusions.get(id) == null || !exclusions.get(id).isAwayDuring(period))
+                .filter(id -> attendanceById.getOrDefault(id, Attendance.WORK).canWork(period))
+                .count();
     }
 
     public record Roster(List<SharingShopWorker> workers, ShiftQuota quota, FacilityCoverage facilityCoverage) {}

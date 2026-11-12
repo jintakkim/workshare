@@ -2,6 +2,7 @@ package com.jangbokhuman.workshare.integration;
 
 import com.jangbokhuman.workshare.activity.Activity;
 import com.jangbokhuman.workshare.activity.cafeteria.CafeteriaSupportAssignment;
+import com.jangbokhuman.workshare.activity.sharingshop.SharingShopQueryService;
 import com.jangbokhuman.workshare.attendance.Attendance;
 import com.jangbokhuman.workshare.common.BusinessException;
 import com.jangbokhuman.workshare.employee.EmployeeProfileService;
@@ -18,6 +19,8 @@ import java.util.List;
 
 @DisplayName("식당지원 명단 정리와 휴가 겹침 경고")
 class CafeteriaSupportRosterCleanupFeatureTest extends BusinessFeatureTestSupport {
+    @Autowired SharingShopQueryService sharingShopQueryService;
+
     @Autowired EmployeeProfileService employeeProfileService;
 
     private static final LocalDate TOMORROW = TODAY.plusDays(1);
@@ -66,16 +69,16 @@ class CafeteriaSupportRosterCleanupFeatureTest extends BusinessFeatureTestSuppor
     }
 
     @Test
-    @DisplayName("나눔가게에 가입하지 않은 식당지원자의 휴가 겹침도 경고한다")
-    void warnsLeaveConflictOfCafeteriaOnlySupporter() {
+    @DisplayName("식당지원 명단의 휴가 겹침이나 인원 부족은 나눔가게 카드에 띄우지 않는다")
+    void keepsCafeteriaWarningsOffTheSharingShopCard() {
         rosterService.registerEmployee("정하늘", "staff-password", "THIRD_FLOOR");
-        requireCafeteriaWorkers(1);
+        requireCafeteriaWorkers(2);
         supportOn(TOMORROW, "정하늘");
 
         leaveRequestService.save(employeeId("정하늘"), TOMORROW, Attendance.VACATION);
 
-        assertThat(rosterReader.getRosterOn(Activity.SHARING_SHOP, TOMORROW).warnings())
-                .anySatisfy(warning -> assertThat(warning).contains("정하늘 님은 연차"));
+        assertThat(sharingShopQueryService.getDay(TOMORROW, employeeId("정하늘")).warnings())
+                .noneMatch(warning -> warning.contains(Activity.CAFETERIA_SUPPORT.getName()));
     }
 
     @Test

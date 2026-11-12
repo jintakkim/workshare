@@ -111,7 +111,7 @@ public class SharingShopQueryService {
     }
 
     private List<String> getWarnings(LocalDate date, RosterReader.DayRoster roster, ShiftTasks shiftTasks, boolean resultReleased) {
-        List<String> warnings = new ArrayList<>(roster.warnings());
+        List<String> warnings = new ArrayList<>();
         if (resultReleased) {
             warnings.addAll(shiftTasks.getWarnings());
         }

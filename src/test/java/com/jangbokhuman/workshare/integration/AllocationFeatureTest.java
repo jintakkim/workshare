@@ -157,6 +157,29 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
                 .isEqualTo(original);
     }
 
+    @Test
+    @DisplayName("식당지원을 맡은 기계실 직원은 나눔가게에서 빠지지만 오후 기계실 상주 인원으로 센다")
+    void facilityStaffOnCafeteriaSupportCoverTheAfternoonFacility() throws Exception {
+        rosterService.registerEmployee("홍길동", "staff-password", "FACILITY_SUPPORT");
+        rosterService.registerEmployee("김민수", "staff-password", "FACILITY_SUPPORT");
+        register("이서연");
+        register("박지훈");
+        registerForActivity(Activity.SHARING_SHOP, "이서연", "박지훈");
+        requireCafeteriaWorkers(1);
+        supportOn(TODAY, "홍길동");
+
+        now("08:50");
+        dailyAllocationService.allocateTodayIfDue();
+
+        List<SharingShopTaskReader.TaskView> tasks = sharingShopTasks(TODAY);
+        assertThat(task(tasks, "MORNING").assignees()).extracting(SharingShopTaskReader.AssigneeView::name)
+                .containsExactlyInAnyOrder("이서연", "박지훈");
+        assertThat(task(tasks, "EVENING").assignees()).extracting(SharingShopTaskReader.AssigneeView::name)
+                .containsExactly("김민수");
+        assertThat(tasks).flatExtracting(SharingShopTaskReader.TaskView::warnings)
+                .noneMatch(warning -> warning.contains("기계실 인원 부족"));
+    }
+
     @ParameterizedTest
     @CsvSource({"WORK,false", "AFTERNOON_HALF_DAY,true"})
     @DisplayName("기계실은 시간대별 상주를 지키고 불가능하면 나눔가게에 배정한 뒤 경고한다")
