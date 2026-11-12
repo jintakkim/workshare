@@ -89,6 +89,11 @@ public class AdminController {
     ) {
         leaveRequestService.save(employeeId, date, attendance);
         flash.addFlashAttribute("success", "직원의 근무 상태를 저장했습니다.");
+        List<String> duties = leaveRequestService.findConflictingDuties(employeeId, date, attendance);
+        if (!duties.isEmpty()) {
+            flash.addFlashAttribute("warning", rosterService.getEmployeeView(employeeId).name() + " 님은 " + date.getMonthValue() + "월 "
+                    + date.getDayOfMonth() + "일 " + String.join(", ", duties) + " 명단에 있어요. 대신 갈 사람을 정해주세요.");
+        }
         flash.addAttribute("employeeId", employeeId);
         flash.addAttribute("date", date.toString());
         return "redirect:/admin/leave#day-details";

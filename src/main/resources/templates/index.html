@@ -16,7 +16,7 @@
       <small th:text="${(view.cutoff.hour < 12 ? '오전 ' : '오후 ') + #temporals.format(view.cutoff, 'h시 mm분') + '부터 업무 배정이 끝날 때까지는 잠시 오늘 입력이 막혀요. 지난 날짜는 언제든 넣을 수 있어요. 토·일·휴일 제외'}">오전 8시 49분부터 업무 배정이 끝날 때까지는 잠시 오늘 입력이 막혀요. 지난 날짜는 언제든 넣을 수 있어요. 토·일·휴일 제외</small>
     </div>
   </section>
-  <div class="flash-messages" aria-live="polite"><div th:if="${success}" class="notice" role="status" th:text="${success}"></div><div th:if="${error}" class="notice danger" role="alert" th:text="${error}"></div></div>
+  <div class="flash-messages" aria-live="polite"><div th:if="${success}" class="notice" role="status" th:text="${success}"></div><div th:if="${error}" class="notice danger" role="alert" th:text="${error}"></div><div th:if="${warning}" class="notice danger" role="status" th:text="${warning}"></div></div>
   <div class="workspace">
     <section class="card calendar-card" aria-label="나의 월별 휴가 달력">
 

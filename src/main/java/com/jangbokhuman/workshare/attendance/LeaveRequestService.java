@@ -27,6 +27,14 @@ public class LeaveRequestService {
     private final LeaveRequestValidator leaveRequestValidator;
     private final WorkTime workTime;
     private final BusinessCalendar businessCalendar;
+    private final List<LeaveConflictReader> leaveConflictReaders;
+
+    @Transactional(readOnly = true)
+    public List<String> findConflictingDuties(Long employeeId, LocalDate date, Attendance attendance) {
+        return leaveConflictReaders.stream()
+                .flatMap(reader -> reader.findConflictingDuties(employeeId, date, attendance).stream())
+                .toList();
+    }
 
     public void save(Long employeeId, LocalDate date, Attendance attendance) {
         Employee employee = employeeRepository.findById(employeeId)

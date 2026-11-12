@@ -31,6 +31,30 @@ import java.util.concurrent.*;
 })
 class SupportFeatureTest extends BusinessFeatureTestSupport {
     @Test
+    @DisplayName("식당지원 날 오전에 쉬는 휴가를 저장하면 저장은 하고 직원과 관리자에게 겹친다고 알린다")
+    void warnsWhenLeaveOverlapsCafeteriaSupport() throws Exception {
+        register("홍길동");
+        requireCafeteriaWorkers(1);
+        LocalDate supportDay = TODAY.plusDays(1);
+        supportOn(supportDay, "홍길동");
+        Long id = employeeId("홍길동");
+
+        mockMvc.perform(put("/leave/" + supportDay).with(testUser("홍길동", "STAFF")).with(csrf())
+                        .param("attendance", "VACATION"))
+                .andExpect(flash().attribute("warning", "11월 5일은 식당지원 날이에요. 지원일을 바꾸거나 관리자에게 알려 주세요."));
+        mockMvc.perform(put("/leave/" + supportDay).with(testUser("홍길동", "STAFF")).with(csrf())
+                        .param("attendance", "AFTERNOON_HALF_DAY"))
+                .andExpect(flash().attribute("warning", org.hamcrest.Matchers.nullValue()));
+        mockMvc.perform(put("/admin/employees/" + id + "/leave/" + supportDay).with(testUser("admin", "ADMIN")).with(csrf())
+                        .param("attendance", "MORNING_HALF_DAY"))
+                .andExpect(flash().attribute("warning", "홍길동 님은 11월 5일 식당지원 명단에 있어요. 대신 갈 사람을 정해주세요."));
+        mockMvc.perform(put("/leave/" + TODAY.plusDays(2)).with(testUser("홍길동", "STAFF")).with(csrf())
+                        .param("attendance", "VACATION"))
+                .andExpect(flash().attribute("warning", org.hamcrest.Matchers.nullValue()));
+        assertThat(leaveCalendarService.getCalendar(supportDay, id).attendance()).isEqualTo(Attendance.MORNING_HALF_DAY);
+    }
+
+    @Test
     @DisplayName("식당지원자를 오전·오후 업무의 자동 배정에서 제외한다")
     void scheduledSupportIsExcludedFromAutomaticShiftAssignments()
             throws Exception {
