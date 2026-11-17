@@ -49,7 +49,7 @@
 | `APP_REMEMBER_ME_KEY` | 자동 로그인 서명 키(32자 이상). 바꾸면 모든 자동 로그인이 풀립니다 |
 | `SENTRY_DSN` | 선택. Sentry 프로젝트 DSN. 넣으면 오류가 Sentry에 모이고 새 오류마다 메일이 옵니다 |
 | `APP_INSTANCE_NAME` | 선택. Sentry에 표시할 서버 이름(기본 `workshare`) |
-| `ACCESS_LOG_DAYS` | 선택. 직원별 요청 기록 보관 일수(기본 10일) |
+| `ACCESS_LOG_DAYS` | 선택. 직원별 요청 기록을 압축하지 않고 두는 일수(기본 10일). 그보다 오래된 날은 압축해 보관합니다 |
 
 관리자로 로그인해 직원을 등록하면 직원은 한글 이름으로 로그인합니다.
 
@@ -59,10 +59,16 @@
 docker compose exec app tail -n 200 /app/logs/error.log
 ```
 
-요청마다 누가(직원 ID·관리자), 언제, 어떤 주소를 불렀고 결과가 어땠는지는 같은 볼륨의 `access.log`에 남고, `ACCESS_LOG_DAYS`일(기본 10일)이 지나면 지워집니다. 정적 파일과 상태 확인 요청은 남기지 않습니다.
+요청마다 누가(직원 ID·관리자), 언제, 어떤 주소를 불렀고 결과가 어땠는지는 같은 볼륨의 `access.log`에 남습니다. 하루 한 파일로 나뉘고, `ACCESS_LOG_DAYS`일(기본 10일)이 지난 날은 매일 0시 10분과 앱이 뜰 때 `access.2026-11-01.log.gz`처럼 압축해 계속 보관합니다. 정적 파일과 상태 확인 요청은 남기지 않습니다.
 
 ```bash
 docker compose exec app grep "직원 ID 11" /app/logs/access.log
+```
+
+압축한 지난 기록까지 찾으려면 `zgrep`을 씁니다.
+
+```bash
+docker compose exec app sh -c 'zgrep -h "직원 ID 11 " /app/logs/access.*.log.gz'
 ```
 
 HTTPS 뒤에서 운영하면 `.env`에 `SERVER_SERVLET_SESSION_COOKIE_SECURE=true`와 `SERVER_FORWARD_HEADERS_STRATEGY=framework`를 추가합니다.
