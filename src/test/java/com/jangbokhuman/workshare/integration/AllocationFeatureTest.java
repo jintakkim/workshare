@@ -52,7 +52,8 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
                 .contains("홍길동");
         assertThat(task(first, "EVENING").assignees())
                 .extracting(SharingShopTaskReader.AssigneeView::name)
-                .containsExactly("김민수");
+                .hasSize(2)
+                .contains("김민수");
         now("15:00");
         dailyAllocationService.allocateTodayIfDue();
         assertThat(sharingShopTasks(TODAY))
@@ -110,7 +111,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
     }
 
     @Test
-    @DisplayName("식당 직군을 먼저 제외한 인원으로 오전·오후 업무를 배정한다")
+    @DisplayName("식당 직군을 먼저 제외한 인원으로 오전·오후 업무를 배정하고 세 명이면 한 명이 두 번 맡는다")
     void shiftQuotasExcludeRestaurantStaffBeforeCounting() {
         register("홍길동");
         register("김민수");
@@ -122,7 +123,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         List<SharingShopTaskReader.TaskView> tasks = sharingShopTasks(TODAY);
         assertThat(sharingShopWorkers(TODAY)).hasSize(3);
         assertThat(task(tasks, "MORNING").assignees()).hasSize(2);
-        assertThat(task(tasks, "EVENING").assignees()).hasSize(1);
+        assertThat(task(tasks, "EVENING").assignees()).hasSize(2);
         assertThat(
                         tasks.stream()
                                 .flatMap(t -> t.assignees().stream())
@@ -150,7 +151,10 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
                 .extracting(SharingShopTaskReader.AssigneeView::name)
                 .containsExactly("박지훈");
         assertThat(task(original, "EVENING").warnings())
-                .containsExactly("오후 기계실 인원 부족: 상주할 직원이 없습니다.");
+                .containsExactly(
+                        "오후 업무 인원 부족: 한 명만 배정되었습니다.",
+                        "오후 기계실 인원 부족: 상주할 직원이 없습니다."
+                );
         now("08:51");
         dailyAllocationService.allocateTodayIfDue();
         assertThat(sharingShopTasks(TODAY))
@@ -175,86 +179,67 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         assertThat(task(tasks, "MORNING").assignees()).extracting(SharingShopTaskReader.AssigneeView::name)
                 .containsExactlyInAnyOrder("이서연", "박지훈");
         assertThat(task(tasks, "EVENING").assignees()).extracting(SharingShopTaskReader.AssigneeView::name)
-                .containsExactly("김민수");
+                .hasSize(2)
+                .contains("김민수");
         assertThat(tasks).flatExtracting(SharingShopTaskReader.TaskView::warnings)
                 .noneMatch(warning -> warning.contains("기계실 인원 부족"));
     }
 
-    @ParameterizedTest
-    @CsvSource({"WORK,false", "AFTERNOON_HALF_DAY,true"})
-    @DisplayName("기계실은 시간대별 상주를 지키고 불가능하면 나눔가게에 배정한 뒤 경고한다")
-    void facilityStaffCoverBothShiftsAndWarnIfNobodyCanStay(Attendance attendance, boolean shortage)
-            throws Exception {
+    @Test
+    @DisplayName("두 명이면 기계실 상주보다 오전·오후 두 명씩을 먼저 채우고 기계실 부족은 경고한다")
+    void twoFacilityWorkersBothWorkEveryShiftAndWarnAboutTheFacility() throws Exception {
         rosterService.registerEmployee("홍길동", "staff-password", "FACILITY_SUPPORT");
         rosterService.registerEmployee("김민수", "staff-password", "FACILITY_SUPPORT");
         registerForActivity(Activity.SHARING_SHOP, "홍길동", "김민수");
-        leaveRequestService.save(employeeId("홍길동"), TODAY, attendance);
         sharingShopTimePreferenceService.save(employeeId("홍길동"), Preference.MORNING);
         sharingShopTimePreferenceService.save(employeeId("김민수"), Preference.EVENING);
 
         now("08:49");
         mockMvc.perform(get("/api/sharing-shop/days/" + TODAY).with(testUser("홍길동", "STAFF")))
-                .andExpect(jsonPath("$.morningSlots").value(1))
-                .andExpect(jsonPath("$.eveningSlots").value(1));
+                .andExpect(jsonPath("$.morningSlots").value(2))
+                .andExpect(jsonPath("$.eveningSlots").value(2));
 
         now("08:50");
         dailyAllocationService.allocateTodayIfDue();
         List<SharingShopTaskReader.TaskView> tasks = sharingShopTasks(TODAY);
-        assertThat(task(tasks, "MORNING").assignees()).extracting(SharingShopTaskReader.AssigneeView::name)
-                .containsExactly("홍길동");
-        SharingShopTaskReader.TaskView evening = task(tasks, "EVENING");
-        assertThat(evening.assignees()).extracting(SharingShopTaskReader.AssigneeView::name)
-                .containsExactly("김민수");
-        if (shortage) {
-            assertThat(evening.warnings()).anyMatch(warning -> warning.contains("기계실 인원 부족"));
-            now("08:50:10");
-            mockMvc.perform(get("/api/sharing-shop/days/" + TODAY).with(testUser("홍길동", "STAFF")))
-                    .andExpect(jsonPath("$.warnings[0]").value(org.hamcrest.Matchers.containsString("기계실 인원 부족")));
-        } else {
-            assertThat(evening.warnings()).isEmpty();
-        }
-        assertThat(task(tasks, "MORNING").warnings()).isEmpty();
+        assertThat(tasks).hasSize(2).allSatisfy(task -> {
+            assertThat(task.assignees()).extracting(SharingShopTaskReader.AssigneeView::name)
+                    .containsExactlyInAnyOrder("홍길동", "김민수");
+            assertThat(task.warnings()).singleElement().asString().contains("기계실 인원 부족");
+        });
     }
 
     @ParameterizedTest
     @CsvSource({"AFTERNOON_HALF_DAY,MORNING,EVENING", "MORNING_HALF_DAY,EVENING,MORNING"})
-    @DisplayName("기계실 반차자가 상주하고 종일 근무자가 겸임하면 상주자가 없는 시간대만 경고한다")
-    void fullDayWorkerCoversBothShiftsSoHalfDayFacilityWorkerCanStay(
+    @DisplayName("기계실 반차자도 두 명을 채우려고 나눔가게에 넣고, 종일 근무자는 두 시간대를 모두 맡는다")
+    void halfDayFacilityWorkerJoinsTheShopToMakeTwoAndTheFullDayWorkerCoversBothShifts(
             Attendance attendance,
-            WorkPeriod staffedPeriod,
-            WorkPeriod unstaffedPeriod
+            WorkPeriod sharedPeriod,
+            WorkPeriod soloPeriod
     ) throws Exception {
         rosterService.registerEmployee("홍길동", "staff-password", "FACILITY_SUPPORT");
         registerForActivity(Activity.SHARING_SHOP, "홍길동");
         register("김민수");
         leaveRequestService.save(employeeId("홍길동"), TODAY, attendance);
 
-        now("08:49");
-        mockMvc.perform(get("/api/sharing-shop/days/" + TODAY).with(testUser("홍길동", "STAFF")))
-                .andExpect(jsonPath("$.morningSlots").value(1))
-                .andExpect(jsonPath("$.eveningSlots").value(1));
-
         now("08:50");
         dailyAllocationService.allocateTodayIfDue();
         List<SharingShopTaskReader.TaskView> tasks = sharingShopTasks(TODAY);
-        assertThat(tasks).hasSize(2).allSatisfy(task ->
-                assertThat(task.assignees()).extracting(SharingShopTaskReader.AssigneeView::name).containsExactly("김민수"));
-        assertThat(task(tasks, staffedPeriod.name()).warnings()).isEmpty();
-        assertThat(task(tasks, unstaffedPeriod.name()).warnings()).singleElement()
-                .isEqualTo(unstaffedPeriod.getLabel() + " 기계실 인원 부족: 상주할 직원이 없습니다.");
-
-        now("08:50:10");
-        mockMvc.perform(get("/api/sharing-shop/days/" + TODAY).with(testUser("홍길동", "STAFF")))
-                .andExpect(jsonPath("$.morning[0].name").value("김민수"))
-                .andExpect(jsonPath("$.evening[0].name").value("김민수"))
-                .andExpect(jsonPath("$.warnings.length()").value(1))
-                .andExpect(jsonPath("$.warnings[0]").value(
-                        org.hamcrest.Matchers.containsString(unstaffedPeriod.getLabel() + " 기계실 인원 부족")));
+        assertThat(task(tasks, sharedPeriod.name()).assignees()).extracting(SharingShopTaskReader.AssigneeView::name)
+                .containsExactlyInAnyOrder("홍길동", "김민수");
+        assertThat(task(tasks, sharedPeriod.name()).warnings())
+                .containsExactly(sharedPeriod.getLabel() + " 기계실 인원 부족: 상주할 직원이 없습니다.");
+        assertThat(task(tasks, soloPeriod.name()).assignees()).extracting(SharingShopTaskReader.AssigneeView::name)
+                .containsExactly("김민수");
+        assertThat(task(tasks, soloPeriod.name()).warnings()).containsExactly(
+                soloPeriod.getLabel() + " 업무 인원 부족: 한 명만 배정되었습니다.",
+                soloPeriod.getLabel() + " 기계실 인원 부족: 상주할 직원이 없습니다."
+        );
     }
 
     @Test
-    @DisplayName("두 명 다 오전만 가능하면 다른 직군을 나눔가게에 보내고 기계실 직원은 상주한다")
-    void aMorningOnlyFacilityWorkerStaysWhenAnotherWorkerCanCoverTheSameShift() throws Exception {
+    @DisplayName("두 명 다 오전만 가능하면 기계실 직원도 오전 나눔가게에 넣어 두 명을 채운다")
+    void twoMorningOnlyWorkersBothTakeTheMorningShift() throws Exception {
         rosterService.registerEmployee("홍길동", "staff-password", "FACILITY_SUPPORT");
         registerForActivity(Activity.SHARING_SHOP, "홍길동");
         register("김민수");
@@ -262,7 +247,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         leaveRequestService.save(employeeId("김민수"), TODAY, Attendance.AFTERNOON_HALF_DAY);
 
         mockMvc.perform(get("/api/sharing-shop/days/" + TODAY).with(testUser("홍길동", "STAFF")))
-                .andExpect(jsonPath("$.morningSlots").value(1))
+                .andExpect(jsonPath("$.morningSlots").value(2))
                 .andExpect(jsonPath("$.eveningSlots").value(0));
 
         now("08:50");
@@ -270,8 +255,9 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
         List<SharingShopTaskReader.TaskView> tasks = sharingShopTasks(TODAY);
         SharingShopTaskReader.TaskView morning = task(tasks, "MORNING");
         SharingShopTaskReader.TaskView evening = task(tasks, "EVENING");
-        assertThat(morning.assignees()).extracting(SharingShopTaskReader.AssigneeView::name).containsExactly("김민수");
-        assertThat(morning.warnings()).isEmpty();
+        assertThat(morning.assignees()).extracting(SharingShopTaskReader.AssigneeView::name)
+                .containsExactlyInAnyOrder("홍길동", "김민수");
+        assertThat(morning.warnings()).containsExactly("오전 기계실 인원 부족: 상주할 직원이 없습니다.");
         assertThat(evening.assignees()).isEmpty();
         assertThat(evening.warnings()).anyMatch(warning -> warning.contains("오후 업무 인원 부족"))
                 .anyMatch(warning -> warning.contains("오후 기계실 인원 부족"));
@@ -310,7 +296,7 @@ class AllocationFeatureTest extends BusinessFeatureTestSupport {
                 sharingShopTasks(TODAY);
         assertThat(task(tasks, available.name()).assignees())
                 .extracting(SharingShopTaskReader.AssigneeView::employeeId)
-                .containsExactly(selfId);
+                .containsExactlyInAnyOrder(selfId, employeeId("김민수"));
         assertThat(task(tasks, unavailable.name()).assignees())
                 .extracting(SharingShopTaskReader.AssigneeView::employeeId)
                 .doesNotContain(selfId);

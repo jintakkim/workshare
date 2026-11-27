@@ -216,7 +216,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
                 .andExpect(jsonPath("$.participants.length()").value(3))
                 .andExpect(jsonPath("$.leaves.length()").value(2))
                 .andExpect(jsonPath("$.morningSlots").value(2))
-                .andExpect(jsonPath("$.eveningSlots").value(1));
+                .andExpect(jsonPath("$.eveningSlots").value(2));
         assertThat(workTaskRepository.count()).isZero();
         now("08:49:10");
         dailyAllocationService.allocateTodayIfDue();
@@ -229,7 +229,7 @@ class NavigationFeatureTest extends BusinessFeatureTestSupport {
         mockMvc.perform(get(url).with(testUser("홍길동", "STAFF")))
                 .andExpect(jsonPath("$.phase").value("READY"))
                 .andExpect(jsonPath("$.morning.length()").value(2))
-                .andExpect(jsonPath("$.evening.length()").value(1))
+                .andExpect(jsonPath("$.evening.length()").value(2))
                 .andExpect(jsonPath("$.warnings").value(org.hamcrest.Matchers.containsInAnyOrder(
                         "오전 기계실 인원 부족: 상주할 직원이 없습니다.",
                         "오후 기계실 인원 부족: 상주할 직원이 없습니다.")));

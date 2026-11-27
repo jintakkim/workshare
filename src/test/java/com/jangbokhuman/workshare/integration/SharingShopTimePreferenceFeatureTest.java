@@ -43,6 +43,7 @@ class SharingShopTimePreferenceFeatureTest extends BusinessFeatureTestSupport {
     void employeeTimePreferencePersistsAcrossDaysAndOnlyAffectsFutureDraws() {
         register("홍길동");
         register("김민수");
+        register("이서연");
         Long employeeId = employeeId("홍길동");
         assertThat(sharingShopTimePreferenceService.getTimePreference(employeeId))
                 .isEqualTo(Preference.ANY);
@@ -58,7 +59,10 @@ class SharingShopTimePreferenceFeatureTest extends BusinessFeatureTestSupport {
                 sharingShopTasks(TODAY);
         assertThat(task(confirmed, "EVENING").assignees())
                 .extracting(SharingShopTaskReader.AssigneeView::employeeId)
-                .containsExactly(employeeId);
+                .contains(employeeId);
+        assertThat(task(confirmed, "MORNING").assignees())
+                .extracting(SharingShopTaskReader.AssigneeView::employeeId)
+                .doesNotContain(employeeId);
 
         now("09:00");
         sharingShopTimePreferenceService.save(employeeId, Preference.MORNING);
@@ -78,7 +82,10 @@ class SharingShopTimePreferenceFeatureTest extends BusinessFeatureTestSupport {
                         task(sharingShopTasks(tomorrow), "MORNING")
                                 .assignees())
                 .extracting(SharingShopTaskReader.AssigneeView::employeeId)
-                .containsExactly(employeeId);
+                .contains(employeeId);
+        assertThat(task(sharingShopTasks(tomorrow), "EVENING").assignees())
+                .extracting(SharingShopTaskReader.AssigneeView::employeeId)
+                .doesNotContain(employeeId);
     }
 
     @Test

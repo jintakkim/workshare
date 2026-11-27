@@ -3,6 +3,7 @@ package com.jangbokhuman.workshare.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -48,7 +49,7 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @ParameterizedTest(name = "가능 인원 {0}명 → 오전 {1}명 / 오후 {2}명")
-    @CsvSource({"0,0,0", "1,1,1", "2,1,1", "3,1,2", "4,2,2", "5,3,2"})
+    @CsvSource({"0,0,0", "1,1,1", "2,2,2", "3,2,2", "4,2,2", "5,3,2"})
     @DisplayName("기본 배분·YAML 기준·1명 겸임을 로그인부터 결과 공개까지 검증한다")
     void normalAttendanceUsesTheConfiguredOrDefaultSplit(int count, int morning, int evening)
             throws Exception {
@@ -113,14 +114,16 @@ class BusinessRulesAcceptanceTest extends BusinessFeatureTestSupport {
                                 .value(containsInAnyOrder("박지훈", "최유진", "정하늘")))
                 .andExpect(jsonPath("$.leaves[*].name").value(containsInAnyOrder("이서연")))
                 .andExpect(jsonPath("$.excluded[*].name").value(containsInAnyOrder("홍길동", "김민수")))
-                .andExpect(jsonPath("$.morningSlots").value(1))
+                .andExpect(jsonPath("$.morningSlots").value(2))
                 .andExpect(jsonPath("$.eveningSlots").value(2));
 
-        // When/Then: half-day staff get morning; both compatible evening preferences are honored.
+        // When/Then: half-day staff get morning, both evening preferences are honored,
+        // and one evening worker also takes the morning so neither shift runs alone.
         runAllocationAt("08:49:10");
         now("08:50:00");
         mockMvc.perform(get(dayUrl(TODAY)).session(worker))
-                .andExpect(jsonPath("$.morning[*].name").value(containsInAnyOrder("박지훈")))
+                .andExpect(jsonPath("$.morning.length()").value(2))
+                .andExpect(jsonPath("$.morning[*].name").value(hasItem("박지훈")))
                 .andExpect(jsonPath("$.evening[*].name").value(containsInAnyOrder("최유진", "정하늘")));
     }
 

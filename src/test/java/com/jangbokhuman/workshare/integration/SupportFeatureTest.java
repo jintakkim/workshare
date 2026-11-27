@@ -72,7 +72,7 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
         mockMvc.perform(get("/api/sharing-shop/days/" + TODAY).with(testUser("홍길동", "STAFF")))
                 .andExpect(jsonPath("$.participants.length()").value(3))
                 .andExpect(jsonPath("$.excluded.length()").value(2))
-                .andExpect(jsonPath("$.morningSlots").value(1))
+                .andExpect(jsonPath("$.morningSlots").value(2))
                 .andExpect(jsonPath("$.eveningSlots").value(2));
         now("08:50");
         dailyAllocationService.allocateTodayIfDue();
@@ -80,7 +80,8 @@ class SupportFeatureTest extends BusinessFeatureTestSupport {
                 sharingShopTasks(TODAY);
         assertThat(task(tasks, "MORNING").assignees())
                 .extracting(SharingShopTaskReader.AssigneeView::name)
-                .containsExactly("이서연");
+                .hasSize(2)
+                .contains("이서연");
         assertThat(task(tasks, "EVENING").assignees())
                 .extracting(SharingShopTaskReader.AssigneeView::name)
                 .containsExactlyInAnyOrder("박지훈", "최유진");

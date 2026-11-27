@@ -8,10 +8,14 @@ import java.util.*;
 import java.util.random.RandomGenerator;
 
 public final class PreferenceShiftAllocationPolicy {
+    private static final int MIN_SHIFT_WORKERS = 2;
+    // A shift needs at most two more people, so two people working both shifts is always enough.
+    private static final int MAX_DOUBLE_SHIFTS = 2;
     private static final Comparator<PlanScore> SCORE_ORDER = Comparator
             .comparingInt(PlanScore::emptyShopShifts)
-            .thenComparingInt(PlanScore::facilityShortages)
+            .thenComparingInt(PlanScore::missingShopWorkers)
             .thenComparingInt(PlanScore::doubleShifts)
+            .thenComparingInt(PlanScore::facilityShortages)
             .thenComparingInt(PlanScore::unassignedWorkers)
             .thenComparingLong(PlanScore::quotaDifference)
             .thenComparing(Comparator.comparingInt(PlanScore::matchedPreferences).reversed())
@@ -39,7 +43,8 @@ public final class PreferenceShiftAllocationPolicy {
         List<ShiftPlan> bestPlans = findBestPlans(drawOrder, quota, coverage);
         ShiftPlan selected = bestPlans.size() == 1
                 ? bestPlans.getFirst() : bestPlans.get(randomGenerator.nextInt(bestPlans.size()));
-        return createAllocation(workers, selected, coverage);
+        int present = (int) workers.stream().filter(worker -> !worker.attendance().isAbsent()).count();
+        return createAllocation(workers, selected, coverage, requiresTwoPerShift(quota, present));
     }
 
     public ShiftQuota getPlannedQuota(List<SharingShopWorker> workers, ShiftQuota quota, FacilityCoverage coverage) {
@@ -54,15 +59,22 @@ public final class PreferenceShiftAllocationPolicy {
         for (FacilityReservation reservation : findFacilityReservations(present, coverage)) {
             Candidates candidates = applyReservation(present, reservation);
             ShiftQuota target = adjustTargetQuota(quota, present.size(), candidates.headcount());
-            for (ShiftPlan plan : buildShiftPlans(candidates, target)) {
-                PlanScore score = scorePlan(plan, quota, target, coverage, present.size());
-                int comparison = bestScore == null ? -1 : SCORE_ORDER.compare(score, bestScore);
-                if (comparison < 0) {
-                    best.clear();
-                    bestScore = score;
-                }
-                if (comparison <= 0 && !best.contains(plan)) {
-                    best.add(plan);
+            int fullDayCount = candidates.fullDay().size();
+            for (int doubleShifts = 0; doubleShifts <= Math.min(MAX_DOUBLE_SHIFTS, fullDayCount); doubleShifts++) {
+                for (int fullDayMorning = doubleShifts; fullDayMorning <= fullDayCount; fullDayMorning++) {
+                    PlanScore score = scorePlan(candidates, fullDayMorning, doubleShifts, quota, target, coverage, present.size());
+                    int comparison = bestScore == null ? -1 : SCORE_ORDER.compare(score, bestScore);
+                    if (comparison > 0) {
+                        continue;
+                    }
+                    if (comparison < 0) {
+                        best.clear();
+                        bestScore = score;
+                    }
+                    ShiftPlan plan = buildShiftPlan(candidates, fullDayMorning, doubleShifts);
+                    if (!best.contains(plan)) {
+                        best.add(plan);
+                    }
                 }
             }
         }
@@ -138,60 +150,67 @@ public final class PreferenceShiftAllocationPolicy {
         return new ShiftQuota(morning, availableHeadcount - morning);
     }
 
-    private List<ShiftPlan> buildShiftPlans(Candidates candidates, ShiftQuota target) {
-        boolean fillBothShifts = target.morning() > 0 && target.evening() > 0;
-        if (fillBothShifts && candidates.headcount() == 1 && candidates.fullDay().size() == 1) {
-            Set<SharingShopWorker> worker = Set.of(candidates.fullDay().getFirst());
-            return List.of(new ShiftPlan(worker, worker, 1));
-        }
-        int minMorning = candidates.morningOnly().size();
-        int maxMorning = minMorning + candidates.fullDay().size();
-        if (fillBothShifts && Math.max(1, minMorning) <= Math.min(maxMorning, candidates.headcount() - 1)) {
-            minMorning = Math.max(1, minMorning);
-            maxMorning = Math.min(maxMorning, candidates.headcount() - 1);
-        }
-        int morning = Math.clamp(target.morning(), minMorning, maxMorning);
-        int reversedMorning = Math.clamp(target.evening(), minMorning, maxMorning);
-        ShiftPlan plan = buildShiftPlan(candidates, morning);
-        if (morning == reversedMorning) {
-            return List.of(plan);
-        }
-        return List.of(plan, buildShiftPlan(candidates, reversedMorning));
-    }
-
-    private ShiftPlan buildShiftPlan(Candidates candidates, int morningCount) {
-        int fullDayMorning = morningCount - candidates.morningOnly().size();
+    // fullDay is sorted morning-first, so morning takes a prefix, evening a suffix, and the overlap
+    // (people with no strong preference) works both shifts.
+    private ShiftPlan buildShiftPlan(Candidates candidates, int fullDayMorning, int doubleShifts) {
+        List<SharingShopWorker> fullDay = candidates.fullDay();
         Set<SharingShopWorker> morning = new HashSet<>(candidates.morningOnly());
-        morning.addAll(candidates.fullDay().subList(0, fullDayMorning));
+        morning.addAll(fullDay.subList(0, fullDayMorning));
         Set<SharingShopWorker> evening = new HashSet<>(candidates.eveningOnly());
-        evening.addAll(candidates.fullDay().subList(fullDayMorning, candidates.fullDay().size()));
-        return new ShiftPlan(morning, evening, 0);
+        evening.addAll(fullDay.subList(fullDayMorning - doubleShifts, fullDay.size()));
+        return new ShiftPlan(morning, evening, doubleShifts);
     }
 
     private PlanScore scorePlan(
-            ShiftPlan plan,
+            Candidates candidates,
+            int fullDayMorning,
+            int doubleShifts,
             ShiftQuota quota,
             ShiftQuota target,
             FacilityCoverage coverage,
             int present
     ) {
+        List<SharingShopWorker> fullDay = candidates.fullDay();
+        List<SharingShopWorker> fullDayMorningWorkers = fullDay.subList(0, fullDayMorning);
+        List<SharingShopWorker> fullDayEveningWorkers = fullDay.subList(fullDayMorning - doubleShifts, fullDay.size());
+        int morning = candidates.morningOnly().size() + fullDayMorningWorkers.size();
+        int evening = candidates.eveningOnly().size() + fullDayEveningWorkers.size();
         int emptyShopShifts = 0;
-        if (quota.morning() > 0 && quota.evening() > 0) {
-            emptyShopShifts = (plan.morning().isEmpty() ? 1 : 0) + (plan.evening().isEmpty() ? 1 : 0);
+        int missingShopWorkers = 0;
+        if (requiresBothShifts(quota)) {
+            emptyShopShifts = (morning == 0 ? 1 : 0) + (evening == 0 ? 1 : 0);
         }
-        int facilityShortages = (hasFacilityShortage(coverage, WorkPeriod.MORNING, plan.morning()) ? 1 : 0)
-                + (hasFacilityShortage(coverage, WorkPeriod.EVENING, plan.evening()) ? 1 : 0);
-        int morning = plan.morning().size();
-        int unassigned = present - morning - plan.evening().size() + plan.doubleShifts();
+        if (requiresTwoPerShift(quota, present)) {
+            missingShopWorkers = Math.max(0, MIN_SHIFT_WORKERS - morning) + Math.max(0, MIN_SHIFT_WORKERS - evening);
+        }
+        int morningFacilityWorkers = countFacilityWorkers(candidates.morningOnly()) + countFacilityWorkers(fullDayMorningWorkers);
+        int eveningFacilityWorkers = countFacilityWorkers(candidates.eveningOnly()) + countFacilityWorkers(fullDayEveningWorkers);
+        int facilityShortages = (coverage.hasShortage(WorkPeriod.MORNING, morningFacilityWorkers) ? 1 : 0)
+                + (coverage.hasShortage(WorkPeriod.EVENING, eveningFacilityWorkers) ? 1 : 0);
+        int unassigned = present - candidates.headcount();
         long morningDifference = Math.abs((long) morning - target.morning());
         long reversedDifference = Math.abs((long) morning - target.evening());
-        int matched = countPreferences(plan.morning(), Preference.MORNING)
-                + countPreferences(plan.evening(), Preference.EVENING);
-        return new PlanScore(emptyShopShifts, facilityShortages, plan.doubleShifts(), unassigned,
+        int matched = countPreferences(candidates.morningOnly(), Preference.MORNING)
+                + countPreferences(fullDayMorningWorkers, Preference.MORNING)
+                + countPreferences(candidates.eveningOnly(), Preference.EVENING)
+                + countPreferences(fullDayEveningWorkers, Preference.EVENING);
+        return new PlanScore(emptyShopShifts, missingShopWorkers, doubleShifts, facilityShortages, unassigned,
                 Math.min(morningDifference, reversedDifference), matched, morningDifference, morning);
     }
 
-    private int countPreferences(Set<SharingShopWorker> workers, Preference preference) {
+    private boolean requiresBothShifts(ShiftQuota quota) {
+        return quota.morning() > 0 && quota.evening() > 0;
+    }
+
+    private boolean requiresTwoPerShift(ShiftQuota quota, int present) {
+        return requiresBothShifts(quota) && present >= MIN_SHIFT_WORKERS;
+    }
+
+    private int countFacilityWorkers(Collection<SharingShopWorker> workers) {
+        return (int) workers.stream().filter(SharingShopWorker::facilitySupport).count();
+    }
+
+    private int countPreferences(Collection<SharingShopWorker> workers, Preference preference) {
         int count = 0;
         for (SharingShopWorker worker : workers) {
             if (worker.preference() == preference) {
@@ -204,7 +223,8 @@ public final class PreferenceShiftAllocationPolicy {
     private ShiftAllocation createAllocation(
             List<SharingShopWorker> workers,
             ShiftPlan plan,
-            FacilityCoverage coverage
+            FacilityCoverage coverage,
+            boolean twoPerShift
     ) {
         List<ShiftAllocation.Assignment> assignments = new ArrayList<>();
         for (SharingShopWorker worker : workers) {
@@ -219,18 +239,21 @@ public final class PreferenceShiftAllocationPolicy {
         }
         assignments.sort(Comparator.comparing(assignment -> assignment.worker().name()));
         return new ShiftAllocation(assignments,
-                getWarnings(WorkPeriod.MORNING, plan.morning(), coverage),
-                getWarnings(WorkPeriod.EVENING, plan.evening(), coverage));
+                getWarnings(WorkPeriod.MORNING, plan.morning(), coverage, twoPerShift),
+                getWarnings(WorkPeriod.EVENING, plan.evening(), coverage, twoPerShift));
     }
 
     private List<String> getWarnings(
             WorkPeriod period,
             Set<SharingShopWorker> assigned,
-            FacilityCoverage coverage
+            FacilityCoverage coverage,
+            boolean twoPerShift
     ) {
         List<String> warnings = new ArrayList<>();
         if (assigned.isEmpty()) {
             warnings.add(period.getLabel() + " 업무 인원 부족: 배정 가능한 직원이 없습니다.");
+        } else if (twoPerShift && assigned.size() < MIN_SHIFT_WORKERS) {
+            warnings.add(period.getLabel() + " 업무 인원 부족: 한 명만 배정되었습니다.");
         }
         if (hasFacilityShortage(coverage, period, assigned)) {
             warnings.add(period.getLabel() + " 기계실 인원 부족: 상주할 직원이 없습니다.");
@@ -243,8 +266,7 @@ public final class PreferenceShiftAllocationPolicy {
             WorkPeriod period,
             Set<SharingShopWorker> assigned
     ) {
-        int assignedFacilityWorkers = (int) assigned.stream().filter(SharingShopWorker::facilitySupport).count();
-        return coverage.hasShortage(period, assignedFacilityWorkers);
+        return coverage.hasShortage(period, countFacilityWorkers(assigned));
     }
 
     private record FacilityReservation(Long morningId, Long eveningId) {}
@@ -265,8 +287,9 @@ public final class PreferenceShiftAllocationPolicy {
 
     private record PlanScore(
             int emptyShopShifts,
-            int facilityShortages,
+            int missingShopWorkers,
             int doubleShifts,
+            int facilityShortages,
             int unassignedWorkers,
             long quotaDifference,
             int matchedPreferences,

@@ -31,7 +31,7 @@ class PreferenceShiftAllocationPolicyTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"2,1,1", "3,2,1", "4,2,2", "5,3,2", "6,3,3", "11,6,5", "1001,501,500"})
+    @CsvSource({"2,2,2", "3,2,2", "4,2,2", "5,3,2", "6,3,3", "11,6,5", "1001,501,500"})
     void wholeRosterIsSplitWithoutADeskExclusion(int size, int morning, int evening) {
         ArrayList<SharingShopWorker> staff = new ArrayList<SharingShopWorker>();
         for (int i = 0; i < size; i++) staff.add(worker(i, Attendance.WORK, Preference.ANY));
@@ -82,7 +82,8 @@ class PreferenceShiftAllocationPolicyTest {
         ShiftAllocation result = allocateWithStaffedFacility(staff);
         assertThat(count(result, WorkPeriod.MORNING)).isEqualTo(4);
         assertThat(count(result, WorkPeriod.EVENING)).isEqualTo(1);
-        assertThat(result.warnings()).isEmpty();
+        assertThat(result.getWarnings(WorkPeriod.MORNING)).isEmpty();
+        assertThat(result.getWarnings(WorkPeriod.EVENING)).containsExactly("오후 업무 인원 부족: 한 명만 배정되었습니다.");
         assertThat(result.assignments())
                 .filteredOn(a -> a.worker().id().equals(5L))
                 .allSatisfy(a -> assertThat(a.periods()).containsExactly(WorkPeriod.EVENING));
@@ -110,7 +111,7 @@ class PreferenceShiftAllocationPolicyTest {
         ShiftAllocation result = allocateWithStaffedFacility(workers);
         assertThat(count(result, WorkPeriod.MORNING)).isEqualTo(6);
         assertThat(count(result, WorkPeriod.EVENING)).isEqualTo(1);
-        assertThat(result.warnings()).isEmpty();
+        assertThat(result.getWarnings(WorkPeriod.EVENING)).containsExactly("오후 업무 인원 부족: 한 명만 배정되었습니다.");
     }
 
     @Test
@@ -137,7 +138,20 @@ class PreferenceShiftAllocationPolicyTest {
     }
 
     @Test
-    void soleFullDayFacilityWorkerStaysWhenTwoOtherWorkersCanCoverTheShifts() {
+    void twoWorkersBothWorkEveryShiftEvenWhenTheFacilityIsLeftUnstaffed() {
+        SharingShopWorker facilityWorker = new SharingShopWorker(1L, "기계실", Attendance.WORK, Preference.MORNING, true);
+        List<SharingShopWorker> workers = List.of(facilityWorker, worker(2, Attendance.WORK, Preference.EVENING));
+        ShiftAllocation result = preferenceShiftAllocationPolicy.allocate(workers, new ShiftQuota(1, 1), new FacilityCoverage(1, 1));
+
+        assertThat(result.assignments()).allSatisfy(assignment -> assertThat(assignment.periods())
+                .containsExactlyInAnyOrder(WorkPeriod.MORNING, WorkPeriod.EVENING));
+        assertThat(result.warnings()).containsExactly(
+                "오전 기계실 인원 부족: 상주할 직원이 없습니다.",
+                "오후 기계실 인원 부족: 상주할 직원이 없습니다.");
+    }
+
+    @Test
+    void threeWorkersFillTwoPerShiftWithOneDoubleShiftBeforeFacilityCover() {
         SharingShopWorker facilityWorker = new SharingShopWorker(1L, "기계실", Attendance.WORK, Preference.MORNING, true);
         List<SharingShopWorker> workers = List.of(
                 facilityWorker,
@@ -147,12 +161,61 @@ class PreferenceShiftAllocationPolicyTest {
         FacilityCoverage coverage = new FacilityCoverage(1, 1);
         ShiftAllocation result = preferenceShiftAllocationPolicy.allocate(workers, quota, coverage);
 
-        assertThat(count(result, WorkPeriod.MORNING)).isEqualTo(1);
-        assertThat(count(result, WorkPeriod.EVENING)).isEqualTo(1);
+        assertThat(count(result, WorkPeriod.MORNING)).isEqualTo(2);
+        assertThat(count(result, WorkPeriod.EVENING)).isEqualTo(2);
+        assertThat(result.assignments()).filteredOn(assignment -> assignment.periods().size() == 2).hasSize(1);
+        assertThat(result.assignments()).allMatch(ShiftAllocation.Assignment::isPreferenceMatched);
+        assertThat(result.warnings()).singleElement().asString().contains("기계실 인원 부족");
+        assertThat(preferenceShiftAllocationPolicy.getPlannedQuota(workers, quota, coverage)).isEqualTo(new ShiftQuota(2, 2));
+    }
+
+    @Test
+    void fourWorkersSplitTwoAndTwoWithoutADoubleShiftForTheFacility() {
+        SharingShopWorker facilityWorker = new SharingShopWorker(1L, "기계실", Attendance.WORK, Preference.ANY, true);
+        List<SharingShopWorker> workers = List.of(
+                facilityWorker,
+                worker(2, Attendance.WORK, Preference.ANY),
+                worker(3, Attendance.WORK, Preference.ANY),
+                worker(4, Attendance.WORK, Preference.ANY));
+        ShiftAllocation result = preferenceShiftAllocationPolicy.allocate(workers, new ShiftQuota(2, 2), new FacilityCoverage(1, 1));
+
+        assertThat(count(result, WorkPeriod.MORNING)).isEqualTo(2);
+        assertThat(count(result, WorkPeriod.EVENING)).isEqualTo(2);
+        assertThat(result.assignments()).allSatisfy(assignment -> assertThat(assignment.periods()).hasSize(1));
+        assertThat(result.warnings()).singleElement().asString().contains("기계실 인원 부족");
+    }
+
+    @Test
+    void fourWorkersWithTwoFacilityWorkersKeepTheFacilityStaffedAllDay() {
+        List<SharingShopWorker> workers = List.of(
+                new SharingShopWorker(1L, "기계실1", Attendance.WORK, Preference.MORNING, true),
+                new SharingShopWorker(2L, "기계실2", Attendance.WORK, Preference.MORNING, true),
+                worker(3, Attendance.WORK, Preference.ANY),
+                worker(4, Attendance.WORK, Preference.ANY));
+        ShiftAllocation result = preferenceShiftAllocationPolicy.allocate(workers, new ShiftQuota(2, 2), new FacilityCoverage(2, 2));
+
+        assertThat(count(result, WorkPeriod.MORNING)).isEqualTo(2);
+        assertThat(count(result, WorkPeriod.EVENING)).isEqualTo(2);
+        assertThat(result.assignments()).allSatisfy(assignment -> assertThat(assignment.periods()).hasSize(1));
+        assertThat(result.warnings()).isEmpty();
+    }
+
+    @Test
+    void fiveWorkersKeepTheSoleFacilityWorkerOnDutyAllDay() {
+        SharingShopWorker facilityWorker = new SharingShopWorker(1L, "기계실", Attendance.WORK, Preference.ANY, true);
+        List<SharingShopWorker> workers = List.of(
+                facilityWorker,
+                worker(2, Attendance.WORK, Preference.ANY),
+                worker(3, Attendance.WORK, Preference.ANY),
+                worker(4, Attendance.WORK, Preference.ANY),
+                worker(5, Attendance.WORK, Preference.ANY));
+        ShiftAllocation result = preferenceShiftAllocationPolicy.allocate(workers, new ShiftQuota(3, 2), new FacilityCoverage(1, 1));
+
+        assertThat(count(result, WorkPeriod.MORNING)).isEqualTo(2);
+        assertThat(count(result, WorkPeriod.EVENING)).isEqualTo(2);
         assertThat(result.assignments()).filteredOn(assignment -> assignment.worker().equals(facilityWorker))
                 .singleElement().satisfies(assignment -> assertThat(assignment.periods()).isEmpty());
         assertThat(result.warnings()).isEmpty();
-        assertThat(preferenceShiftAllocationPolicy.getPlannedQuota(workers, quota, coverage)).isEqualTo(new ShiftQuota(1, 1));
     }
 
     @Test
@@ -205,8 +268,11 @@ class PreferenceShiftAllocationPolicyTest {
                 staff.add(
                         worker(i, Attendance.values()[state / 3], Preference.values()[state % 3]));
             }
-            ShiftAllocation result = allocateWithStaffedFacility(staff);
             int present = (int) staff.stream().filter(w -> !w.attendance().isAbsent()).count();
+            if (present == 2 || present == 3) {
+                continue;
+            }
+            ShiftAllocation result = allocateWithStaffedFacility(staff);
             int morningOnly =
                     (int)
                             staff.stream()
@@ -305,76 +371,100 @@ class PreferenceShiftAllocationPolicyTest {
     }
 
     @Test
-    void everyFourPersonCustomSplitAssignsEveryoneAndMaximizesCompatiblePreferences() {
+    void everyThreePersonRosterMatchesTheBruteForceBestPlan() {
+        Attendance[] states = Attendance.values();
+        int options = states.length * Preference.values().length;
+        for (int code = 0; code < options * options * options; code++) {
+            List<SharingShopWorker> workers = new ArrayList<>();
+            int digits = code;
+            for (int i = 0; i < 3; i++) {
+                int value = digits % options;
+                digits /= options;
+                workers.add(worker(i, states[value / 3], Preference.values()[value % 3]));
+            }
+            int present = (int) workers.stream().filter(w -> !w.attendance().isAbsent()).count();
+            assertMatchesBruteForce(workers, ShiftQuota.createForHeadcount(present));
+        }
+    }
+
+    @Test
+    void everyFourPersonCustomSplitMatchesTheBruteForceBestPlan() {
+        Attendance[] states = {
+            Attendance.WORK,
+            Attendance.AFTERNOON_HALF_DAY,
+            Attendance.MORNING_HALF_DAY,
+            Attendance.VACATION
+        };
         for (int state = 0; state < 20736; state++) {
-            ArrayList<SharingShopWorker> workers = new ArrayList<SharingShopWorker>();
+            List<SharingShopWorker> workers = new ArrayList<>();
             int digits = state;
-            Attendance[] states = {
-                Attendance.WORK,
-                Attendance.AFTERNOON_HALF_DAY,
-                Attendance.MORNING_HALF_DAY,
-                Attendance.VACATION
-            };
             for (int i = 0; i < 4; i++) {
                 int value = digits % 12;
                 digits /= 12;
                 workers.add(worker(i, states[value / 3], Preference.values()[value % 3]));
             }
             for (int am = 0; am <= 4; am++) {
-                ShiftAllocation result = preferenceShiftAllocationPolicy.allocate(workers, new ShiftQuota(am, 4 - am), STAFFED_FACILITY);
-                int coverage =
-                        (int)
-                                result.assignments().stream()
-                                        .filter(a -> !a.periods().isEmpty())
-                                        .count();
-                int satisfaction =
-                        (int)
-                                result.assignments().stream()
-                                        .filter(ShiftAllocation.Assignment::isPreferenceMatched)
-                                        .count();
-                int present = (int) workers.stream().filter(w -> !w.attendance().isAbsent()).count();
-                if (present == 1 && am > 0 && am < 4
-                        && workers.stream().anyMatch(w -> w.attendance().isFullDayAvailable())) {
-                    assertThat(count(result, WorkPeriod.MORNING)).isEqualTo(1);
-                    assertThat(count(result, WorkPeriod.EVENING)).isEqualTo(1);
-                    continue;
-                }
-                int bestEmptyShifts = Integer.MAX_VALUE;
-                int bestDistance = Integer.MAX_VALUE;
-                int bestSatisfied = -1;
-                for (int plan = 0; plan < 81; plan++) {
-                    int rest = plan, morning = 0, evening = 0, matched = 0;
-                    boolean valid = true;
-                    for (SharingShopWorker w : workers) {
-                        int duty = rest % 3;
-                        rest /= 3;
-                        if (duty == 1) morning++;
-                        if (duty == 2) evening++;
-                        if (duty != 0 && w.attendance() == Attendance.VACATION
-                                || duty == 1 && w.attendance() == Attendance.MORNING_HALF_DAY
-                                || duty == 2 && w.attendance() == Attendance.AFTERNOON_HALF_DAY) {
-                            valid = false;
-                            break;
-                        }
-                        if (duty == 1 && w.preference() == Preference.MORNING
-                                || duty == 2 && w.preference() == Preference.EVENING) matched++;
-                    }
-                    if (!valid || morning + evening != present) {
-                        continue;
-                    }
-                    int emptyShifts = am > 0 && am < 4 && (morning == 0 || evening == 0) ? 1 : 0;
-                    int distance = Math.min(Math.abs(morning - am), Math.abs(morning - (4 - am)));
-                    if (emptyShifts < bestEmptyShifts
-                            || emptyShifts == bestEmptyShifts && distance < bestDistance
-                            || emptyShifts == bestEmptyShifts && distance == bestDistance && matched > bestSatisfied) {
-                        bestEmptyShifts = emptyShifts;
-                        bestDistance = distance;
-                        bestSatisfied = matched;
-                    }
-                }
-                assertThat(coverage).isEqualTo(present);
-                assertThat(satisfaction).isEqualTo(bestSatisfied);
+                assertMatchesBruteForce(workers, new ShiftQuota(am, 4 - am));
             }
         }
+    }
+
+    // Each worker gets none, morning, evening or both, and plans are ranked as the business rules order them.
+    private void assertMatchesBruteForce(List<SharingShopWorker> workers, ShiftQuota quota) {
+        ShiftAllocation result = preferenceShiftAllocationPolicy.allocate(workers, quota, STAFFED_FACILITY);
+        int present = (int) workers.stream().filter(w -> !w.attendance().isAbsent()).count();
+        boolean bothShifts = quota.morning() > 0 && quota.evening() > 0;
+        int[] best = null;
+        int plans = (int) Math.pow(4, workers.size());
+        for (int plan = 0; plan < plans; plan++) {
+            int rest = plan;
+            int morning = 0;
+            int evening = 0;
+            int doubles = 0;
+            int matched = 0;
+            boolean valid = true;
+            for (SharingShopWorker w : workers) {
+                int duty = rest % 4;
+                rest /= 4;
+                boolean inMorning = duty == 1 || duty == 3;
+                boolean inEvening = duty == 2 || duty == 3;
+                if ((duty == 0) != w.attendance().isAbsent()
+                        || inMorning && !w.attendance().canWork(WorkPeriod.MORNING)
+                        || inEvening && !w.attendance().canWork(WorkPeriod.EVENING)) {
+                    valid = false;
+                    break;
+                }
+                morning += inMorning ? 1 : 0;
+                evening += inEvening ? 1 : 0;
+                doubles += duty == 3 ? 1 : 0;
+                if (inMorning && w.preference() == Preference.MORNING
+                        || inEvening && w.preference() == Preference.EVENING) {
+                    matched++;
+                }
+            }
+            if (!valid) {
+                continue;
+            }
+            int empty = bothShifts ? (morning == 0 ? 1 : 0) + (evening == 0 ? 1 : 0) : 0;
+            int missing = bothShifts && present >= 2 ? Math.max(0, 2 - morning) + Math.max(0, 2 - evening) : 0;
+            int distance = Math.min(Math.abs(morning - quota.morning()), Math.abs(morning - quota.evening()));
+            int[] score = {empty, missing, doubles, distance, -matched};
+            if (best == null || Arrays.compare(score, best) < 0) {
+                best = score;
+            }
+        }
+        int morning = (int) count(result, WorkPeriod.MORNING);
+        int evening = (int) count(result, WorkPeriod.EVENING);
+        int doubles = (int) result.assignments().stream().filter(a -> a.periods().size() == 2).count();
+        int matched = (int) result.assignments().stream().filter(ShiftAllocation.Assignment::isPreferenceMatched).count();
+        int empty = bothShifts ? (morning == 0 ? 1 : 0) + (evening == 0 ? 1 : 0) : 0;
+        int missing = bothShifts && present >= 2 ? Math.max(0, 2 - morning) + Math.max(0, 2 - evening) : 0;
+        int distance = Math.min(Math.abs(morning - quota.morning()), Math.abs(morning - quota.evening()));
+        String scenario = workers + " " + quota;
+        for (ShiftAllocation.Assignment a : result.assignments()) {
+            assertThat(a.periods().isEmpty()).as(scenario).isEqualTo(a.worker().attendance().isAbsent());
+            assertThat(a.periods()).as(scenario).allMatch(period -> a.worker().attendance().canWork(period));
+        }
+        assertThat(new int[] {empty, missing, doubles, distance, -matched}).as(scenario).isEqualTo(best);
     }
 }
